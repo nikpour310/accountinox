@@ -68,3 +68,13 @@ These steps are a short, targeted task-list to unblock the build by pinning Pris
 
 Note: After this temporary pin is successful we will either keep v6 for now or plan a proper migration to Prisma v7 in a later phase.
 
+### Next task: Local Postgres + Full build (no SKIP_DB)
+
+This task ensures the temporary SKIP_DB workaround is validated and removed after a successful full build.
+- [ ] Start local Postgres via docker-compose (`docker-compose up -d`)
+- [ ] Set `DATABASE_URL` in env to `postgresql://postgres:postgres@localhost:5432/accountinox`
+- [ ] Run `npx prisma migrate dev --name init` to apply migrations
+- [ ] Run `npm run build` (without `SKIP_DB`) and verify sitemap/blog/shop are generated with real data
+- [ ] Update pages to graceful-degrade (replace SKIP_DB placeholders with robust empty-state/fallbacks)
+- [ ] Commit changes and remove or document SKIP_DB usage
+
