@@ -32,6 +32,9 @@ export async function POST(req: Request) {
 
     await prisma.phoneVerification.create({ data: { phone, code, expiresAt } });
 
+    // Audit log the send event
+    await prisma.auditLog.create({ data: { action: 'otp:send', actorId: null, meta: { phone } } });
+
     // Stub provider: log the code. In production replace with SMS provider.
     // Do NOT expose codes in responses in production.
     // Here we return ok=true but include a hint for dev environments.

@@ -23,6 +23,9 @@ export async function POST(req: Request) {
       user = await prisma.user.create({ data: { phone } });
     }
 
+    // Audit log the successful verification
+    await prisma.auditLog.create({ data: { action: 'otp:verify', actorId: user.id, meta: { phone } } });
+
     // In a real flow we would create a session/token here. NextAuth credential signin can be used.
     return NextResponse.json({ ok: true, user: { id: user.id, phone: user.phone } });
   } catch (err) {
