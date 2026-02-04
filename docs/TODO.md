@@ -38,13 +38,14 @@ Tasks
 - [ ] Password hashing: Argon2 (present)
 - [ ] OTP module:
 	- [ ] DB model (PhoneVerification) — present
-	- [ ] API send/verify OTP (provider: stub)
-	- [ ] enable/disable via SiteSetting
+	- [x] API send/verify OTP (provider: stub)
+	- [x] enable/disable via SiteSetting (checked at runtime)
 - [ ] RBAC:
 	- [ ] roles: ADMIN, EDITOR, SUPPORT, CUSTOMER (present)
-	- [ ] middleware protect /admin (ADMIN only)
+		- [x] middleware protect /admin (ADMIN only)
 	- [ ] helper checkPermission for API routes
 - [ ] Rate limit on login/otp (basic rate limit for OTP send)
+ - [x] Rate limit on OTP send (basic 60s check)
 - [ ] AuditLog for auth events
 
 Notes:
