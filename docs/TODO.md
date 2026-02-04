@@ -52,3 +52,14 @@ Notes:
 - Before implementing, ensure Phase 0 is accepted (standalone build verified).
 - Implement minimal, safe stubs for SMS provider; no secrets in code.
 
+### Temporary: Prisma v6 pinning (requested quick fix)
+
+These steps are a short, targeted task-list to unblock the build by pinning Prisma to v6.x as requested.
+- [ ] Pin `prisma` and `@prisma/client` to the same v6.x version (e.g. `6.0.0`) in `package.json`
+- [ ] Remove `node_modules` and incompatible lockfile, reinstall dependencies
+- [ ] Run `npx prisma generate` to generate the client
+- [ ] Run `npm run build` (standalone) and verify output
+- [ ] Report logs and mark these tasks complete
+
+Note: After this temporary pin is successful we will either keep v6 for now or plan a proper migration to Prisma v7 in a later phase.
+

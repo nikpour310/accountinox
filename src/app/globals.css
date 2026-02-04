@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens */
+:root {
+  --color-primary: #15AEC6;
+  --color-secondary: #30D3C7;
+  --color-accent: #0466BE;
+}
+
+/* Basic font family; replace with Vazirmatn via font-face or CDN in production */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: local('Vazirmatn'), local('Vazirmatn-Regular');
+  font-style: normal;
+}
+
+html, body {
+  direction: rtl;
+  font-family: 'Vazirmatn', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.text-primary { color: var(--color-primary); }
+.bg-primary { background-color: var(--color-primary); }
+.text-accent { color: var(--color-accent); }

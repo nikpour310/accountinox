@@ -1,6 +1,15 @@
 import { prisma } from '@/lib/prisma';
 
 export default async function ShopPage() {
+  if (process.env.SKIP_DB === 'true') {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold mb-4">فروشگاه</h2>
+        <div className="text-sm text-gray-600">(محصولات در این بیلد موقتا در دسترس نیستند)</div>
+      </div>
+    );
+  }
+
   const products = await prisma.product.findMany({ take: 12 });
   return (
     <div>

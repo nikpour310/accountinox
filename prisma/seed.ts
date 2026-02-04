@@ -1,6 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import pkg from '@prisma/client';
 import argon2 from 'argon2';
 
+const { PrismaClient } = pkg as any;
 const prisma = new PrismaClient();
 
 async function main() {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { PaymentProvider } from '..';
+import { PaymentProvider } from './index';
 
 export const ZarinpalProvider: PaymentProvider = {
   async createPayment({ id, amount }) {
