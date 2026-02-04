@@ -56,3 +56,28 @@ OTP can be enabled/disabled from site settings. A stub SMS provider is shipped b
 
 - Unit: `npm test` (vitest)
 - E2E: `npx playwright test` (requires Playwright installation and running dev server)
+
+## Deploy on cPanel (draft)
+
+These are the high-level steps to deploy the app on a cPanel host using the "Setup Node.js App" / Passenger support:
+
+1. Upload your project (via Git or file upload) to the desired subdirectory.
+2. In cPanel, open "Setup Node.js App" and create an application using the project's root path.
+3. Set the startup file to `server.js` (this file requires the Next standalone server produced by `next build`).
+4. Add required environment variables in the cPanel UI (at minimum: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`).
+5. In the project root, run:
+
+```bash
+npm ci
+npx prisma generate
+npx prisma migrate deploy
+npm run build    # builds Next.js with output: 'standalone'
+```
+
+6. Start the application via cPanel (the startup file should load `.next/standalone/server.js`).
+
+Notes:
+- Make sure `next.config.js` contains `output: "standalone"` and `productionBrowserSourceMaps: false`.
+- WebSocket support may be limited on some cPanel hosts; implement fallbacks (SSE/Polling) for realtime features.
+- Never store secrets in repo files; use cPanel environment variables.
+
