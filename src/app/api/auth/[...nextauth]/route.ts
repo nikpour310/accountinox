@@ -15,9 +15,16 @@ const options = {
       async authorize(credentials: any) {
         if (!credentials?.email || !credentials?.password) return null;
         const user = await prisma.user.findUnique({ where: { email: credentials.email } });
-        if (!user || !user.password) return null;
+        if (!user || !user.password) {
+          await prisma.auditLog.create({ data: { action: 'auth:login:fail', actorId: null, meta: { email: credentials.email, reason: 'no-user-or-no-password' } } );
+          return null;
+        }
         const ok = await argon2.verify(user.password, credentials.password);
-        if (!ok) return null;
+        if (!ok) {
+          await prisma.auditLog.create({ data: { action: 'auth:login:fail', actorId: user.id, meta: { email: credentials.email, reason: 'bad-password' } } );
+          return null;
+        }
+        await prisma.auditLog.create({ data: { action: 'auth:login:success', actorId: user.id, meta: { email: credentials.email } } );
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       }
     }),
