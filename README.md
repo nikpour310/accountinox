@@ -81,3 +81,42 @@ Notes:
 - WebSocket support may be limited on some cPanel hosts; implement fallbacks (SSE/Polling) for realtime features.
 - Never store secrets in repo files; use cPanel environment variables.
 
+## Local Postgres via Docker (Windows)
+
+If you're on Windows and plan to run a local Postgres for development, the project includes a `docker-compose.yml` that defines a Postgres and Redis service. Follow these steps after installing Docker Desktop (WSL2 backend recommended):
+
+1. Start the Postgres service (from the project root):
+
+```bash
+docker compose up -d db
+```
+
+2. Set the `DATABASE_URL` environment variable for your shell (example):
+
+```bash
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accountinox"
+# On PowerShell (Windows):
+$env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/accountinox'
+```
+
+3. Apply Prisma migrations (or push schema if you prefer):
+
+```bash
+npx prisma migrate dev --name init
+# or, if you don't have migrations and prefer to push schema:
+npx prisma db push
+```
+
+4. Generate Prisma client and build (no SKIP_DB):
+
+```bash
+npx prisma generate
+npm run build
+```
+
+Notes
+- The `SKIP_DB` environment variable used in some pages is a temporary build-time guard to allow building without a DB during initial development. Do not set `SKIP_DB=true` in production.
+- After you confirm a successful full build (without `SKIP_DB`), we'll remove or replace the build-time guards with robust fallbacks.
+
+If you prefer an automated helper, see `scripts/dev-db-up.sh` (bash) and `scripts/dev-db-up.ps1` (PowerShell) which will try to start the DB and print instructions if Docker is not installed.
+
