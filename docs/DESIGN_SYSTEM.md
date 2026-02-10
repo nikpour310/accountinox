@@ -40,6 +40,16 @@ How to use
 - Use `animate-scale-in` on dropdowns and modals to avoid abrupt pop-in behaviour (also works together with Alpine `x-transition`).
 - Prefer `smooth-hover` on interactive CTAs to standardize hover timing.
 
+Conservative application
+- We apply animations sparingly to avoid motion overload. Current conservative mappings used in the project:
+	- `animate-fade-in`: hero sections and footer wrappers.
+	- `animate-fade-up`: feature cards, product cards, blog cards.
+	- `animate-scale-in`: dropdowns and small overlays (user menu, modals).
+	- `smooth-hover`: primary CTAs and major buttons (hero CTAs, product CTAs, signup/login in navbar).
+	- `subtle-pop`: small navbar items to draw attention on first load/hover.
+
+If you want the animations removed or changed to be even more subtle (shorter duration or reduced translate), tell me which pattern to tweak and I'll apply it across the project.
+
 After editing animations or utilities, rebuild Tailwind:
 ```
 npx tailwindcss -i static/css/main.css -o static/css/output.css --minify

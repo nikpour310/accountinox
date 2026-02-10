@@ -28,7 +28,7 @@
             <a href="{{ p.get_absolute_url }}">{{ p.title }}</a>
           </h2>
           <p class="mt-2 text-sm leading-7 text-slate-700">{{ p.seo_description|default:p.content|striptags|truncatechars:150 }}</p>
-          <a href="{{ p.get_absolute_url }}" class="btn btn-ghost mt-4 w-full sm:w-auto">مطالعه مقاله</a>
+          <a href="{{ p.get_absolute_url }}" class="btn btn-ghost mt-4 w-full sm:w-auto smooth-hover">مطالعه مقاله</a>
         </div>
       </article>
     {% empty %}

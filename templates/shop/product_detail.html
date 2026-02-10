@@ -76,14 +76,14 @@
             {% csrf_token %}
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="next" value="{{ request.path }}">
-            <button type="submit" class="btn btn-primary w-full">افزودن به سبد خرید</button>
+            <button type="submit" class="btn btn-primary w-full smooth-hover">افزودن به سبد خرید</button>
           </form>
           <form method="post" action="{% url 'shop:checkout' %}">
             {% csrf_token %}
             <input type="hidden" name="product_id" value="{{ product.id }}">
-            <button type="submit" class="btn btn-secondary w-full">خرید سریع</button>
+            <button type="submit" class="btn btn-secondary w-full smooth-hover">خرید سریع</button>
           </form>
-          <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">پرسش قبل از خرید</a>
+          <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full smooth-hover">پرسش قبل از خرید</a>
         </div>
       </div>
     </div>

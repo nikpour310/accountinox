@@ -46,9 +46,9 @@
               {% csrf_token %}
               <input type="hidden" name="product_id" value="{{ p.id }}">
               <input type="hidden" name="next" value="{{ request.path }}">
-              <button type="submit" class="btn btn-primary w-full">افزودن به سبد</button>
+              <button type="submit" class="btn btn-primary w-full smooth-hover">افزودن به سبد</button>
             </form>
-            <a href="{{ p.get_absolute_url }}" class="btn btn-ghost w-full">مشاهده جزئیات</a>
+            <a href="{{ p.get_absolute_url }}" class="btn btn-ghost w-full smooth-hover">مشاهده جزئیات</a>
           </div>
         </div>
       </article>
@@ -63,7 +63,7 @@
     <div class="p-4 sm:p-6">
       <p class="text-sm text-white/95">اگر انتخاب محصول برایتان سخت است، تیم پشتیبانی در کنار شماست.</p>
       <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-        <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto">شروع گفت‌وگو با پشتیبانی</a>
+        <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">شروع گفت‌وگو با پشتیبانی</a>
         <a href="{% url 'blog:post_list' %}" class="btn btn-soft w-full sm:w-auto">راهنمای خرید در بلاگ</a>
       </div>
     </div>
