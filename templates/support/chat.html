@@ -22,27 +22,30 @@
       <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full sm:w-auto">ویرایش اطلاعات</a>
     </div>
 
-    <div class="card overflow-hidden">
-      <div id="messages" class="h-[60vh] overflow-y-auto bg-slate-50 p-3 sm:h-[30rem] sm:p-5 space-y-3">
+    <div class="card overflow-hidden h-[600px] flex flex-col shadow-floating border-0 rounded-3xl">
+      <!-- Chat Header (Visible in widget mode, or we use page title. Keeping page title external, customizing internal header if needed or just using message area) -->
+      <!-- We will just style the message area and footer to match the Design System Widget -->
+      
+      <div id="messages" class="flex-1 overflow-y-auto bg-[#f0f4f8] p-4 space-y-4" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;">
         {% if messages %}
           {% for message in messages %}
             <div class="flex {% if message.is_from_user %}justify-end{% else %}justify-start{% endif %}" data-message-id="{{ message.id }}">
-              <div class="max-w-[88%] sm:max-w-[72%]">
-                <p class="mb-1 text-[11px] text-slate-500 {% if message.is_from_user %}text-left{% else %}text-right{% endif %}">
-                  {{ message.name }} - {{ message.created_at|date:'H:i' }}
-                </p>
-                <div class="rounded-2xl px-4 py-2 text-sm leading-relaxed break-words {% if message.is_from_user %}bg-slate-900 text-white rounded-br-sm{% else %}bg-white border border-slate-200 text-slate-900 rounded-bl-sm{% endif %}">
+              <div class="max-w-[85%] flex flex-col {% if message.is_from_user %}items-end{% else %}items-start{% endif %} gap-1">
+                <div class="px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm {% if message.is_from_user %}bg-primary-600 text-white rounded-2xl rounded-tl-none shadow-primary-500/20{% else %}bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tr-none{% endif %}">
                   {{ message.message }}
                 </div>
+                <p class="text-[10px] text-slate-400 px-1">
+                  {% if not message.is_from_user %}{{ message.name }} - {% endif %}{{ message.created_at|date:'H:i' }}
+                </p>
               </div>
             </div>
           {% endfor %}
         {% else %}
-          <div id="empty-message" class="py-10 text-center text-sm text-slate-500">هنوز پیامی ارسال نشده است.</div>
+          <div id="empty-message" class="py-10 text-center text-sm text-slate-400">هنوز پیامی ارسال نشده است.</div>
         {% endif %}
       </div>
 
-      <div class="border-t border-slate-200 bg-white p-3 sm:p-4 space-y-3">
+      <div class="border-t border-slate-100 bg-white p-3 sm:p-4 rounded-b-3xl">
         {% if session_closed %}
           {% if session_rating %}
             <div class="alert alert-success">امتیاز ثبت‌شده: {{ session_rating.score }} از 5</div>
@@ -56,22 +59,23 @@
           {% endif %}
           <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">شروع گفت‌وگوی جدید</a>
         {% else %}
-          <form id="user-message-form" class="space-y-3">
+          <form id="user-message-form" class="relative flex items-end gap-2">
             <input id="session-id-input" type="hidden" name="session_id" value="{{ session.id }}">
             <label for="user-message-input" class="sr-only">پیام</label>
-            <textarea
-              id="user-message-input"
-              name="message"
-              rows="3"
-              maxlength="500"
-              class="form-input"
-              placeholder="پیام خود را بنویسید..."
-              required
-            ></textarea>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-xs text-slate-500">حداکثر 500 کاراکتر</p>
-              <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">ارسال پیام</button>
+            <div class="relative flex-grow">
+                <textarea
+                  id="user-message-input"
+                  name="message"
+                  rows="1"
+                  maxlength="500"
+                  class="w-full pl-4 pr-4 py-3 bg-slate-50 border-0 rounded-xl text-sm focus:ring-2 focus:ring-primary-100 placeholder-slate-400 resize-none min-h-[48px] max-h-32"
+                  placeholder="پیام خود را بنویسید..."
+                  required
+                ></textarea>
             </div>
+            <button type="submit" class="flex-shrink-0 p-3 bg-primary-600 text-white rounded-xl shadow-lg shadow-primary-500/30 hover:bg-primary-500 hover:shadow-primary-500/40 hover:-translate-y-0.5 transition-all">
+                <svg class="w-5 h-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+            </button>
           </form>
         {% endif %}
       </div>

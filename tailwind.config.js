@@ -12,31 +12,46 @@ module.exports = {
       },
       colors: {
         primary: {
-          50: '#f0fcfd',
-          100: '#dcfce2', // Adjusted for cyan/teal tint
-          200: '#bcf6fd',
-          300: '#8bedfa',
-          400: '#4edbf5',
-          500: '#1abbc8', // BRAND - Base
-          600: '#129aa7',
-          700: '#117b87',
-          800: '#11636d',
-          900: '#12525c',
-          950: '#07363e',
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6', // Main Brand Color
+          600: '#0d9488', // Hover state
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          950: '#042f2e',
         },
         secondary: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          200: '#badfff',
-          300: '#7cc3ff',
-          400: '#36a1ff',
-          500: '#0468bd', // BRAND - Secondary
-          600: '#00529e',
-          700: '#004280',
-          800: '#00386b',
-          900: '#062f59',
-          950: '#041d3a',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
         },
+        slate: {
+            50:  '#f8fafc',
+            100: '#f1f5f9',
+            200: '#e2e8f0',
+            300: '#cbd5e1',
+            400: '#94a3b8',
+            500: '#64748b',
+            600: '#475569',
+            700: '#334155',
+            800: '#1e293b',
+            900: '#0f172a',
+        },
+        success: { 500: '#22c55e', 50: '#f0fdf4' },
+        warning: { 500: '#eab308', 50: '#fefce8' },
+        error:   { 500: '#ef4444', 50: '#fef2f2' },
       },
       container: {
         center: true,
@@ -48,6 +63,14 @@ module.exports = {
           xl: '1280px',
         },
       },
+        boxShadow: {
+            card: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+            'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
+            floating: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        },
+        borderWidth: {
+            DEFAULT: '1px',
+        },
       keyframes: {
         'fade-in': {
           '0%': { opacity: '0' },
