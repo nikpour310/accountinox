@@ -23,7 +23,7 @@
         {% endif %}
       </div>
       <div class="mt-4 flex justify-end">
-        <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto">بازگشت به پشتیبانی</a>
+        <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">بازگشت به پشتیبانی</a>
       </div>
     {% else %}
       <form method="post" class="space-y-4">
@@ -60,7 +60,7 @@
 
         <div class="flex justify-end gap-2">
           <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full sm:w-auto">انصراف</a>
-          <button type="submit" class="btn btn-primary w-full sm:w-auto">ثبت امتیاز</button>
+          <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">ثبت امتیاز</button>
         </div>
       </form>
     {% endif %}
