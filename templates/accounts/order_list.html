@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block meta_title %}سفارش‌های من | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-6xl">
+    <h1 class="mb-4 text-2xl font-bold text-slate-900 sm:text-3xl">سفارش‌های من</h1>
+    {% include 'accounts/_nav.html' %}
+
+    {% if orders %}
+      <div class="space-y-3">
+        {% for order in orders %}
+          <article class="card p-4 sm:p-5">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="font-semibold text-slate-900">سفارش #{{ order.id }}</p>
+                <p class="text-xs text-slate-500">{{ order.created_at|date:'Y/m/d H:i' }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="status-pill {% if order.status == 'pending_review' %}status-pill--pending{% elif order.status == 'confirmed' %}status-pill--confirmed{% elif order.status == 'delivered' %}status-pill--delivered{% elif order.status == 'cancelled' %}status-pill--cancelled{% endif %}">
+                  {{ order.get_status_display }}
+                </span>
+                <a href="{% url 'accounts:order_detail' order.id %}" class="btn btn-ghost text-xs">جزئیات</a>
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-slate-700">مبلغ کل: <strong>{{ order.total|floatformat:0 }} تومان</strong></p>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">هنوز سفارشی برای این حساب ثبت نشده است.</div>
+    {% endif %}
+  </section>
+{% endblock %}
+

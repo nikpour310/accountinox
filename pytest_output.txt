@@ -1,0 +1,2094 @@
+.................................................FFFFFFFF.F......F...... [ 62%]
+
+================================== FAILURES ===================================
+_____________ test_wordmark_fa_is_rendered_in_layout_brand_slots ______________
+
+client = <django.test.client.Client object at 0x000002889569CA50>
+
+    @pytest.mark.django_db
+    def test_wordmark_fa_is_rendered_in_layout_brand_slots(client):
+        settings_obj = SiteSettings.load()
+        settings_obj.site_name = 'Accountinox Default'
+        settings_obj.brand_wordmark_fa = '\u0627\u06a9\u0627\u0646\u062a\u06cc\u0646\u0648\u06a9\u0633 \u0648\u06cc\u0698\u0647'
+        settings_obj.save()
+    
+        response = client.get(reverse('core:landing'))
+        assert response.status_code == 200
+    
+        content = response.content.decode('utf-8')
+>       assert content.count('\u0627\u06a9\u0627\u0646\u062a\u06cc\u0646\u0648\u06a9\u0633 \u0648\u06cc\u0698\u0647') >= 3
+E       assert 0 >= 3
+E        +  where 0 = <built-in method count of str object at 0x0000028894190AD0>('\u0627\u06a9\u0627\u0646\u062a\u06cc\u0646\u0648\u06a9\u0633 \u0648\u06cc\u0698\u0647')
+E        +    where <built-in method count of str object at 0x0000028894190AD0> = '\n<!doctype html>\n<html lang="fa" dir="rtl" class="scroll-smooth">\n<head>\n    <meta charset="utf-8">\n    <meta na...t-slate-500 font-mono">AliKh</span>\n            </p>\n        </div>\n    </div>\n</footer>\n\n    \n</body>\n</html>'.count
+
+tests\test_site_settings_wordmark.py:18: AssertionError
+_________________ test_blank_wordmark_falls_back_to_site_name _________________
+
+client = <django.test.client.Client object at 0x00000288956F4CD0>
+
+    @pytest.mark.django_db
+    def test_blank_wordmark_falls_back_to_site_name(client):
+        settings_obj = SiteSettings.load()
+        settings_obj.site_name = 'Accountinox Fallback'
+        settings_obj.brand_wordmark_fa = ''
+        settings_obj.save()
+    
+        response = client.get(reverse('core:landing'))
+        assert response.status_code == 200
+    
+        content = response.content.decode('utf-8')
+>       assert content.count('Accountinox Fallback') >= 3
+E       assert 0 >= 3
+E        +  where 0 = <built-in method count of str object at 0x000002889419EE10>('Accountinox Fallback')
+E        +    where <built-in method count of str object at 0x000002889419EE10> = '\n<!doctype html>\n<html lang="fa" dir="rtl" class="scroll-smooth">\n<head>\n    <meta charset="utf-8">\n    <meta na...t-slate-500 font-mono">AliKh</span>\n            </p>\n        </div>\n    </div>\n</footer>\n\n    \n</body>\n</html>'.count
+
+tests\test_site_settings_wordmark.py:32: AssertionError
+______________ test_admin_blog_changelist_renders_with_post_rows ______________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x00000288956F5310>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_blog_changelist_renders_with_post_rows(client, admin_user):
+        Post.objects.create(
+            title='Smoke Blog Post',
+            slug='smoke-blog-post',
+            content='post content',
+            published=True,
+        )
+        client.force_login(admin_user)
+    
+>       response = client.get(reverse('admin:blog_post_changelist'))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+_________ test_admin_change_form_pages_render_without_template_errors _________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc..._field_var': '_to_field', 'is_popup_var': '_popup', 'app_label': 'blog', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc..._field_var': '_to_field', 'is_popup_var': '_popup', 'app_label': 'blog', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc..._field_var': '_to_field', 'is_popup_var': '_popup', 'app_label': 'blog', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x00000288955DB610>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_change_form_pages_render_without_template_errors(client, admin_user):
+        client.force_login(admin_user)
+    
+>       blog_add = client.get(reverse('admin:blog_post_add'))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc..._field_var': '_to_field', 'is_popup_var': '_popup', 'app_label': 'blog', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+_____ test_admin_support_chatsession_changelist_renders_without_operator ______
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x00000288955D9810>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_support_chatsession_changelist_renders_without_operator(client, admin_user):
+        contact = SupportContact.objects.create(name='Smoke Contact', phone='09121234567')
+        ChatSession.objects.create(
+            contact=contact,
+            user_name='Smoke Contact',
+            user_phone='09121234567',
+            subject='Smoke Session',
+            is_active=True,
+        )
+        client.force_login(admin_user)
+    
+>       response = client.get(reverse('admin:support_chatsession_changelist'))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+___________________ test_admin_phoneotp_changelist_renders ____________________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x00000288955D9270>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_phoneotp_changelist_renders(client, admin_user):
+        client.force_login(admin_user)
+>       response = client.get(reverse('admin:accounts_phoneotp_changelist'))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+____________ test_admin_model_changelist_and_add_pages_do_not_500 _____________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x00000288955DA5D0>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_model_changelist_and_add_pages_do_not_500(client, admin_user):
+        client.force_login(admin_user)
+        checked = 0
+        for model in admin.site._registry.keys():
+            app_label = model._meta.app_label
+            model_name = model._meta.model_name
+            for suffix in ('changelist', 'add'):
+                url_name = f'admin:{app_label}_{model_name}_{suffix}'
+                try:
+                    url = reverse(url_name)
+                except NoReverseMatch:
+                    continue
+                checked += 1
+>               response = client.get(url)
+                           ^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+______________ test_admin_core_model_changelist_add_change_pages ______________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x000002889555B890>
+admin_user = <User: admin_smoke>
+
+    @pytest.mark.django_db
+    def test_admin_core_model_changelist_add_change_pages(client, admin_user):
+        client.force_login(admin_user)
+    
+        category = Category.objects.create(name='Admin Smoke Cat', slug='admin-smoke-cat')
+        product = Product.objects.create(
+            category=category,
+            title='Admin Smoke Product',
+            slug='admin-smoke-product',
+            price='49.00',
+        )
+        order = Order.objects.create(user=admin_user, total='49.00', paid=False)
+        tx = TransactionLog.objects.create(order=order, provider='zarinpal', success=False, payload={})
+        post = Post.objects.create(title='Admin Smoke Post', slug='admin-smoke-post', content='x', published=False)
+        faq = PostFAQ.objects.create(post=post, question='q', answer='a')
+        contact = SupportContact.objects.create(name='Admin Smoke Contact', phone='09127778888')
+        session = ChatSession.objects.create(
+            contact=contact,
+            user_name='Admin Smoke Contact',
+            user_phone='09127778888',
+            subject='Admin Session',
+            is_active=False,
+        )
+        rating = SupportRating.objects.create(session=session, agent=admin_user, score=5, reason='')
+        otp = PhoneOTP.objects.create(phone='09125551111')
+    
+        targets = [
+            ('admin:support_chatsession_changelist', None, 200),
+            ('admin:support_chatsession_add', None, 200),
+            ('admin:support_chatsession_change', [session.id], 200),
+            ('admin:support_supportcontact_changelist', None, 200),
+            ('admin:support_supportcontact_add', None, 200),
+            ('admin:support_supportcontact_change', [contact.id], 200),
+            ('admin:support_supportrating_changelist', None, 200),
+            ('admin:support_supportrating_add', None, 200),
+            ('admin:support_supportrating_change', [rating.id], 200),
+            ('admin:shop_order_changelist', None, 200),
+            ('admin:shop_order_add', None, 200),
+            ('admin:shop_order_change', [order.id], 200),
+            ('admin:shop_transactionlog_changelist', None, 200),
+            ('admin:shop_transactionlog_add', None, 200),
+            ('admin:shop_transactionlog_change', [tx.id], 200),
+            ('admin:shop_product_changelist', None, 200),
+            ('admin:shop_product_add', None, 200),
+            ('admin:shop_product_change', [product.id], 200),
+            ('admin:blog_post_changelist', None, 200),
+            ('admin:blog_post_add', None, 200),
+            ('admin:blog_post_change', [post.id], 200),
+            ('admin:blog_postfaq_changelist', None, 200),
+            ('admin:blog_postfaq_add', None, 200),
+            ('admin:blog_postfaq_change', [faq.id], 200),
+            ('admin:accounts_phoneotp_changelist', None, 200),
+            ('admin:accounts_phoneotp_add', None, 200),
+            ('admin:accounts_phoneotp_change', [otp.id], 200),
+        ]
+    
+        for url_name, args, expected in targets:
+            url = reverse(url_name, args=args or [])
+>           response = client.get(url)
+                       ^^^^^^^^^^^^^^^
+
+tests\test_smoke_admin_seo.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tom': False, 'actions_selection_counter': True, 'preserved_filters': '', 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+_______________________ test_footer_legal_links_resolve _______________________
+
+client = <django.test.client.Client object at 0x0000028895558C30>
+
+    @pytest.mark.django_db
+    def test_footer_legal_links_resolve(client):
+        landing = client.get(reverse('core:landing'))
+        terms = client.get(reverse('core:terms'))
+        privacy = client.get(reverse('core:privacy'))
+        contact = client.get(reverse('core:contact'))
+    
+        assert landing.status_code == 200
+        assert terms.status_code == 200
+        assert privacy.status_code == 200
+        assert contact.status_code == 200
+    
+        landing_html = landing.content.decode('utf-8')
+>       assert reverse('core:terms') in landing_html
+E       assert '/terms/' in '\n<!doctype html>\n<html lang="fa" dir="rtl" class="scroll-smooth">\n<head>\n    <meta charset="utf-8">\n    <meta na...t-slate-500 font-mono">AliKh</span>\n            </p>\n        </div>\n    </div>\n</footer>\n\n    \n</body>\n</html>'
+E        +  where '/terms/' = reverse('core:terms')
+
+tests\test_smoke_admin_seo.py:187: AssertionError
+___________________________ test_admin_routes_smoke ___________________________
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tes/site/', 'add_url': '/admin/sites/site/add/', 'view_only': False}]}], 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+>                       raise TypeError
+E                       TypeError
+
+venv\Lib\site-packages\django\template\base.py:964: TypeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tes/site/', 'add_url': '/admin/sites/site/add/', 'view_only': False}]}], 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+>                       current = getattr(current, bit)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E                       AttributeError: 'NoneType' object has no attribute 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:976: AttributeError
+
+During handling of the above exception, another exception occurred:
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tes/site/', 'add_url': '/admin/sites/site/add/', 'view_only': False}]}], 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+>                           current = current[int(bit)]
+                                              ^^^^^^^^
+E                           ValueError: invalid literal for int() with base 10: 'site_name'
+
+venv\Lib\site-packages\django\template\base.py:982: ValueError
+
+During handling of the above exception, another exception occurred:
+
+client = <django.test.client.Client object at 0x0000028895207B10>
+support_staff = <User: support_staff>
+
+    @pytest.mark.django_db
+    def test_admin_routes_smoke(client, support_staff):
+        client.force_login(support_staff)
+        routes = [
+            (reverse('admin:index'), 200),
+            (reverse('admin:blog_post_changelist'), 200),
+            (reverse('admin:shop_order_changelist'), 200),
+            (reverse('admin:shop_transactionlog_changelist'), 200),
+            (reverse('admin:support_chatsession_changelist'), 200),
+            (reverse('admin:support_supportcontact_changelist'), 200),
+            (reverse('admin:support_supportrating_changelist'), 200),
+            (reverse('admin:accounts_phoneotp_changelist'), 200),
+        ]
+        for path, expected_status in routes:
+>           response = client.get(path)
+                       ^^^^^^^^^^^^^^^^
+
+tests\test_smoke_routes.py:195: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\Lib\site-packages\django\test\client.py:1124: in get
+    response = super().get(
+venv\Lib\site-packages\django\test\client.py:475: in get
+    return self.generic(
+venv\Lib\site-packages\django\test\client.py:671: in generic
+    return self.request(**r)
+           ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\client.py:1087: in request
+    self.check_exception(response)
+venv\Lib\site-packages\django\test\client.py:802: in check_exception
+    raise exc_value
+venv\Lib\site-packages\django\core\handlers\exception.py:55: in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\core\handlers\base.py:221: in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:114: in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\response.py:92: in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\backends\django.py:107: in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:174: in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:160: in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\test\utils.py:114: in instrumented_test_render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\defaulttags.py:333: in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\loader_tags.py:66: in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1091: in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1052: in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:1150: in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:809: in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\django\template\base.py:928: in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Variable: 'site_settings.site_name'>
+context = [{'True': True, 'False': False, 'None': None}, {}, {}, {'site_title': '\u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u0628\\u200c\u06af\u0627\u0647 Django', 'site_header': '\u0645\u062f\u06cc...tes/site/', 'add_url': '/admin/sites/site/add/', 'view_only': False}]}], 'LANGUAGE_CODE': 'fa', 'LANGUAGE_BIDI': True}]
+
+    def _resolve_lookup(self, context):
+        """
+        Perform resolution of a real variable (i.e. not a literal) against the
+        given context.
+    
+        As indicated by the method's name, this method is an implementation
+        detail and shouldn't be called by external code. Use Variable.resolve()
+        instead.
+        """
+        current = context
+        try:  # catch-all for silent variable failures
+            for bit in self.lookups:
+                try:  # dictionary lookup
+                    # Only allow if the metaclass implements __getitem__. See
+                    # https://docs.python.org/3/reference/datamodel.html#classgetitem-versus-getitem
+                    if not hasattr(type(current), "__getitem__"):
+                        raise TypeError
+                    current = current[bit]
+                    # ValueError/IndexError are for numpy.array lookup on
+                    # numpy < 1.9 and 1.9+ respectively
+                except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+                    try:  # attribute lookup
+                        # Don't return class attributes if the class is the
+                        # context:
+                        if isinstance(current, BaseContext) and getattr(
+                            type(current), bit
+                        ):
+                            raise AttributeError
+                        current = getattr(current, bit)
+                    except (TypeError, AttributeError):
+                        # Reraise if the exception was raised by a @property
+                        if not isinstance(current, BaseContext) and bit in dir(current):
+                            raise
+                        try:  # list-index lookup
+                            current = current[int(bit)]
+                        except (
+                            IndexError,  # list index out of range
+                            ValueError,  # invalid literal for int()
+                            KeyError,  # current is a dict without `int(bit)` key
+                            TypeError,
+                        ):  # unsubscriptable object
+>                           raise VariableDoesNotExist(
+                                "Failed lookup for key [%s] in %r",
+                                (bit, current),
+                            )  # missing attribute
+E                           django.template.base.VariableDoesNotExist: Failed lookup for key [site_name] in None
+
+venv\Lib\site-packages\django\template\base.py:989: VariableDoesNotExist
+=========================== short test summary info ===========================
+FAILED tests/test_site_settings_wordmark.py::test_wordmark_fa_is_rendered_in_layout_brand_slots
+FAILED tests/test_site_settings_wordmark.py::test_blank_wordmark_falls_back_to_site_name
+FAILED tests/test_smoke_admin_seo.py::test_admin_blog_changelist_renders_with_post_rows
+FAILED tests/test_smoke_admin_seo.py::test_admin_change_form_pages_render_without_template_errors
+FAILED tests/test_smoke_admin_seo.py::test_admin_support_chatsession_changelist_renders_without_operator
+FAILED tests/test_smoke_admin_seo.py::test_admin_phoneotp_changelist_renders
+FAILED tests/test_smoke_admin_seo.py::test_admin_model_changelist_and_add_pages_do_not_500
+FAILED tests/test_smoke_admin_seo.py::test_admin_core_model_changelist_add_change_pages
+FAILED tests/test_smoke_admin_seo.py::test_footer_legal_links_resolve - asser...
+FAILED tests/test_smoke_routes.py::test_admin_routes_smoke - django.template....
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+F:\Python Projects\accountinox\venv\Lib\site-packages\django\utils\crypto.py:77: KeyboardInterrupt
+(to show a full traceback on KeyboardInterrupt use --full-trace)
+10 failed, 62 passed in 39.07s

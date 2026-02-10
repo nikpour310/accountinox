@@ -1,0 +1,13 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Accountinox">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0468BD"/>
+      <stop offset="100%" stop-color="#1ABBC8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="980" cy="120" r="220" fill="rgba(255,255,255,0.12)"/>
+  <circle cx="160" cy="560" r="220" fill="rgba(255,255,255,0.10)"/>
+  <text x="600" y="300" text-anchor="middle" fill="#ffffff" font-family="Vazirmatn,Segoe UI,sans-serif" font-size="78" font-weight="700">Accountinox</text>
+  <text x="600" y="365" text-anchor="middle" fill="#e2f7ff" font-family="Vazirmatn,Segoe UI,sans-serif" font-size="36">Digital Accounts, Delivered Fast</text>
+</svg>

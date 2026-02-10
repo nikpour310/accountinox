@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block meta_title %}خطا در پرداخت | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-2xl">
+    <div class="card p-6 sm:p-8">
+      <div class="alert alert-warning">
+        <h1 class="text-xl font-bold sm:text-2xl">خطا در پردازش پرداخت</h1>
+        <p class="mt-1 text-sm">در زمان بررسی تراکنش مشکلی رخ داد.</p>
+      </div>
+
+      <dl class="mt-4 space-y-2 text-sm text-slate-700">
+        <div><dt class="font-semibold">پیام</dt><dd>{{ error|default:'-' }}</dd></div>
+        {% if reference %}<div><dt class="font-semibold">مرجع</dt><dd>{{ reference }}</dd></div>{% endif %}
+        {% if order %}<div><dt class="font-semibold">شماره سفارش</dt><dd>#{{ order.id }}</dd></div>{% endif %}
+      </dl>
+
+      <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <a href="{% url 'shop:checkout' %}" class="btn btn-primary w-full">بازگشت به تسویه حساب</a>
+        <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">تماس با پشتیبانی</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

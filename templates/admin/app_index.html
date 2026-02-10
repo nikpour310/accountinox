@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block bodyclass %}{{ block.super }} app-{{ app_label }} app-index{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    &rsaquo;
+    {% for app in app_list %}
+      {{ app.name }}
+    {% endfor %}
+  </div>
+{% endblock %}
+{% endif %}
+
+{% block content %}
+  <section class="admin-overview-card admin-overview-card--compact">
+    <h2>مدیریت اپلیکیشن</h2>
+    <p>مدل‌های این بخش را از کارت‌های زیر جستجو و سریع باز کنید.</p>
+  </section>
+  <div id="content-main" class="app-list">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

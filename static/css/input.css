@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    @font-face {
+        font-family: 'Vazirmatn';
+        src: url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+    }
+    
+    body {
+        @apply font-sans text-slate-800 bg-gray-50;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-bold tracking-tight text-slate-900;
+    }
+}
+
+@layer components {
+    .container {
+        @apply max-w-7xl mx-auto px-4;
+    }
+
+    .btn {
+        @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+    
+    .btn-primary {
+        @apply btn bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 focus:ring-primary-500 shadow-lg shadow-primary-500/30 hover:shadow-primary-500/40 transform hover:-translate-y-0.5;
+    }
+    
+    .btn-secondary {
+        @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:ring-slate-200 shadow-sm hover:shadow;
+    }
+    
+    .btn-danger {
+        @apply btn bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-500;
+    }
+
+    .btn-icon {
+        @apply p-2 rounded-lg transition-colors duration-200 focus:outline-none;
+    }
+
+    .inp {
+        @apply block w-full rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm py-2.5 transition-shadow duration-200;
+    }
+
+    .card {
+        @apply bg-white rounded-2xl border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-md;
+    }
+
+    .nav-item {
+        @apply px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200;
+    }
+    .nav-item.active {
+        @apply text-primary-600 bg-primary-50 font-bold;
+    }
+    
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+}

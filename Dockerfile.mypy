@@ -1,0 +1,17 @@
+FROM python:3.14-slim
+
+WORKDIR /app
+
+# Install runtime build deps
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project files
+COPY . /app
+
+# Install mypy only (fast) and any minimal deps needed for imports
+RUN python -m pip install --upgrade pip \
+    && python -m pip install --no-cache-dir mypy
+
+CMD ["python", "-m", "mypy", "--show-error-codes", "--explicit-package-bases", "apps:./apps,core:./core", "apps"]

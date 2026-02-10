@@ -1,0 +1,40 @@
+{% load i18n %}
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky admin-side-nav" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  <div class="admin-side-nav-head">
+    <label for="nav-filter" class="visually-hidden">فیلتر ناوبری مدیریت</label>
+    <input
+      type="search"
+      id="nav-filter"
+      placeholder="فیلتر ناوبری..."
+      aria-label="فیلتر ناوبری مدیریت"
+      data-admin-nav-filter
+    >
+  </div>
+  <div class="admin-side-groups">
+    {% for app in available_apps %}
+      <details class="admin-side-group" data-group-id="{{ app.app_label }}" open>
+        <summary>
+          <span class="admin-side-group-title">{{ app.name }}</span>
+          <span class="admin-side-group-count">{{ app.models|length }}</span>
+        </summary>
+        <ul class="admin-side-items">
+          {% for model in app.models %}
+            {% with admin_url=model.admin_url|default:model.add_url %}
+              <li data-admin-nav-item data-admin-search-text="{{ app.name }} {{ model.name }}">
+                {% if admin_url %}
+                  <a href="{{ admin_url }}"{% if model.admin_url and model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                {% else %}
+                  <span class="admin-side-disabled">{{ model.name }}</span>
+                {% endif %}
+                {% if model.add_url %}
+                  <a href="{{ model.add_url }}" class="admin-side-add" aria-label="افزودن {{ model.name }}">+</a>
+                {% endif %}
+              </li>
+            {% endwith %}
+          {% endfor %}
+        </ul>
+      </details>
+    {% endfor %}
+  </div>
+</nav>

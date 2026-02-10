@@ -1,0 +1,151 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}{% if cl.formset and cl.formset.errors %}{% translate "Error:" %} {% endif %}{{ block.super }}{% endblock %}
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "admin/css/changelists.css" %}">
+  {% if cl.formset %}
+    <link rel="stylesheet" href="{% static "admin/css/forms.css" %}">
+  {% endif %}
+  {% if cl.formset or action_form %}
+    <script src="{% url 'admin:jsi18n' %}"></script>
+  {% endif %}
+  {{ media.css }}
+  {% if not actions_on_top and not actions_on_bottom %}
+    <style>
+      #changelist table thead th:first-child {width: inherit}
+    </style>
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{{ media.js }}
+<script src="{% static 'admin/js/filters.js' %}" defer></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-list{% endblock %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=cl.opts.app_label %}">{{ cl.opts.app_config.verbose_name }}</a>
+&rsaquo; {{ cl.opts.verbose_name_plural|capfirst }}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block coltype %}{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    {% block object-tools %}
+        <ul class="object-tools">
+          {% block object-tools-items %}
+            {% change_list_object_tools %}
+          {% endblock %}
+        </ul>
+    {% endblock %}
+    {% if cl.formset and cl.formset.errors %}
+        <p class="errornote">
+        {% blocktranslate count counter=cl.formset.total_error_count %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
+        </p>
+        {{ cl.formset.non_form_errors }}
+    {% endif %}
+    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+      <div class="changelist-form-container">
+        {% block filters %}
+          {% if cl.has_filters %}
+          <button
+            type="button"
+            class="admin-filter-toggle"
+            data-filter-toggle
+            aria-controls="changelist-filter"
+            aria-expanded="true"
+          >
+            فیلترها
+          </button>
+          <search id="changelist-filter" aria-labelledby="changelist-filter-header">
+            <h2 id="changelist-filter-header">{% translate 'Filter' %}</h2>
+            {% if cl.is_facets_optional or cl.has_active_filters %}<div id="changelist-filter-extra-actions">
+              {% if cl.is_facets_optional %}<h3>
+                {% if cl.add_facets %}<a href="{{ cl.remove_facet_link }}" class="hidelink">{% translate "Hide counts" %}</a>
+                {% else %}<a href="{{ cl.add_facet_link }}" class="viewlink">{% translate "Show counts" %}</a>{% endif %}
+              </h3>{% endif %}
+              {% if cl.has_active_filters %}<h3>
+                <a href="{{ cl.clear_all_filters_qs }}">&#10006; {% translate "Clear all filters" %}</a>
+              </h3>{% endif %}
+            </div>{% endif %}
+            {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+          </search>
+          {% endif %}
+        {% endblock %}
+        <div>
+          <div class="admin-changelist-toolbar" data-sticky-tools>
+            {% block search %}{% search_form cl %}{% endblock %}
+            <div class="admin-filter-chips" aria-label="فیلترهای سریع">
+              {% if cl.opts.model_name == 'chatsession' %}
+                <a href="?is_active__exact=1&has_unread=yes" class="admin-filter-chip">فعال + خوانده‌نشده</a>
+                <a href="?is_active__exact=1" class="admin-filter-chip">فقط فعال</a>
+                <a href="?is_active__exact=1&assigned_to__id__exact={{ request.user.id }}" class="admin-filter-chip">واگذار شده به من</a>
+                <a href="?is_active__exact=1&assigned_to__isnull=True" class="admin-filter-chip">بدون اپراتور</a>
+              {% elif cl.opts.model_name == 'supportcontact' %}
+                <a href="?has_active_session=yes" class="admin-filter-chip">دارای جلسه فعال</a>
+              {% elif cl.opts.model_name == 'order' %}
+                <a href="?paid__exact=0" class="admin-filter-chip">در انتظار</a>
+                <a href="?paid__exact=1" class="admin-filter-chip">پرداخت‌شده</a>
+                <a href="?failed_payment=yes" class="admin-filter-chip">پرداخت ناموفق</a>
+                <a href="?created_at__gte={% now "Y-m-d" %}" class="admin-filter-chip">امروز</a>
+              {% elif cl.opts.model_name == 'transactionlog' %}
+                <a href="?success__exact=0" class="admin-filter-chip">ناموفق</a>
+                <a href="?success__exact=1" class="admin-filter-chip">موفق</a>
+              {% elif cl.opts.model_name == 'post' %}
+                <a href="?published__exact=0" class="admin-filter-chip">پیش‌نویس</a>
+                <a href="?published__exact=1" class="admin-filter-chip">منتشرشده</a>
+                <a href="?window=this_week" class="admin-filter-chip">این هفته</a>
+              {% elif cl.opts.model_name == 'supportrating' %}
+                <a href="?score__exact=1" class="admin-filter-chip">امتیاز ۱</a>
+                <a href="?score__exact=5" class="admin-filter-chip">امتیاز ۵</a>
+              {% endif %}
+            </div>
+            <div class="admin-active-filter-chips" data-active-filter-chips aria-label="فیلترهای فعال"></div>
+            <div class="admin-saved-views" data-saved-views-root data-saved-model="{{ cl.opts.app_label }}.{{ cl.opts.model_name }}">
+              <div class="admin-saved-views-controls">
+                <label for="admin-saved-view-name">ذخیره فیلتر فعلی:</label>
+                <input id="admin-saved-view-name" type="text" maxlength="60" placeholder="مثلاً: گفتگوهای امروز من" class="form-input">
+                <button type="button" class="admin-command-button" data-save-current-view>ذخیره نما</button>
+                <button type="button" class="admin-command-button" data-density-toggle aria-pressed="false">نمای فشرده</button>
+              </div>
+              <div class="admin-saved-view-list" data-saved-view-list aria-live="polite"></div>
+            </div>
+          </div>
+
+          {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
+
+          <form id="changelist-form" class="admin-changelist-form" method="post"{% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %} novalidate>{% csrf_token %}
+          {% if cl.formset %}
+            <div>{{ cl.formset.management_form }}</div>
+          {% endif %}
+
+          {% block result_list %}
+            {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+            {% result_list cl %}
+            {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+          {% endblock %}
+          {% if action_form and cl.show_admin_actions %}
+            <p class="admin-action-note">برای اعمال عملیات گروهی یا خروجی اکسل، موارد را انتخاب کرده و اکشن را اجرا کنید.</p>
+          {% endif %}
+          {% block pagination %}
+          <div class="changelist-footer">
+          {% pagination cl %}
+          {% if cl.formset and cl.result_count %}<input type="submit" name="_save" class="default" value="{% translate 'Save' %}">{% endif %}
+          {% endblock %}
+          </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

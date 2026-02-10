@@ -1,0 +1,41 @@
+[
+  {
+    "path": "/",
+    "url": "http://127.0.0.1:8005/",
+    "issues": [],
+    "length": 28037
+  },
+  {
+    "path": "/shop/",
+    "url": "http://127.0.0.1:8005/shop/",
+    "issues": [
+      "input-no-class"
+    ],
+    "length": 25680
+  },
+  {
+    "path": "/blog/",
+    "url": "http://127.0.0.1:8005/blog/",
+    "issues": [],
+    "length": 13989
+  },
+  {
+    "path": "/accounts/login/",
+    "url": "http://127.0.0.1:8005/accounts/login/",
+    "issues": [
+      "missing .section-title",
+      "input-no-class",
+      "button-no-class",
+      "html-missing-dir-attr"
+    ],
+    "length": 2171
+  },
+  {
+    "path": "/support/",
+    "url": "http://127.0.0.1:8005/support/",
+    "issues": [
+      "input-no-class"
+    ],
+    "length": 11559
+  }
+]

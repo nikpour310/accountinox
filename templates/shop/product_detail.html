@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block meta_title %}{{ product.seo_title|default:product.title }} | فروشگاه {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_description %}{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'shop:product_detail' product.slug %}">{% endblock %}
+
+{% block og_tags %}
+  <meta property="og:site_name" content="{{ site_settings.site_name|default:'Accountinox' }}">
+  <meta property="og:title" content="{{ product.seo_title|default:product.title }}">
+  <meta property="og:description" content="{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}">
+  <meta property="og:type" content="product">
+  <meta property="og:url" content="{{ site_base_url }}{% url 'shop:product_detail' product.slug %}">
+  <meta property="og:image" content="{% if product.featured_image %}{% if product.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ product.featured_image.url }}{% else %}{{ product.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ product.seo_title|default:product.title }}">
+  <meta name="twitter:description" content="{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}">
+  <meta name="twitter:image" content="{% if product.featured_image %}{% if product.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ product.featured_image.url }}{% else %}{{ product.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
+{% endblock %}
+
+{% block schema_jsonld %}
+  {{ block.super }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "{{ product.title|escapejs }}",
+    "description": "{{ product.seo_description|default:product.description|striptags|truncatechars:300|escapejs }}",
+    "url": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}",
+    "image": "{% if product.featured_image %}{% if product.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ product.featured_image.url }}{% else %}{{ product.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}",
+    "offers": {
+      "@type": "Offer",
+      "priceCurrency": "IRR",
+      "price": "{{ product.price|floatformat:0 }}",
+      "availability": "https://schema.org/InStock",
+      "url": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}"
+    }
+  }
+  </script>
+{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-5xl">
+    <a href="{% url 'shop:product_list' %}" class="btn btn-ghost mb-5 w-full justify-center sm:w-auto sm:justify-start">بازگشت به فروشگاه</a>
+
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div class="card overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+        {% if product.featured_image %}
+          <img src="{{ product.featured_image.url }}" alt="{{ product.title }}" class="h-full w-full object-cover">
+        {% else %}
+          <div class="flex h-80 items-center justify-center text-7xl" aria-hidden="true">📦</div>
+        {% endif %}
+      </div>
+
+      <div class="card p-5 sm:p-6">
+        <span class="badge">ارسال اطلاعات پس از پرداخت</span>
+        <h1 class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ product.title }}</h1>
+        <p class="mt-3 text-sm leading-7 text-slate-700">{{ product.description|default:'توضیحات تکمیلی برای این محصول ثبت نشده است.' }}</p>
+
+        <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs text-slate-500">قیمت نهایی</p>
+          <div class="mt-2 flex items-baseline gap-2">
+            <strong class="text-3xl text-slate-900">{{ product.price|floatformat:0 }}</strong>
+            <span class="text-sm text-slate-500">تومان</span>
+          </div>
+        </div>
+
+        <ul class="mt-4 space-y-2 text-sm text-slate-700">
+          <li>تحویل اطلاعات سفارش پس از تایید پرداخت</li>
+          <li>پشتیبانی فعال برای پیگیری سفارش</li>
+          <li>در صورت نیاز، کارشناسان ما برای هماهنگی تماس می‌گیرند</li>
+        </ul>
+
+        <div class="mt-6 grid grid-cols-1 gap-2">
+          <form method="post" action="{% url 'shop:cart_add' %}">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-primary w-full">افزودن به سبد خرید</button>
+          </form>
+          <form method="post" action="{% url 'shop:checkout' %}">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <button type="submit" class="btn btn-secondary w-full">خرید سریع</button>
+          </form>
+          <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">پرسش قبل از خرید</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

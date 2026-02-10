@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block meta_title %}پرداخت ناموفق | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-2xl">
+    <div class="card p-6 sm:p-8">
+      <div class="alert alert-danger">
+        <h1 class="text-xl font-bold sm:text-2xl">پرداخت ناموفق</h1>
+        <p class="mt-1 text-sm">پرداخت انجام نشد. می‌توانید دوباره تلاش کنید.</p>
+      </div>
+
+      <dl class="mt-4 space-y-2 text-sm text-slate-700">
+        <div><dt class="font-semibold">جزئیات خطا</dt><dd>{{ error|default:'-' }}</dd></div>
+        <div><dt class="font-semibold">مرجع</dt><dd>{{ reference|default:'-' }}</dd></div>
+      </dl>
+
+      <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <a href="{% url 'shop:checkout' %}" class="btn btn-primary w-full">تلاش مجدد پرداخت</a>
+        <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">نیاز به راهنمایی</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+

@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  mypy:
+    build:
+      context: .
+      dockerfile: Dockerfile.mypy
+    container_name: accountinox_mypy
+    tty: true
+    volumes:
+      - .:/app:cached
+    # keep environment lean; the command is set in the Dockerfile

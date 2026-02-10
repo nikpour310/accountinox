@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+
+{% block title %}گفت‌وگوی پشتیبانی #{{ session.id }}{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-7xl px-2 sm:px-4 py-6 sm:py-8">
+  <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">گفت‌وگوی پشتیبانی</h1>
+      <p class="text-sm text-gray-600 mt-1">
+        {% if session.contact %}
+          {{ session.contact.name }} - {{ session.contact.phone }}
+        {% elif session.user_phone %}
+          {{ session.user_name|default:'کاربر' }} - {{ session.user_phone }}
+        {% else %}
+          {{ session.user_name|default:session.user|default:'کاربر ناشناس' }}
+        {% endif %}
+        | کد گفتگو: #{{ session.id }}
+      </p>
+      {% if rate_limited %}
+        <p class="mt-2 text-sm text-red-600">ارسال پیام موقتاً محدود شده است. کمی بعد دوباره تلاش کنید.</p>
+      {% endif %}
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+        <input id="sound-toggle" type="checkbox" class="h-4 w-4">
+        <span>صدای اعلان</span>
+      </label>
+      <a href="{% url 'support:operator_dashboard' %}" class="btn btn-ghost">بازگشت به داشبورد</a>
+      <a href="{% url 'support:close_session' session.id %}" class="btn btn-secondary" onclick="return confirm('گفتگو بسته شود؟');">بستن گفتگو</a>
+    </div>
+  </div>
+
+  <div id="unread-banner" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 {% if unread_count == 0 %}hidden{% endif %}">
+    <span id="unread-count" class="font-semibold">{{ unread_count }}</span>
+    <span> پیام خوانده‌نشده در گفتگوهای فعال وجود دارد.</span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <aside class="lg:col-span-4 xl:col-span-3">
+      <div class="card overflow-hidden">
+        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+          <h2 class="font-semibold text-gray-900">گفتگوهای فعال</h2>
+        </div>
+        <div class="max-h-[65vh] overflow-y-auto divide-y divide-slate-100">
+          {% for active in active_sessions %}
+            <a
+              href="{% url 'support:operator_session' active.id %}"
+              class="block px-4 py-3 transition {% if active.id == session.id %}bg-blue-50{% else %}hover:bg-slate-50{% endif %}"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-semibold text-gray-900">
+                    {% if active.contact %}{{ active.contact.name }}{% else %}{{ active.user_name|default:active.user }}{% endif %}
+                  </p>
+                  <p class="mt-1 truncate text-[11px] text-gray-600">
+                    {% if active.contact %}
+                      {{ active.contact.phone }}
+                    {% elif active.user_phone %}
+                      {{ active.user_phone }}
+                    {% else %}
+                      شماره ثبت نشده
+                    {% endif %}
+                  </p>
+                </div>
+                {% if active.unread_count %}
+                  <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                    {{ active.unread_count }}
+                  </span>
+                {% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div class="px-4 py-7 text-center text-sm text-gray-500">گفتگوی فعالی وجود ندارد.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+
+    <div class="lg:col-span-8 xl:col-span-9">
+      <div class="card overflow-hidden">
+        <div id="operator-messages" class="h-[58vh] sm:h-[30rem] overflow-y-auto bg-slate-50 p-3 sm:p-5 space-y-3">
+          {% for message in messages %}
+            <div class="flex {% if message.is_from_user %}justify-start{% else %}justify-end{% endif %}" data-message-id="{{ message.id }}">
+              <div class="max-w-[88%] sm:max-w-[76%]">
+                <p class="mb-1 text-[11px] text-gray-500 {% if message.is_from_user %}text-right{% else %}text-left{% endif %}">
+                  {{ message.name }} - {{ message.created_at|date:'H:i' }}
+                </p>
+                <div class="rounded-2xl px-4 py-2 text-sm leading-relaxed break-words {% if message.is_from_user %}border border-slate-200 bg-white text-gray-900 rounded-bl-sm{% else %}bg-primary text-white rounded-br-sm{% endif %}">
+                  {{ message.message }}
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div id="empty-thread" class="py-12 text-center text-sm text-gray-500">هنوز پیامی ثبت نشده است.</div>
+          {% endfor %}
+        </div>
+
+        <div class="border-t border-slate-200 bg-white p-3 sm:p-4">
+          <form id="operator-reply-form" method="post" action="{% url 'support:operator_send_message' %}" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="session_id" value="{{ session.id }}">
+            <textarea
+              id="operator-message-input"
+              name="message"
+              rows="3"
+              maxlength="1000"
+              class="form-input"
+              placeholder="پاسخ اپراتور را بنویسید..."
+              required
+            ></textarea>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p id="send-status" class="text-xs text-gray-500">ارسال پاسخ بدون ترک صفحه انجام می‌شود.</p>
+              <button id="operator-send-btn" type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پاسخ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const messagesContainer = document.getElementById('operator-messages');
+    const form = document.getElementById('operator-reply-form');
+    const messageInput = document.getElementById('operator-message-input');
+    const sendBtn = document.getElementById('operator-send-btn');
+    const sendStatus = document.getElementById('send-status');
+    const unreadBanner = document.getElementById('unread-banner');
+    const unreadCountEl = document.getElementById('unread-count');
+    const soundToggle = document.getElementById('sound-toggle');
+    const emptyThread = document.getElementById('empty-thread');
+    const sessionId = {{ session.id }};
+    const unreadStatusUrl = '{% url "support:operator_unread_status" %}?session_id={{ session.id }}';
+    const presenceUrl = '{% url "support:operator_presence" %}?session_id={{ session.id }}';
+    const pollUrl = '{% url "support:poll_messages" %}';
+    const storageKey = 'support_operator_sound_enabled';
+    let lastMessageId = Number('{{ last_message_id|default:0 }}');
+    let unreadCount = Number('{{ unread_count|default:0 }}');
+    let polling = false;
+
+    const savedState = localStorage.getItem(storageKey);
+    soundToggle.checked = savedState === null ? true : savedState === '1';
+    soundToggle.addEventListener('change', () => {
+      localStorage.setItem(storageKey, soundToggle.checked ? '1' : '0');
+    });
+
+    const shouldPlaySound = () => soundToggle.checked && (document.hidden || !document.hasFocus());
+
+    const playAlertSound = () => {
+      if (!shouldPlaySound()) {
+        return;
+      }
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 920;
+        gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.24, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.2);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.22);
+      } catch (_) {}
+    };
+
+    const setSendStatus = (text, tone = 'muted') => {
+      if (!sendStatus) {
+        return;
+      }
+      sendStatus.textContent = text;
+      sendStatus.classList.remove('text-gray-500', 'text-red-600', 'text-emerald-700');
+      if (tone === 'error') {
+        sendStatus.classList.add('text-red-600');
+      } else if (tone === 'success') {
+        sendStatus.classList.add('text-emerald-700');
+      } else {
+        sendStatus.classList.add('text-gray-500');
+      }
+    };
+
+    const updateUnreadUi = (count) => {
+      unreadCount = Number(count || 0);
+      if (unreadCountEl) {
+        unreadCountEl.textContent = unreadCount;
+      }
+      if (!unreadBanner) {
+        return;
+      }
+      unreadBanner.classList.toggle('hidden', unreadCount <= 0);
+    };
+
+    const appendMessage = (message) => {
+      if (emptyThread) {
+        emptyThread.remove();
+      }
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex ${message.is_from_user ? 'justify-start' : 'justify-end'}`;
+      wrapper.dataset.messageId = String(message.id);
+
+      const bubbleWrap = document.createElement('div');
+      bubbleWrap.className = 'max-w-[88%] sm:max-w-[76%]';
+
+      const meta = document.createElement('p');
+      meta.className = 'mb-1 text-[11px] text-gray-500';
+      meta.style.textAlign = message.is_from_user ? 'right' : 'left';
+      const formattedTime = new Date(message.created_at).toLocaleTimeString('fa-IR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      meta.textContent = `${message.name || 'اپراتور'} - ${formattedTime}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = `rounded-2xl px-4 py-2 text-sm leading-relaxed break-words ${
+        message.is_from_user
+          ? 'border border-slate-200 bg-white text-gray-900 rounded-bl-sm'
+          : 'bg-primary text-white rounded-br-sm'
+      }`;
+      bubble.textContent = message.message || '';
+
+      bubbleWrap.appendChild(meta);
+      bubbleWrap.appendChild(bubble);
+      wrapper.appendChild(bubbleWrap);
+      messagesContainer.appendChild(wrapper);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    };
+
+    const refreshUnreadStatus = async () => {
+      try {
+        const response = await fetch(unreadStatusUrl, { credentials: 'same-origin' });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        const nextCount = Number(data.unread_count || 0);
+        if (nextCount > unreadCount) {
+          playAlertSound();
+        }
+        updateUnreadUi(nextCount);
+      } catch (_) {}
+    };
+
+    const heartbeat = async () => {
+      try {
+        await fetch(presenceUrl, { credentials: 'same-origin' });
+      } catch (_) {}
+    };
+
+    const pollMessages = async () => {
+      if (polling) {
+        window.setTimeout(pollMessages, 2000);
+        return;
+      }
+      polling = true;
+      try {
+        const response = await fetch(
+          `${pollUrl}?thread_id=${sessionId}&since=${lastMessageId}&timeout=10`,
+          { credentials: 'same-origin' }
+        );
+        if (!response.ok) {
+          throw new Error('poll failed');
+        }
+        const data = await response.json();
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          data.messages.forEach((msg) => {
+            appendMessage(msg);
+            lastMessageId = Math.max(lastMessageId, Number(msg.id || 0));
+            if (msg.is_from_user) {
+              playAlertSound();
+            }
+          });
+          await refreshUnreadStatus();
+        }
+      } catch (_) {
+      } finally {
+        polling = false;
+        window.setTimeout(pollMessages, 2000);
+      }
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = messageInput.value.trim();
+      if (!text) {
+        return;
+      }
+      sendBtn.disabled = true;
+      setSendStatus('در حال ارسال پاسخ...');
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          credentials: 'same-origin',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          if (response.status === 429) {
+            setSendStatus('ارسال شما محدود شده است. کمی بعد تلاش کنید.', 'error');
+            return;
+          }
+          throw new Error(data.error || 'send failed');
+        }
+        appendMessage({
+          id: data.message_id,
+          name: data.name || 'اپراتور',
+          message: data.message,
+          is_from_user: false,
+          created_at: data.created_at,
+        });
+        lastMessageId = Math.max(lastMessageId, Number(data.message_id || 0));
+        messageInput.value = '';
+        setSendStatus('✅ پیام ارسال شد.', 'success');
+        await refreshUnreadStatus();
+      } catch (_) {
+        setSendStatus('ارسال پاسخ انجام نشد. دوباره تلاش کنید.', 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    heartbeat();
+    refreshUnreadStatus();
+    window.setInterval(heartbeat, 60000);
+    window.setInterval(refreshUnreadStatus, 7000);
+    window.setTimeout(pollMessages, 1200);
+  });
+</script>
+{% endblock %}

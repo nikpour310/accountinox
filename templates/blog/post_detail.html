@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block meta_title %}{{ post.seo_title|default:post.title }} | بلاگ {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_description %}{{ post.seo_description|default:post.content|striptags|truncatechars:160 }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'blog:post_detail' post.slug %}">{% endblock %}
+
+{% block og_tags %}
+  <meta property="og:site_name" content="{{ site_settings.site_name|default:'Accountinox' }}">
+  <meta property="og:title" content="{{ post.seo_title|default:post.title }}">
+  <meta property="og:description" content="{{ post.seo_description|default:post.content|striptags|truncatechars:160 }}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="{{ site_base_url }}{% url 'blog:post_detail' post.slug %}">
+  <meta property="og:image" content="{% if post.featured_image %}{% if post.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ post.featured_image.url }}{% else %}{{ post.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ post.seo_title|default:post.title }}">
+  <meta name="twitter:description" content="{{ post.seo_description|default:post.content|striptags|truncatechars:160 }}">
+  <meta name="twitter:image" content="{% if post.featured_image %}{% if post.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ post.featured_image.url }}{% else %}{{ post.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
+{% endblock %}
+
+{% block schema_jsonld %}
+  {{ block.super }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ post.title|escapejs }}",
+    "description": "{{ post.seo_description|default:post.content|striptags|truncatechars:300|escapejs }}",
+    "url": "{{ site_base_url }}{% url 'blog:post_detail' post.slug %}",
+    "datePublished": "{{ post.created_at|date:'c' }}",
+    "dateModified": "{{ post.created_at|date:'c' }}",
+    "image": "{% if post.featured_image %}{% if post.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ post.featured_image.url }}{% else %}{{ post.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}",
+    "author": {
+      "@type": "Organization",
+      "name": "{{ site_settings.site_name|default:'Accountinox'|escapejs }}"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "{{ site_settings.site_name|default:'Accountinox'|escapejs }}"
+    }
+  }
+  </script>
+
+  {% if post.faqs.all %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {% for faq in post.faqs.all %}
+          {
+            "@type": "Question",
+            "name": "{{ faq.question|striptags|escapejs }}",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "{{ faq.answer|striptags|escapejs }}"
+            }
+          }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+    </script>
+  {% endif %}
+{% endblock %}
+
+{% comment %} Article typography moved to `static/css/main.css` under `.article-content` component {% endcomment %}
+
+{% block content %}
+  <article class="mx-auto max-w-4xl">
+    <nav class="mb-4 text-xs text-slate-500" aria-label="breadcrumb">
+      <a href="{% url 'core:landing' %}" class="hover:underline">خانه</a>
+      <span class="mx-1">/</span>
+      <a href="{% url 'blog:post_list' %}" class="hover:underline">بلاگ</a>
+      <span class="mx-1">/</span>
+      <span class="text-slate-700">{{ post.title|truncatechars:50 }}</span>
+    </nav>
+
+    <header class="card mb-5 p-5 sm:p-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">{{ post.title }}</h1>
+          <p class="mt-2 text-sm text-slate-600">منتشر شده در {{ post.created_at|date:'Y/m/d'|default:'' }}</p>
+        </div>
+        <a href="{% url 'blog:post_list' %}" class="btn btn-ghost w-full sm:w-auto">بازگشت به لیست مقالات</a>
+      </div>
+      {% if post.seo_description %}
+        <p class="mt-3 text-sm leading-7 text-slate-700">{{ post.seo_description }}</p>
+      {% endif %}
+    </header>
+
+    {% if post.featured_image %}
+      <div class="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="h-auto w-full object-cover">
+      </div>
+    {% endif %}
+
+    <section class="card p-5 sm:p-6">
+      <div class="article-content">
+        {{ post.content|safe }}
+      </div>
+    </section>
+
+    {% if post.faqs.all %}
+      <section class="card mt-5 p-5 sm:p-6">
+        <h2 class="text-xl font-bold text-slate-900">سوالات متداول این مقاله</h2>
+        <div class="mt-4 space-y-3">
+          {% for faq in post.faqs.all %}
+            <details class="rounded-lg border border-slate-200 bg-white p-3">
+              <summary class="cursor-pointer text-sm font-semibold text-slate-900">{{ faq.question }}</summary>
+              <p class="mt-2 text-sm leading-7 text-slate-700">{{ faq.answer }}</p>
+            </details>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="card mt-5 p-5 text-white sm:p-6 bg-primary-600">
+      <h3 class="text-xl font-bold">بعد از مطالعه این مطلب</h3>
+      <p class="mt-2 text-sm text-white/95">برای اقدام سریع، یکی از این دو مسیر را انتخاب کنید.</p>
+      <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+        <a href="{% url 'shop:product_list' %}" class="btn btn-primary w-full sm:w-auto">مشاهده محصولات</a>
+        <a href="{% url 'support:chat' %}" class="btn btn-soft w-full sm:w-auto">مشاوره قبل از خرید</a>
+      </div>
+    </section>
+  </article>
+{% endblock %}

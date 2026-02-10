@@ -1,0 +1,5 @@
+...............................................................
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+F:\Python Projects\accountinox\venv\Lib\site-packages\django\utils\crypto.py:77: KeyboardInterrupt
+(to show a full traceback on KeyboardInterrupt use --full-trace)
+63 passed in 29.29s

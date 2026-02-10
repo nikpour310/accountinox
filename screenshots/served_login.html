@@ -1,0 +1,244 @@
+
+<!doctype html>
+<html lang="fa" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود به حساب | اکانتینوکس | اکانتینوکس</title>
+    
+    <!-- Meta/SEO -->
+    <meta name="description" content="خرید امن اکانت و لایسنس دیجیتال با تحویل فوری">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#1ABBC8">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="http://127.0.0.1:8005/accounts/login/">
+    
+    <!-- Open Graph -->
+    
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="اکانتینوکس">
+    <meta property="og:title" content="Accountinox">
+    <meta property="og:description" content="خرید امن اکانت و لایسنس دیجیتال">
+    <meta property="og:url" content="http://127.0.0.1:8005/accounts/login/">
+    <meta property="og:image" content="/media/logos/ChatGPT_Image_Feb_3_2026_02_29_20_PM.png">
+    
+
+    <!-- Fonts (Vazirmatn) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- CSS (production build) -->
+    <link href="/static/css/output.css" rel="stylesheet">
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+    
+    
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Accountinox",
+      "url": "http://127.0.0.1:8005"
+    }
+    </script>
+    
+</head>
+<body class="bg-gray-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen">
+
+    
+<div class="h-20"></div><!-- Spacer -->
+<header x-data="{ mobileMenuOpen: false, searchOpen: false }" class="site-header">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between h-20">
+            <!-- Logo & Brand -->
+            <div class="flex items-center gap-8">
+                <a href="/" class="flex items-center gap-3 group">
+                    
+                        <img src="/media/logos/ChatGPT_Image_Feb_3_2026_02_29_20_PM.png" alt="Accountinox" class="h-10 w-auto group-hover:scale-105 transition-transform duration-300">
+                    
+                    <div class="flex flex-col">
+                        <span class="font-bold text-xl text-slate-800">اکانتینوکس</span>
+                        <span class="text-xs text-primary-600 font-medium hidden sm:block">فروشگاه محصولات دیجیتال</span>
+                    </div>
+                </a>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden lg:flex items-center gap-1">
+                    <a href="/" class="nav-item ">خانه</a>
+                    <a href="/shop/" class="nav-item ">محصولات</a>
+                    <a href="/blog/" class="nav-item ">بلاگ</a>
+                    <a href="/support/start/" class="nav-item ">پشتیبانی</a>
+                </nav>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <!-- Search Toggle -->
+                <button @click="searchOpen = !searchOpen" class="btn-icon">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+
+                <!-- Auth Buttons -->
+                
+                <div class="hidden md:flex items-center gap-3">
+                    <a href="/accounts/login/" class="text-sm font-medium text-slate-600 hover:text-primary-600 px-3 py-2 transition-colors">ورود</a>
+                    <a href="/accounts/signup/" class="btn-primary text-sm px-5 py-2">ثبت نام</a>
+                </div>
+                
+
+                <!-- Mobile Menu Button -->
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden btn-icon">
+                    <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <svg x-show="mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div x-show="mobileMenuOpen" x-cloak x-transition class="lg:hidden border-t border-slate-100 bg-white">
+        <div class="container mx-auto px-4 py-4 space-y-2">
+            <a href="/" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">خانه</a>
+            <a href="/shop/" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">محصولات</a>
+            <a href="/blog/" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">بلاگ آموزشی</a>
+            <a href="/support/start/" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">پشتیبانی</a>
+            
+            <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
+                <a href="/accounts/login/" class="btn-secondary justify-center">ورود</a>
+                <a href="/accounts/signup/" class="btn-primary justify-center">ثبت نام</a>
+            </div>
+            
+        </div>
+    </div>
+</header>
+
+    <main class="flex-grow w-full">
+        
+
+        
+<div class="min-h-[calc(100vh-theme('spacing.40'))] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+    <div class="max-w-md w-full space-y-8 card p-8 rounded-2xl shadow-xl">
+        <div class="text-center">
+            <h2 class="section-title mt-2 text-3xl font-bold text-slate-900">خوش آمدید!</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                برای دسترسی به پنل کاربری لطفا وارد شوید
+            </p>
+        </div>
+        
+        <form class="mt-8 space-y-6" method="POST" action="/accounts/login/">
+            <input type="hidden" name="csrfmiddlewaretoken" value="ixrioO0QjpxKlqGkjtNgGNxXJOKi9ceianIW5ws8vZ6hj2tHk1qoTDveiQ0Bi5tM">
+            
+            
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل یا شماره موبایل</label>
+                    <input type="text" name="login" class="form-input" placeholder="info@example.com" required>
+                    
+                </div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-sm font-medium text-slate-700">رمز عبور</label>
+                        <a href="/accounts/password/reset/" class="text-xs text-primary-600 hover:text-primary-700">فراموشی رمز؟</a>
+                    </div>
+                    <input type="password" name="password" class="form-input" placeholder="********" required>
+                    
+                </div>
+            </div>
+
+            <div class="flex items-center">
+                <input id="remember" name="remember" type="checkbox" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded">
+                <label for="remember" class="ms-2 block text-sm text-slate-600">
+                    مرا به خاطر بسپار
+                </label>
+            </div>
+
+            <button type="submit" class="w-full btn-primary justify-center py-3 text-lg shadow-lg shadow-primary-500/30">
+                ورود به حساب
+            </button>
+            
+            <p class="text-center text-sm text-slate-600">
+                حساب کاربری ندارید؟ 
+                <a href="/accounts/signup/" class="font-bold text-primary-600 hover:text-primary-500">ثبت نام کنید</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+    </main>
+
+    
+<footer class="site-footer">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+            <!-- Brand Column -->
+            <div class="space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-xl flex items-center justify-center text-white font-black text-xl">A</div>
+                    <span class="font-bold text-2xl text-white">اکانتینوکس</span>
+                </div>
+                <p class="text-slate-400 leading-relaxed text-sm">
+                    مرجع تخصصی خرید لایسنس و اکانت پریمیوم با گارانتی و پشتیبانی ۲۴ ساعته.
+                </p>
+                <div class="flex gap-4">
+                    
+                    
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div>
+                <h3 class="section-title text-white mb-6">دسترسی سریع</h3>
+                <ul class="space-y-3">
+                    <li><a href="/shop/" class="hover:text-primary-400 transition-colors flex items-center gap-2"><span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>محصولات</a></li>
+                    <li><a href="/blog/" class="hover:text-primary-400 transition-colors flex items-center gap-2"><span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>بلاگ</a></li>
+                        <li><a href="/contact/" class="hover:text-primary-400 transition-colors flex items-center gap-2"><span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>تماس با ما</a></li>
+                        <li><a href="/terms/" class="hover:text-primary-400 transition-colors flex items-center gap-2"><span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>قوانین و مقررات</a></li>
+                        <li><a href="/privacy/" class="hover:text-primary-400 transition-colors flex items-center gap-2"><span class="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>حریم خصوصی</a></li>
+                </ul>
+            </div>
+
+            <!-- Contact Info -->
+            <div>
+                <h3 class="section-title text-white mb-6">ارتباط با ما</h3>
+                <ul class="space-y-4">
+                    
+                    
+                    
+                </ul>
+            </div>
+            
+            <!-- Trust Symbols -->
+            <div>
+                <h3 class="section-title text-white mb-6">نماد اعتماد</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white p-2 rounded-xl flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity cursor-pointer">
+                        <span class="text-slate-800 text-xs font-bold">Enamad</span>
+                    </div>
+                    <div class="bg-white p-2 rounded-xl flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity cursor-pointer">
+                        <span class="text-slate-800 text-xs font-bold">Samandehi</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p class="text-slate-500 text-sm">
+                &copy; 2024 Accountinox. تمامی حقوق محفوظ است.
+            </p>
+            <p class="text-slate-600 text-xs flex items-center gap-1">
+                Design & Dev by <span class="text-slate-500 font-mono">AliKh</span>
+            </p>
+        </div>
+    </div>
+</footer>
+
+    
+</body>
+</html>

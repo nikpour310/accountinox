@@ -1,0 +1,73 @@
+{% load i18n %}
+
+{% if app_list %}
+  <div class="admin-app-grid">
+    {% for app in app_list %}
+      <section
+        class="admin-app-card app-{{ app.app_label }}{% if app.app_url in request.path|urlencode %} is-active{% endif %}"
+        data-admin-search-item
+        data-admin-search-text="{{ app.name }}"
+      >
+        <header class="admin-app-card-head">
+          <h2>
+            <a href="{{ app.app_url }}" class="admin-app-title" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">
+              {{ app.name }}
+            </a>
+          </h2>
+          <span class="admin-app-count">{{ app.models|length }} مدل</span>
+        </header>
+
+        <ul class="admin-model-list">
+          {% for model in app.models %}
+            {% with model_name=model.object_name|lower %}
+              <li
+                class="admin-model-item model-{{ model_name }}{% if model.admin_url in request.path|urlencode %} is-current{% endif %}"
+                data-admin-search-item
+                data-admin-search-text="{{ app.name }} {{ model.name }}"
+              >
+                <div class="admin-model-main" id="{{ app.app_label }}-{{ model_name }}">
+                  {% if model.admin_url %}
+                    <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>
+                      {{ model.name }}
+                    </a>
+                  {% else %}
+                    <span>{{ model.name }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="admin-model-actions">
+                  {% if model.add_url %}
+                    <a href="{{ model.add_url }}" class="admin-model-link addlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">افزودن</a>
+                  {% endif %}
+
+                  {% if model.admin_url and show_changelinks %}
+                    {% if model.view_only %}
+                      <a href="{{ model.admin_url }}" class="admin-model-link viewlink" aria-describedby="{{ app.app_label }}-{{ model_name }}">مشاهده</a>
+                    {% else %}
+                      <a href="{{ model.admin_url }}" class="admin-model-link changelink" aria-describedby="{{ app.app_label }}-{{ model_name }}">مدیریت</a>
+                    {% endif %}
+                    <button
+                      type="button"
+                      class="admin-favorite-toggle"
+                      data-favorite-id="{{ app.app_label }}.{{ model_name }}"
+                      data-favorite-label="{{ app.name }}: {{ model.name }}"
+                      data-favorite-url="{{ model.admin_url }}"
+                      aria-label="افزودن به علاقه‌مندی‌ها: {{ app.name }} {{ model.name }}"
+                      aria-pressed="false"
+                    >
+                      ☆
+                    </button>
+                  {% elif show_changelinks %}
+                    <span class="admin-model-link is-disabled">بدون دسترسی</span>
+                  {% endif %}
+                </div>
+              </li>
+            {% endwith %}
+          {% endfor %}
+        </ul>
+      </section>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="admin-empty-state">شما دسترسی لازم برای مشاهده یا ویرایش بخش‌ها را ندارید.</p>
+{% endif %}

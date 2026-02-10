@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}تماس با ما{% endblock %}
+{% block meta_title %}تماس با ما | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_description %}راه‌های تماس و ارتباط با تیم {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-3xl py-8 sm:py-10">
+  <div class="card p-5 sm:p-7 space-y-4">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">تماس با ما</h1>
+    <p class="text-sm text-gray-700 leading-7">
+      برای پیگیری سفارش، سوالات پیش از خرید یا گزارش مشکل از مسیرهای زیر استفاده کنید تا سریع‌تر راهنمایی شوید.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-3 pt-1">
+      <a href="{% url 'support:chat' %}" class="btn btn-primary">چت پشتیبانی</a>
+      {% if site_settings.telegram_admin_url %}
+        <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          ارتباط تلگرام
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

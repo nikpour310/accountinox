@@ -1,0 +1,11 @@
+{% extends "admin/change_list_object_tools.html" %}
+{% load admin_urls i18n %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+  <li>
+    <a href="{% url 'admin:support_supportcontact_export_filtered' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="viewlink">
+      خروجی فیلترشده
+    </a>
+  </li>
+{% endblock %}

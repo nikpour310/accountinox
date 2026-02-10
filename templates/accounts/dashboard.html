@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}پنل کاربری | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Sidebar -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="card p-6 text-center">
+                <div class="w-20 h-20 bg-primary-50 text-primary-600 rounded-full mx-auto flex items-center justify-center text-3xl font-bold mb-4">
+                    {{ user.username|make_list|first|upper }}
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">{{ user.get_full_name|default:user.username }}</h2>
+                <p class="text-slate-500 text-sm mt-1 mb-6">{{ user.email }}</p>
+                <div class="grid grid-cols-2 gap-4 text-center border-t border-slate-100 pt-4">
+                    <div>
+                        <span class="block text-2xl font-bold text-slate-900">0</span>
+                        <span class="text-xs text-slate-500">سفارش‌ها</span>
+                    </div>
+                    <div>
+                        <span class="block text-2xl font-bold text-slate-900">0</span>
+                        <span class="text-xs text-slate-500">تیکت‌ها</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card overflow-hidden">
+                <nav class="flex flex-col">
+                    <a href="{% url 'accounts:dashboard' %}" class="flex items-center gap-3 px-6 py-4 bg-primary-50 text-primary-700 font-medium border-e-4 border-primary-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                        داشبورد
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-6 py-4 text-slate-600 hover:bg-slate-50 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        سفارش‌های من
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-6 py-4 text-slate-600 hover:bg-slate-50 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        اطلاعیه‌ها
+                    </a>
+                    <a href="{% url 'support:start_chat' %}" class="flex items-center gap-3 px-6 py-4 text-slate-600 hover:bg-slate-50 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        پشتیبانی
+                    </a>
+                    <a href="{% url 'account_logout' %}" class="flex items-center gap-3 px-6 py-4 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-slate-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        خروج
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="lg:col-span-3 space-y-6">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-2xl p-6 shadow-lg shadow-primary-500/20">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold opacity-90">اعتبار کیف پول</h3>
+                        <div class="bg-white/20 p-2 rounded-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                    </div>
+                    <span class="text-3xl font-black">0</span>
+                    <span class="text-sm opacity-80 ms-1">تومان</span>
+                    <button class="mt-4 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">افزایش موجودی</button>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-slate-700">سفارش‌های اخیر</h3>
+                        <div class="bg-slate-100 p-2 rounded-lg text-slate-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></div>
+                    </div>
+                    <span class="text-3xl font-black text-slate-900">0</span>
+                    <p class="text-sm text-slate-500 mt-1">سفارش در ماه جاری</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-slate-700">تیکت‌های باز</h3>
+                        <div class="bg-slate-100 p-2 rounded-lg text-slate-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></div>
+                    </div>
+                    <span class="text-3xl font-black text-slate-900">0</span>
+                    <p class="text-sm text-slate-500 mt-1">تیکت در انتظار پاسخ</p>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="card overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-lg text-slate-900">آخرین سفارش‌ها</h3>
+                    <a href="#" class="text-sm text-primary-600 hover:text-primary-700 font-medium">مشاهده همه</a>
+                </div>
+                <div class="p-8 text-center text-slate-500">
+                    <div class="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <p>هنوز سفارشی ثبت نکرده‌اید.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+[
+  {
+    "path": "/",
+    "status": "ok",
+    "issues": [],
+    "length": 28037
+  },
+  {
+    "path": "/shop/",
+    "status": "ok",
+    "issues": [
+      "possible-missing-hero-image"
+    ],
+    "length": 25680
+  },
+  {
+    "path": "/blog/",
+    "status": "ok",
+    "issues": [
+      "possible-missing-hero-image"
+    ],
+    "length": 13989
+  },
+  {
+    "path": "/accounts/login/",
+    "status": "ok",
+    "issues": [
+      "missing .section-title",
+      "possible-missing-hero-image"
+    ],
+    "length": 2171
+  },
+  {
+    "path": "/support/",
+    "status": "ok",
+    "issues": [
+      "possible-missing-hero-image"
+    ],
+    "length": 11559
+  }
+]

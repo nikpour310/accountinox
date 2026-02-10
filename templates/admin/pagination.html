@@ -1,0 +1,23 @@
+{% load admin_list %}
+{% load i18n %}
+<nav class="paginator admin-paginator" aria-labelledby="pagination">
+    <h2 id="pagination" class="visually-hidden">{% blocktranslate with name=cl.opts.verbose_name_plural %}Pagination {{ name }}{% endblocktranslate %}</h2>
+    {% if pagination_required %}
+    <ul>
+    {% for i in page_range %}
+        <li>{% paginator_number cl i %}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    <div class="admin-paginator-meta">
+      {% if cl.result_count %}
+        {% widthratio cl.page_num 1 cl.list_per_page as page_offset %}
+        {% with page_start=page_offset|add:1 page_end=page_offset|add:cl.result_list|length %}
+          <span>نمایش {{ page_start }} تا {{ page_end }} از {{ cl.result_count }}</span>
+        {% endwith %}
+      {% else %}
+        <span>نتیجه‌ای یافت نشد</span>
+      {% endif %}
+      {% if show_all_url %}<a href="{{ show_all_url }}" class="showall">نمایش همه</a>{% endif %}
+    </div>
+</nav>

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block meta_title %}بلاگ | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_description %}آموزش‌ها و راهنمای خرید محصولات دیجیتال در بلاگ {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'blog:post_list' %}">{% endblock %}
+
+{% block content %}
+  <section class="mb-8">
+    <div class="card p-5 sm:p-7">
+      <h1 class="section-title">بلاگ</h1>
+      <p class="mt-2 text-sm text-slate-600">راهنمایی‌های کوتاه و کاربردی برای انتخاب بهتر و خرید مطمئن.</p>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {% for p in posts %}
+      <article class="card flex h-full flex-col overflow-hidden">
+        <a href="{{ p.get_absolute_url }}" class="block h-44 overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+          {% if p.featured_image %}
+            <img src="{{ p.featured_image.url }}" alt="{{ p.title }}" class="h-full w-full object-cover">
+          {% else %}
+            <div class="flex h-full items-center justify-center text-5xl" aria-hidden="true">📰</div>
+          {% endif %}
+        </a>
+        <div class="flex flex-1 flex-col p-4 sm:p-5">
+          <p class="text-xs text-slate-500">{{ p.created_at|date:'Y/m/d' }}</p>
+          <h2 class="section-title mt-2 text-lg font-bold text-slate-900">
+            <a href="{{ p.get_absolute_url }}">{{ p.title }}</a>
+          </h2>
+          <p class="mt-2 text-sm leading-7 text-slate-700">{{ p.seo_description|default:p.content|striptags|truncatechars:150 }}</p>
+          <a href="{{ p.get_absolute_url }}" class="btn btn-ghost mt-4 w-full sm:w-auto">مطالعه مقاله</a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="alert alert-info col-span-full text-center">مقاله‌ای منتشر نشده است.</div>
+    {% endfor %}
+  </section>
+{% endblock %}
+

@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}داشبورد اپراتور پشتیبانی{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-6xl px-2 sm:px-4 py-6 sm:py-8">
+  <div class="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">داشبورد اپراتور</h1>
+      <p class="text-sm text-gray-600 mt-1">مدیریت گفتگوهای فعال و پاسخ‌گویی سریع</p>
+      {% if rate_limited %}
+        <p class="mt-2 text-sm text-red-600">ارسال پیام محدود شده است. کمی بعد دوباره تلاش کنید.</p>
+      {% endif %}
+    </div>
+
+    <div class="card p-3 sm:p-4 text-right">
+      <form id="push-csrf-form" class="hidden">{% csrf_token %}</form>
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-semibold text-gray-800">اعلان‌ها</p>
+        <label class="inline-flex items-center gap-2 text-xs">
+          <input id="sound-toggle" type="checkbox" class="h-4 w-4">
+          <span>صدای اعلان</span>
+        </label>
+      </div>
+      <button id="push-enable-btn" type="button" class="btn btn-primary w-full sm:w-auto">فعال‌سازی اعلان مرورگر</button>
+      <p id="push-status" class="mt-2 text-xs text-gray-600">اعلان مرورگر غیرفعال است.</p>
+      <p id="fallback-status" class="mt-1 text-xs text-amber-700 hidden">fallback polling فعال است.</p>
+    </div>
+  </div>
+
+  <div id="unread-banner" class="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 {% if unread_count == 0 %}hidden{% endif %}">
+    <span id="unread-count" class="font-semibold">{{ unread_count }}</span>
+    <span> پیام خوانده‌نشده در گفتگوهای فعال وجود دارد.</span>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+      <h2 class="font-semibold text-gray-900">گفتگوهای فعال</h2>
+    </div>
+    <div class="divide-y divide-slate-100">
+      {% for session in active_sessions %}
+        <a href="{% url 'support:operator_session' session.id %}" class="block px-4 py-3 hover:bg-slate-50 transition">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-semibold text-gray-900 truncate">
+                {% if session.contact %}{{ session.contact.name }}{% else %}{{ session.user_name|default:session.user }}{% endif %}
+              </p>
+              <p class="text-xs text-gray-600 mt-1 truncate">
+                {% if session.contact %}
+                  {{ session.contact.phone }}
+                {% elif session.user_phone %}
+                  {{ session.user_phone }}
+                {% else %}
+                  شماره ثبت نشده
+                {% endif %}
+                | {{ session.subject|default:'گفتگوی پشتیبانی' }}
+              </p>
+              <p class="text-[11px] text-gray-400 mt-1">{{ session.created_at|date:"Y/m/d H:i" }}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              {% if session.unread_count %}
+                <span class="inline-flex h-6 min-w-6 px-1 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
+                  {{ session.unread_count }}
+                </span>
+              {% endif %}
+              <span class="text-xs text-blue-700 font-semibold">مشاهده</span>
+            </div>
+          </div>
+        </a>
+      {% empty %}
+        <div class="px-4 py-8 text-center text-sm text-gray-500">فعلاً گفتگوی فعالی وجود ندارد.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const unreadBanner = document.getElementById('unread-banner');
+    const unreadCountEl = document.getElementById('unread-count');
+    const pushEnableBtn = document.getElementById('push-enable-btn');
+    const pushStatusEl = document.getElementById('push-status');
+    const fallbackStatusEl = document.getElementById('fallback-status');
+    const soundToggle = document.getElementById('sound-toggle');
+    const pushSupportedByServer = {{ support_push_enabled|yesno:"true,false" }};
+    const vapidPublicKey = '{{ support_push_public_key|escapejs }}';
+    const subscribeUrl = '{% url "support:push_subscribe" %}';
+    const unreadStatusUrl = '{% url "support:operator_unread_status" %}';
+    const presenceUrl = '{% url "support:operator_presence" %}';
+    const csrfTokenInput = document.querySelector('#push-csrf-form input[name="csrfmiddlewaretoken"]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+    let unreadCount = Number(unreadCountEl ? unreadCountEl.textContent : 0);
+    let fallbackTimer = null;
+
+    const storageKey = 'support_operator_sound_enabled';
+    const storedSoundState = localStorage.getItem(storageKey);
+    const soundEnabled = storedSoundState === null ? true : storedSoundState === '1';
+    soundToggle.checked = soundEnabled;
+
+    soundToggle.addEventListener('change', () => {
+      localStorage.setItem(storageKey, soundToggle.checked ? '1' : '0');
+    });
+
+    const shouldPlaySound = () => soundToggle.checked && (document.hidden || !document.hasFocus());
+
+    const playAlertSound = () => {
+      if (!shouldPlaySound()) {
+        return;
+      }
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 880;
+        gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.22, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.24);
+      } catch (_) {}
+    };
+
+    const updateUnreadUi = (count) => {
+      unreadCount = Number(count || 0);
+      if (unreadCountEl) {
+        unreadCountEl.textContent = unreadCount;
+      }
+      if (!unreadBanner) {
+        return;
+      }
+      if (unreadCount > 0) {
+        unreadBanner.classList.remove('hidden');
+      } else {
+        unreadBanner.classList.add('hidden');
+      }
+    };
+
+    const setPushStatus = (text, tone = 'muted') => {
+      if (!pushStatusEl) {
+        return;
+      }
+      pushStatusEl.textContent = text;
+      pushStatusEl.classList.remove('text-gray-600', 'text-red-600', 'text-emerald-700');
+      if (tone === 'error') {
+        pushStatusEl.classList.add('text-red-600');
+      } else if (tone === 'success') {
+        pushStatusEl.classList.add('text-emerald-700');
+      } else {
+        pushStatusEl.classList.add('text-gray-600');
+      }
+    };
+
+    const heartbeat = async () => {
+      try {
+        await fetch(presenceUrl, { credentials: 'same-origin' });
+      } catch (_) {}
+    };
+
+    const startFallbackPolling = () => {
+      if (fallbackStatusEl) {
+        fallbackStatusEl.classList.remove('hidden');
+      }
+      if (fallbackTimer) {
+        return;
+      }
+      fallbackTimer = window.setInterval(async () => {
+        try {
+          const response = await fetch(unreadStatusUrl, { credentials: 'same-origin' });
+          if (!response.ok) {
+            return;
+          }
+          const data = await response.json();
+          const nextUnread = Number(data.unread_count || 0);
+          if (nextUnread > unreadCount) {
+            playAlertSound();
+          }
+          updateUnreadUi(nextUnread);
+        } catch (_) {}
+      }, 5000);
+    };
+
+    const stopFallbackPolling = () => {
+      if (fallbackStatusEl) {
+        fallbackStatusEl.classList.add('hidden');
+      }
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
+    const urlBase64ToUint8Array = (base64String) => {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    };
+
+    const enablePushNotifications = async () => {
+      if (!pushSupportedByServer || !vapidPublicKey) {
+        setPushStatus('Push در تنظیمات سرور فعال نیست. fallback فعال شد.', 'error');
+        startFallbackPolling();
+        return;
+      }
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setPushStatus('مرورگر از Push پشتیبانی نمی‌کند. fallback فعال شد.', 'error');
+        startFallbackPolling();
+        return;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          setPushStatus('اجازه اعلان داده نشد. fallback فعال شد.', 'error');
+          startFallbackPolling();
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+        }
+
+        const response = await fetch(subscribeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ ...subscription.toJSON(), active_session_id: null }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error('subscribe failed');
+        }
+        setPushStatus(`✅ اعلان‌ها فعال شد (اشتراک فعال: ${Number(data.active_subs || 0)})`, 'success');
+        if (pushEnableBtn) {
+          pushEnableBtn.textContent = 'اعلان‌ها فعال شد';
+        }
+        stopFallbackPolling();
+      } catch (_) {
+        setPushStatus('فعالسازی Push موفق نبود. fallback فعال شد.', 'error');
+        startFallbackPolling();
+      }
+    };
+
+    if (pushEnableBtn) {
+      pushEnableBtn.addEventListener('click', enablePushNotifications);
+    }
+
+    if (window.Notification && Notification.permission === 'granted') {
+      setPushStatus('اعلان مرورگر قبلاً فعال شده است.', 'success');
+      if (pushEnableBtn) {
+        pushEnableBtn.textContent = 'اعلان‌ها فعال شد';
+      }
+      stopFallbackPolling();
+    } else {
+      startFallbackPolling();
+    }
+
+    heartbeat();
+    window.setInterval(heartbeat, 60000);
+  });
+</script>
+{% endblock %}

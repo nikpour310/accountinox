@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /account/
+Disallow: /accounts/
+Disallow: /support/
+Disallow: /shop/cart/
+Disallow: /shop/checkout/
+Disallow: /shop/payment/
+Disallow: /shop/payment/callback/
+Disallow: /healthz/
+Sitemap: {{ site_base_url }}/sitemap.xml

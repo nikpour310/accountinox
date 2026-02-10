@@ -1,273 +1,161 @@
-تو GitHub Copilot Agent هستی. پروژه Accountinox را مرحله‌ای (Phase-based) و Task-based بساز.
-
-قوانین سخت‌گیرانه (فراموش نشود):
-- قبل از شروع هر فاز، یک TODO checklist همان فاز را داخل فایل /docs/TODO.md ثبت کن.
-- قبل از نوشتن کد، TODO.md را بخوان و فقط تسک‌های باز را انجام بده.
-- بعد از اتمام هر آیتم، آن را تیک بزن و برای هر دسته تغییر، کامیت جدا بزن.
-- هر فاز باید خروجی قابل اجرا داشته باشد (run/build) + حداقل health-check.
-- کلیدها/سکرت‌ها هرگز در کد نباشند، فقط env.
+You are GitHub Copilot Agent. Build a production-ready Persian (fa-IR, RTL) e-commerce website named “Accountinox” using Python/Django, deployable on cPanel. The site sells digital “accounts” (inventory-based digital goods). Provide a complete codebase with admin panel to manage EVERYTHING.
 
 ========================
-CONSTRAINT: Deployment روی cPanel + Node.js App
+1) TECH STACK & RULES
 ========================
-- هدف اصلی: Deploy روی cPanel با “Setup Node.js App / Passenger”.
-- Next.js باید production-ready و سازگار با cPanel باشد:
-  - next.config.js => output: "standalone"
-  - productionBrowserSourceMaps: false
-- یک entrypoint مناسب cPanel بساز (مثلاً server.js) که Next standalone را اجرا کند.
-- README باید گام‌به‌گام Deploy روی cPanel را دقیق توضیح بده:
-  1) Upload/Git pull
-  2) npm ci
-  3) prisma migrate deploy
-  4) npm run build
-  5) تنظیم startup file در cPanel (server.js) + set env vars
-- DB: PostgreSQL (remote یا local). فقط از DATABASE_URL در env استفاده کن.
-- WebSocket ممکن است روی بعضی cPanelها محدود باشد:
-  - چت آنلاین باید fallback داشته باشد (Polling/SSE) که اگر WS قطع بود سیستم هنوز کار کند.
-- هیچ چیز حساس (پرداخت/OTP/کلیدها) سمت کلاینت انجام نشود.
-
-========================
-استک ثابت (الزامی)
-========================
-- Next.js (App Router) + TypeScript (Full-stack)
-- UI: TailwindCSS + RTL + فارسی + Vazirmatn
-- DB: PostgreSQL + Prisma
-- Auth: Auth.js/NextAuth (Google OAuth) + Credentials + OTP (قابل روشن/خاموش از پنل)
-- Payments: Provider pattern (Zarinpal + Zibal + قابلیت افزودن)
-- Realtime Support: WebSocket با fallback Polling/SSE
-- Security: RBAC + rate limit + CSRF + Zod + Argon2 + audit log + secure headers
-
-Brand colors (از لوگو):
-- Primary #15AEC6
-- Secondary #30D3C7
-- Accent #0466BE
-Theme: سفید + آبی/فیروزه‌ای مدرن
+- Backend: Python 3.11+ with Django (latest stable), Django Templates for frontend (no SPA required).
+- Database: MySQL (cPanel compatible). Use django-environ for env vars.
+- Auth: Django auth + django-allauth for Google login.
+- Styling: Tailwind CSS.
+  - Must support TWO modes switchable from Admin:
+    1) Online CDN mode using: https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4
+    2) Offline/local compiled CSS served from /static/ (prebuilt file committed)
+  - Admin can toggle Tailwind mode (CDN vs local) from a “Site Settings” section.
+- Theme colors based on provided logo:
+  - primary: #1ABBC8
+  - secondary: #0468BD
+  - accent: #45E2CC
+  - background white, modern clean landing.
+- Security best practices: CSRF, XSS protection, secure cookies, security headers, rate limiting on auth endpoints, brute-force protection, audit logs.
+- Important clarification: Users can always view client-side HTML/CSS/JS in browsers; DO NOT claim “front-end source hidden”. Instead:
+  - Keep secrets on server.
+  - Minify static assets.
+  - Disable debug, hide stack traces, secure headers, and prevent directory listing guidance for cPanel.
 
 ========================
-PHASE 0 — Bootstrap & cPanel-ready Foundation
+2) CORE FEATURES
 ========================
-هدف: ریپو استاندارد + آماده دیپلوی روی cPanel
+A) Landing Page (Very strong / modern)
+- White/blue theme using the above palette.
+- Sections: Hero + CTA, Features, How it works, Pricing teaser, Trust badges, Testimonials, FAQ, Footer.
+- Global attractive header/footer reused for all pages.
+- Footer must include a configurable placeholder area for “eNamad” (HTML snippet editable from admin).
+- Responsive, RTL, Persian typography.
 
-Tasks:
-- Scaffold Next.js TS (App Router)
-- ESLint/Prettier + scripts
-- Tailwind (local) + RTL + Vazirmatn + theme tokens
-- Prisma init + Postgres + migration اولیه
-- Dockerfile + docker-compose برای dev (Postgres) + env.example
-- Layout عمومی: Header/Footer جذاب و مشترک
-- صفحات placeholder: / /shop /blog /auth /admin
-- اضافه کردن “cPanel/Passenger readiness” از همین فاز:
-  - next.config.js: output="standalone", productionBrowserSourceMaps=false
-  - ساخت server.js entrypoint برای اجرای standalone
-  - آماده‌سازی مسیرهای build/start scripts
-- README پایه شامل بخش “Deploy on cPanel (draft)”
+B) Authentication / Registration
+- Users can register/login with:
+  1) Email + password
+  2) Google Account (OAuth) via django-allauth
+  3) Phone number login with OTP
+- OTP must be fully configurable from Admin:
+  - Enable/disable OTP globally
+  - Choose OTP usage: “required for phone login only” or “also required for sensitive actions”
+  - OTP expiry time, max attempts, resend cooldown
+- SMS sending must be via a pluggable provider interface:
+  - Provide a dummy provider (console/log) + a provider stub (e.g. Kavenegar-like) with environment-based API key.
+  - Admin can select provider and toggle SMS on/off.
+- Account dashboard: profile, orders, purchased items, support messages.
 
-Acceptance:
-- npm run dev بالا بیاید
-- npm run build موفق شود
-- standalone خروجی تولید شود
-- یک کامیت “phase0 foundation + cpanel readiness”
+C) E-commerce for digital accounts
+- Product catalog: categories, product pages, pricing, SEO fields.
+- Inventory model: each product has “Account Items” (e.g. username/password/notes) stored securely.
+- Checkout flow:
+  - Cart, order creation, payment initiation, payment verification callback.
+  - After successful payment, allocate inventory items and show them to the user in their dashboard (and optionally email).
+  - If inventory is empty, prevent purchase or show out-of-stock.
+- Admin management:
+  - CRUD products/categories
+  - CRUD inventory items (bulk upload CSV optional)
+  - Orders list, status updates, refunds flag, delivery logs
+  - Discount codes (optional but preferred)
 
-========================
-PHASE 1 — Auth & RBAC + Rate-limit (امنیت پایه)
-========================
-هدف: ورود/ثبت‌نام کامل + نقش‌ها + محافظت مسیرها
+D) Payments (Iran)
+- Implement payment gateway integration with a clean abstraction:
+  - ZarinPal
+  - Zibal
+  - (Optional) generic “Bank gateway adapter” placeholder
+- Admin selects active gateway and configures credentials (merchant id, etc.) via Site Settings.
+- Payment callbacks routes and verification logic included.
+- Store transaction logs and show in admin.
 
-Tasks:
-- Auth.js/NextAuth:
-  - Google OAuth
-  - Credentials: email+password
-  - Credentials: phone+password
-- Password hashing: Argon2
-- OTP module:
-  - DB models برای OTP
-  - API ارسال/تایید OTP (provider پیامک: Stub قابل تعویض)
-  - قابلیت enable/disable + policy از SiteSetting (بعداً در پنل)
-- RBAC:
-  - roles: ADMIN, EDITOR, SUPPORT, CUSTOMER
-  - middleware محافظ /admin
-  - helper برای checkPermission روی API routes
-- Rate limit روی login/otp
-- AuditLog برای رویدادهای auth
-- نکته cPanel: همه secrets فقط env (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, OTP_SECRET, …)
-
-Acceptance:
-- ثبت‌نام/ورود با گوگل و ایمیل/پسورد کار کند
-- OTP با Stub کار کند و از DB Setting قابل خاموش/روشن باشد
-- فقط ADMIN وارد /admin شود
-
-========================
-PHASE 2 — Admin Panel Core + Site Settings (کنترل کل سایت)
-========================
-هدف: پنلی که تنظیمات حیاتی را کنترل کند
-
-Tasks:
-- UI پنل: sidebar + topbar + dashboard
-- CRUD:
-  - Users: مشاهده/تغییر نقش
-  - SiteSettings:
-    - auth: otp enable/disable + policy
-    - tailwindMode: cdn/local
-    - header/footer links
-    - enamad placeholder/config
-    - payments toggles + keys placeholders (در فاز پرداخت تکمیل)
-- Tailwind Toggle (الزامی):
-  - اگر tailwindMode='cdn' => inject Script tag:
-    https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4
-  - اگر 'local' => از css محلی build شده استفاده کن
-  - این تنظیم باید global layout را تغییر دهد و روی همه صفحات اعمال شود
-
-Acceptance:
-- ادمین از پنل OTP و tailwindMode را تغییر دهد و فوراً اثرش دیده شود
-- RBAC رعایت شود
-
-========================
-PHASE 3 — Shop Core (Products/Cart/Orders/Delivery)
-========================
-هدف: فروشگاه قابل استفاده (قبل از پرداخت واقعی)
-
-Tasks:
-- دیتامدل:
-  Product, Category, Tag, Inventory/Credential(encrypted), Order, OrderItem
-- صفحات:
-  /shop + /product/[slug] + /cart + /checkout
-- Cart persist (localStorage یا server session)
-- ایجاد Order و جریان وضعیت‌ها (Pending, Paid, Failed, Delivered, Refunded)
-- تحویل اکانت:
-  - ذخیره Credential ها encrypted (AES-GCM) با secret در env
-  - نمایش فقط بعد از Paid
-  - محدودسازی نمایش (مثلاً یکبار نمایش یا نیاز به re-auth)
-- Admin (حداقل):
-  - CRUD محصولات/دسته/برچسب (اگر وقت بود همین فاز، وگرنه فاز 4)
-- تست unit برای encrypt/decrypt
-
-Acceptance:
-- کاربر بتواند order بسازد
-- Credential encryption/decryption تست شود
-- نمایش credential بدون paid ممکن نباشد
-
-========================
-PHASE 4 — Payments Providers (Zarinpal + Zibal) + Admin Settings تکمیل
-========================
-هدف: پرداخت واقعی و ماژولار + سازگار با cPanel
-
-Tasks:
-- Payment model DB + status flow
-- Provider interface:
-  createPayment(order)->redirectUrl
-  verifyPayment(callback)->success/fail
-- پیاده‌سازی جداگانه:
-  - providers/zarinpal.ts
-  - providers/zibal.ts
-- Admin Settings:
-  - enable/disable هر درگاه
-  - ذخیره merchantId/keys (بهتر: در env + در DB فقط flagها/نام‌ها؛ اگر ذخیره در DB لازم شد، encrypt at rest)
-- Callback route امن:
-  - verify server-side
-  - ثبت Payment record
-  - update Order status
-  - پس از success => Deliver credential + audit log
-- README تست پرداخت (sandbox/روش تست) + نکات callback URL روی cPanel
-
-Acceptance:
-- پرداخت end-to-end با مستندات واضح
-- fail/success درست مدیریت شود
-
-========================
-PHASE 5 — Blog CMS + FAQ + SEO Automation
-========================
-هدف: بلاگ حرفه‌ای با SEO اتومات
-
-Tasks:
-- مدل‌ها:
-  Post, PostCategory, PostTag, PostFAQ, GlobalFAQ
-- Editor (Markdown/Rich text ساده)
-- صفحه مقاله دقیقاً:
-  - بالا تصویر کاور
-  - پایین محتوا
-  - پایین FAQ اختصاصی مقاله
-- Admin CRUD:
-  - posts/categories/tags
-  - global FAQ
-  - FAQ اختصاصی هر پست
+E) Blog + SEO automation
+- Blog with:
+  - Featured image at top, article content below, and FAQ section under each post.
+  - Admin can add/edit/remove each post’s FAQ items from admin.
 - SEO:
-  - dynamic meta + OG + JSON-LD (Article)
-  - keywords auto extract از متن (TF-IDF یا keyword extractor ساده) + ذخیره در DB
-  - override دستی در پنل
-  - sitemap.xml دینامیک + robots.txt
-- نکته cPanel: sitemap/robots باید server route باشند و در standalone هم کار کنند.
+  - Auto-generate meta title/description/og tags.
+  - Auto keyword extraction from post content (Persian supported best-effort):
+    - Implement a simple keyword extractor in Python (e.g. YAKE-like or TF-IDF approach) executed on save.
+    - Store extracted keywords in DB and allow admin override/manual edit.
+  - Auto generate sitemap.xml and robots.txt.
+  - Canonical URLs, slug handling.
+- Add “structured data” JSON-LD for BlogPosting and FAQPage where applicable.
 
-Acceptance:
-- ساخت/ویرایش/انتشار پست از پنل
-- keywords اتومات تولید شود
-- ساختار صفحه مقاله رعایت شود
+F) Online Support Chat (Real-time)
+- Implement a support chat system:
+  - Users can message support from site.
+  - Admin/operator can reply inside admin panel (or dedicated operator panel).
+  - Admin receives notification for new messages (in-dashboard notifications + optional email).
+- Preferred: Django Channels (WebSocket). If too heavy for cPanel, provide fallback long-polling mode switchable in settings.
+- Store chat history.
 
-========================
-PHASE 6 — Support Chat (Realtime) + Fallback برای محدودیت‌های cPanel
-========================
-هدف: پشتیبانی آنلاین با نوتیف برای مدیر
-
-Tasks:
-- مدل‌ها:
-  ChatConversation, ChatMessage
-- Widget چت در سایت
-- Inbox در پنل (SUPPORT/ADMIN):
-  - لیست گفتگوها + unread
-  - پاسخ‌دهی
-- Realtime:
-  - پیاده‌سازی WebSocket (socket.io یا ws)
-  - + fallback اگر WS unavailable:
-    - Polling یا SSE برای دریافت پیام‌های جدید
-    - detection: اگر WS failed => auto fallback
-- نوتیف داخل پنل: toast + badge
-- Rate limit + anti-spam
-
-Acceptance:
-- کاربر پیام بدهد، مدیر همزمان ببیند و جواب دهد
-- در صورت عدم پشتیبانی WS روی هاست، سیستم با fallback هنوز کار کند
+G) Admin Panel “manage everything”
+- Provide a professional admin UI:
+  - Either customize Django admin with a modern theme OR build a custom admin dashboard app.
+- Admin must manage:
+  - Site Settings (colors, tailwind mode, logos, header/footer links, eNamad html, gateways, OTP, SMS provider)
+  - Users & roles (admin, operator)
+  - Products, inventory, orders, payments
+  - Blog posts + FAQs per post
+  - Global FAQs (landing)
+  - Support chats
 
 ========================
-PHASE 7 — Hardening + Tests + Seed + Final cPanel Deploy Guide
+3) PROJECT STRUCTURE & DELIVERABLES
 ========================
-هدف: آماده تولید و بدون دردسر دیپلوی روی cPanel
-
-Tasks:
-- Security headers + CSP حداقلی
-- CSRF برای فرم‌های حساس
-- Disable source maps در prod (تایید نهایی)
-- تکمیل AuditLog برای رویدادهای مهم (پرداخت/تحویل/تنظیمات)
-- Tests:
-  - unit: keyword extraction + encrypt/decrypt
-  - e2e: login + purchase happy path (Playwright)
-- Seed:
-  - admin user
-  - چند محصول + چند پست + FAQ نمونه
-- README نهایی مخصوص cPanel:
-  - پیش‌نیازها (Node version)
-  - آپلود/گیت
-  - npm ci
-  - prisma migrate deploy
-  - npm run build (standalone)
-  - تنظیم Node.js App در cPanel: startup file = server.js
-  - تنظیم env vars در UI
-  - نکات callback پرداخت و SSL
-  - نکات WebSocket و fallback
-
-Acceptance:
-- npm run build + start (standalone) روی محیط شبیه prod کار کند
-- docker-compose dev کار کند
-- مستندات deploy روی cPanel کامل باشد
+Create a clean repo:
+- accountinox/
+  - config/ (settings, urls, wsgi/asgi)
+  - apps/
+    - core (site settings, pages, header/footer, faq)
+    - accounts (auth, otp, google login)
+    - shop (products, inventory, cart, orders, payments)
+    - blog (posts, categories, per-post faq, seo extractor)
+    - support (chat, notifications)
+  - templates/ (base, landing, shop, blog, dashboard, support)
+  - static/ (local tailwind build, images, js)
+  - docs/
+    - DEPLOY_CPANEL.md (step-by-step cPanel Python setup)
+    - SECURITY.md
+- Provide fixtures or seed command to create initial admin and demo data.
+- Provide tests for critical flows: auth, otp, checkout, payment verification mock, inventory allocation.
 
 ========================
-قانون اجرا (خیلی مهم)
+4) CPANEL DEPLOYMENT REQUIREMENTS (MUST)
 ========================
-- همزمان فقط یک فاز.
-- اول TODO.md همان فاز را بنویس.
-- بعد پیاده‌سازی.
-- بعد تست/health-check.
-- بعد کامیت.
-- سپس برو فاز بعدی.
+In docs/DEPLOY_CPANEL.md include:
+- How to use cPanel “Setup Python App”
+- Virtualenv creation, pip install -r requirements.txt
+- Configure Passenger WSGI entry
+- Set env vars (DJANGO_SECRET_KEY, DEBUG=0, ALLOWED_HOSTS, DB creds, gateway creds)
+- Collectstatic
+- Migrate
+- Media/static handling on cPanel
+- Allowed hosts & HTTPS guidance
 
+========================
+5) IMPLEMENTATION NOTES
+========================
+- Use environment variables for secrets; never hardcode credentials.
+- Add rate limiting (e.g. django-ratelimit) for login/otp endpoints.
+- OTP codes stored hashed; log attempts.
+- Use secure storage for inventory items:
+  - Encrypt sensitive fields at rest (use Fernet with key from env) OR at least protect via server-only access.
+- Provide admin toggles for: OTP enable, Tailwind mode, Gateway select, Chat mode (WS/long-poll).
+
+========================
+6) ACCEPTANCE CRITERIA
+========================
+- Runs locally with mysql or sqlite fallback.
+- Works on cPanel with MySQL.
+- Admin can control site settings fully.
+- Registration supports Google + phone OTP + password login.
+- Blog auto extracts keywords and generates SEO meta + sitemap.
+- Checkout integrates ZarinPal and Zibal with adapter interface and logs.
+- Support chat works and notifies admin.
+- Landing is modern and uses the palette.
+
+Now implement the complete project with production-ready code, migrations, templates, docs, and a clear README with setup steps.
 
 
 “هر بار قبل از نوشتن کد، TODO.md را بخوان و فقط همان تسک‌های باز را انجام بده.”

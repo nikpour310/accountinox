@@ -1,122 +1,61 @@
 # Accountinox
 
-Accountinox — یک فروشگاه آنلاین برای فروش اکانت‌ها و یک CMS/پنل مدیریت کامل.
+نسخهٔ ابتدایی پروژه فروش حساب‌های دیجیتال ساخته‌شده با Django.
 
-Stack:
-- Next.js (App Router) + TypeScript
-- TailwindCSS (RTL + Vazirmatn ready)
-- PostgreSQL + Prisma
-- NextAuth (Google + Credentials)
-- Socket.io (Realtime chat)
-- Payments: provider pattern (Zarinpal, Zibal)
-- Tests: Vitest (unit), Playwright (e2e)
+ویژگی‌ها (خلاصه):
+- احراز هویت ایمیل/پسورد، ورود گوگل (django-allauth)، ورود با شماره تلفن + OTP
+- مدیریت محصولات، موجودی (آیتم‌های حساب)، سفارشات و تخصیص پس از پرداخت
+- ادغام ساده با درگاه‌ها (ZarinPal و Zibal) از طریق adapter
+- بلاگ با استخراج کلمات کلیدی و FAQ در هر پست
+- پشتیبانی چت با ذخیره پیام‌ها و پنل مدیریت
+- Tailwind با دو حالت CDN یا فایل محلی
 
-Quick start
+شروع سریع (محلی):
 
-1. Copy .env.example to .env and fill values
-2. Start postgres locally (docker-compose up -d)
-3. npm install
-4. npx prisma generate
-5. npx prisma migrate dev --name init
-6. npm run seed
-7. npm run dev
+1. ساخت محیط مجازی و نصب وابستگی‌ها:
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
 
-Notes
-- AES_SECRET must be a 32-byte secret encoded in base64 and prefixed with 'base64:'.
-- Disable source maps in production builds.
+2. تنظیم متغیرها (فایل .env در ریشه)—نمونه در `.env.example`:
+   ```
+   DJANGO_SECRET_KEY=change-me
+   DEBUG=1
+   FERNET_KEY=<تولید شده از: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+   OTP_HMAC_KEY=<تولید شده از: python -c "import secrets; print(secrets.token_hex(32))">
+   REDIS_URL=redis://localhost:6379/0  # optional; for production caching
+   ```
 
-What's included (scaffold)
-- Prisma schema with models (User, Product, Post, Order, Payment, etc.)
-- Site settings model including tailwindMode toggle
-- AES-GCM encrypt/decrypt helpers
-- Keyword extractor utility + unit tests
-- Docker + docker-compose for postgres + redis
-- Seed script to create admin, sample product and post
+3. اجرای مهاجرت‌ها و ایجاد کاربر:
+   python manage.py migrate
+   python manage.py seed_demo
+   python manage.py createsuperuser
 
-Next steps (TODO)
-- Implement full Auth flows (NextAuth + OTP)
-- Admin UI and RBAC middleware
-- Payment provider implementations and secure callbacks
-- Chat realtime server + client integration
-- SEO utilities, sitemap, robots
-- Playwright e2e tests for login + checkout
+4. اجرای سرور توسعه:
+   python manage.py runserver
 
-Contributing
-Feel free to open issues or PRs. See docs/ for more information.
+## متغیرهای محیطی کلیدی
 
-## Tailwind Online/Offline
+- **DJANGO_SECRET_KEY**: کلید مخفی Django (تولید یک رشتهٔ امن)
+- **FERNET_KEY**: کلید رمزگذاری برای inventory items (از cryptography.Fernet)
+- **OTP_HMAC_KEY**: کلید HMAC-SHA256 برای هش کد OTP. NOTE: In production (DEBUG=0) this is REQUIRED and the app will raise an error if it is not set. Generate with: `python -c "import secrets; print(secrets.token_hex(32))"`
+- **REDIS_URL**: آدرس Redis برای caching و rate-limiting در production
+- **DATABASE_URL**: MySQL برای cPanel (e.g., `mysql://user:pass@host/db`)
+- **GOOGLE_CLIENT_ID / GOOGLE_SECRET**: برای ورود توسط گوگل
+- **KAVENEGAR_API_KEY**: برای ارسال SMS (Provider: Kavenegar)
+- **ZARINPAL_MERCHANT_ID**: Merchant ID از ZarinPal برای پرداخت
+- **ZIBAL_MERCHANT_ID**: Merchant ID از Zibal برای پرداخت
 
-Site uses `SiteSetting.tailwindMode` to decide whether to inject Tailwind from CDN or use local built CSS. Change this from Admin Settings (or directly in DB) to switch modes.
+## درگاه‌های پرداخت
 
-## OTP and Auth
+برای راهنمای تنظیم ZarinPal و Zibal و تست محلی، فایل [docs/PAYMENT_GATEWAYS.md](docs/PAYMENT_GATEWAYS.md) را ببینید.
 
-OTP can be enabled/disabled from site settings. A stub SMS provider is shipped by default; connect a real provider by updating `SMS_PROVIDER` and related keys.
+### Support Poll Endpoint
 
-## Tests
+The long-poll endpoint for support accepts the following query parameters:
 
-- Unit: `npm test` (vitest)
-- E2E: `npx playwright test` (requires Playwright installation and running dev server)
+- `thread_id` (optional): numeric chat session id. If omitted the server will attempt to resolve the active session from the authenticated user or the request session cookie.
+- `since` (optional, default=0): last message id received. Returns messages with id > `since`.
+- `timeout` (optional, default=10): long-poll timeout in seconds.
 
-## Deploy on cPanel (draft)
-
-These are the high-level steps to deploy the app on a cPanel host using the "Setup Node.js App" / Passenger support:
-
-1. Upload your project (via Git or file upload) to the desired subdirectory.
-2. In cPanel, open "Setup Node.js App" and create an application using the project's root path.
-3. Set the startup file to `server.js` (this file requires the Next standalone server produced by `next build`).
-4. Add required environment variables in the cPanel UI (at minimum: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`).
-5. In the project root, run:
-
-```bash
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run build    # builds Next.js with output: 'standalone'
-```
-
-6. Start the application via cPanel (the startup file should load `.next/standalone/server.js`).
-
-Notes:
-- Make sure `next.config.js` contains `output: "standalone"` and `productionBrowserSourceMaps: false`.
-- WebSocket support may be limited on some cPanel hosts; implement fallbacks (SSE/Polling) for realtime features.
-- Never store secrets in repo files; use cPanel environment variables.
-
-## Local Postgres via Docker (Windows)
-
-If you're on Windows and plan to run a local Postgres for development, the project includes a `docker-compose.yml` that defines a Postgres and Redis service. Follow these steps after installing Docker Desktop (WSL2 backend recommended):
-
-1. Start the Postgres service (from the project root):
-
-```bash
-docker compose up -d db
-```
-
-2. Set the `DATABASE_URL` environment variable for your shell (example):
-
-```bash
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accountinox"
-# On PowerShell (Windows):
-$env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/accountinox'
-```
-
-3. Apply Prisma migrations (or push schema if you prefer):
-
-```bash
-npx prisma migrate dev --name init
-# or, if you don't have migrations and prefer to push schema:
-npx prisma db push
-```
-
-4. Generate Prisma client and build (no SKIP_DB):
-
-```bash
-npx prisma generate
-npm run build
-```
-
-Notes
-- The `SKIP_DB` environment variable used in some pages is a temporary build-time guard to allow building without a DB during initial development. Do not set `SKIP_DB=true` in production.
-- After you confirm a successful full build (without `SKIP_DB`), we'll remove or replace the build-time guards with robust fallbacks.
-
-If you prefer an automated helper, see `scripts/dev-db-up.sh` (bash) and `scripts/dev-db-up.ps1` (PowerShell) which will try to start the DB and print instructions if Docker is not installed.
-
+Required parameters: none strictly required if the request can be matched to an active session (authenticated user or existing session cookie). Otherwise `thread_id` is required.

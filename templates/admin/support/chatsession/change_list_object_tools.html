@@ -1,0 +1,11 @@
+{% extends "admin/change_list_object_tools.html" %}
+{% load admin_urls i18n %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+  <li>
+    <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes" class="viewlink">
+      جلسات خوانده‌نشده
+    </a>
+  </li>
+{% endblock %}

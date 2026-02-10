@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block meta_title %}پشتیبانی | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_description %}شروع گفت‌وگو با پشتیبانی {{ site_settings.site_name|default:'Accountinox' }} برای سوالات خرید و پیگیری سفارش.{% endblock %}
+{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'support:chat' %}">{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-3xl py-2">
+    <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">پشتیبانی آنلاین</h1>
+    <p class="mt-2 text-sm text-slate-600">برای شروع گفت‌وگو، اطلاعات تماس را وارد کنید تا سریع‌تر راهنمایی شوید.</p>
+
+    {% if active_session %}
+      <div class="alert alert-success mt-4">
+        گفت‌وگوی فعال دارید.
+        <a class="font-semibold underline" href="{% url 'support:chat_room' %}">ادامه گفت‌وگو</a>
+      </div>
+    {% endif %}
+
+    {% if closed_unrated_session %}
+      <div class="alert alert-info mt-3">
+        گفت‌وگوی قبلی شما بسته شده است.
+        <a class="font-semibold underline" href="{% url 'support:rate_session' closed_unrated_session.id %}">ثبت امتیاز پشتیبانی</a>
+      </div>
+    {% endif %}
+
+    <div class="card mt-5 p-5 sm:p-6">
+      <h2 class="section-title text-base">شروع گفت‌وگو</h2>
+      <form method="post" action="{% url 'support:start_chat' %}" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <div>
+          <label for="support-name" class="mb-1 block text-sm text-slate-700">نام</label>
+          <input
+            id="support-name"
+            name="name"
+            type="text"
+            class="form-input"
+            value="{{ form_name|default:'' }}"
+            placeholder="نام و نام خانوادگی"
+            required
+          >
+          {% if form_errors.name %}
+            <p class="mt-1 text-xs text-red-700">{{ form_errors.name }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="support-phone" class="mb-1 block text-sm text-slate-700">شماره موبایل</label>
+          <input
+            id="support-phone"
+            name="phone"
+            type="tel"
+            class="form-input"
+            value="{{ form_phone|default:'' }}"
+            placeholder="09123456789"
+            inputmode="numeric"
+            required
+          >
+          <p class="mt-1 text-xs text-slate-500">فرمت قابل قبول: 09xxxxxxxxx یا +989xxxxxxxxx</p>
+          {% if form_errors.phone %}
+            <p class="mt-1 text-xs text-red-700">{{ form_errors.phone }}</p>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full sm:w-auto">ورود به چت</button>
+      </form>
+    </div>
+
+    {% if site_settings.telegram_admin_url or site_settings.telegram_channel_url %}
+      <div class="card mt-5 p-5">
+        <h2 class="section-title text-base">{{ site_settings.telegram_support_label|default:'پشتیبانی تلگرام' }}</h2>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+          {% if site_settings.telegram_admin_url %}
+            <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary w-full sm:w-auto">
+              ارتباط با ادمین
+            </a>
+          {% endif %}
+          {% if site_settings.telegram_channel_url %}
+            <a href="{{ site_settings.telegram_channel_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost w-full sm:w-auto">
+              کانال اطلاع‌رسانی
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}
