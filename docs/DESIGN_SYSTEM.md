@@ -48,6 +48,13 @@ Conservative application
 	- `smooth-hover`: primary CTAs and major buttons (hero CTAs, product CTAs, signup/login in navbar).
 	- `subtle-pop`: small navbar items to draw attention on first load/hover.
 
+Applied locations (conservative)
+- Landing hero CTAs and hero wrapper: `templates/landing.html`
+- Feature/product cards: `templates/landing.html`, `templates/shop/product_list.html`, `templates/blog/post_list.html`
+- Shop product/detail CTAs and checkout submit: `templates/shop/product_list.html`, `templates/shop/product_detail.html`, `templates/shop/checkout.html`
+- Login/register actions: `templates/accounts/login.html`, `templates/account/login.html`, `templates/account/login_override.html`, `templates/partials/navbar.html`
+- Footer wrapper: `templates/partials/footer.html`
+
 If you want the animations removed or changed to be even more subtle (shorter duration or reduced translate), tell me which pattern to tweak and I'll apply it across the project.
 
 After editing animations or utilities, rebuild Tailwind:

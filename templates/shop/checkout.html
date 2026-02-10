@@ -76,7 +76,7 @@
           </fieldset>
 
           <div class="mt-6 flex flex-col gap-2 sm:flex-row">
-            <button type="submit" class="btn btn-primary w-full sm:w-auto">پرداخت و ثبت سفارش</button>
+            <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">پرداخت و ثبت سفارش</button>
             <a href="{% url 'shop:cart' %}" class="btn btn-ghost w-full sm:w-auto">بازگشت به سبد</a>
           </div>
           <p class="mt-3 text-xs text-slate-500">وضعیت سفارش در پنل کاربری با مراحل «درحال بررسی»، «تأیید شد» و «تحویل داده شد» قابل مشاهده است.</p>
@@ -110,10 +110,10 @@
       </aside>
     </div>
   {% else %}
-    <div class="card p-8 text-center">
+      <div class="card p-8 text-center">
       <h2 class="text-xl font-bold text-slate-900">سبد خرید خالی است</h2>
       <p class="mt-2 text-sm text-slate-600">برای تسویه حساب ابتدا محصولی به سبد اضافه کنید.</p>
-      <a href="{% url 'shop:product_list' %}" class="btn btn-primary mt-4">مشاهده محصولات</a>
+      <a href="{% url 'shop:product_list' %}" class="btn btn-primary mt-4 smooth-hover">مشاهده محصولات</a>
     </div>
   {% endif %}
 {% endblock %}
