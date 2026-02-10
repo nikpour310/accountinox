@@ -24,7 +24,6 @@
 
   /* Cards */
   .card { @apply bg-white rounded-2xl border border-slate-100 shadow-sm p-8; }
-  .card-ghost { @apply bg-transparent rounded-lg p-4; }
 
   /* Section title */
   .section-title { @apply text-2xl md:text-3xl font-bold text-slate-900 mb-6 mt-6; }
@@ -50,8 +49,7 @@
   /* Badge alias */
   .badge { @apply chip; }
   .btn-soft { @apply btn bg-white/5 border border-white/10 text-white hover:bg-white/10; }
-  /* Input alias used in some templates */
-  .inp { @apply block w-full rounded-lg border border-slate-200 p-3 bg-white text-slate-900; }
+  /* Input alias intentionally removed (use .form-input) */
 
   /* Status pill */
   .status-pill { @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-800; }
@@ -62,8 +60,7 @@
 }
 
 @layer utilities {
-  .container-custom { max-width: var(--container-max); margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
-  .rtl-flip { direction: rtl; }
+  /* removed unused utility helpers: container-custom, rtl-flip */
 }
 
 /* small animation utilities */
