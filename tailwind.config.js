@@ -48,6 +48,31 @@ module.exports = {
           xl: '1280px',
         },
       },
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(.98)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'subtle-pop': {
+          '0%': { transform: 'scale(.98)', opacity: '0' },
+          '60%': { transform: 'scale(1.02)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 600ms cubic-bezier(0.2,0,0,1) both',
+        'fade-up': 'fade-up 500ms cubic-bezier(0.2,0,0,1) both',
+        'scale-in': 'scale-in 160ms cubic-bezier(0.2,0,0,1) both',
+        'subtle-pop': 'subtle-pop 280ms cubic-bezier(.2,.8,.2,1) both',
+      },
     },
   },
   plugins: [

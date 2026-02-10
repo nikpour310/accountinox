@@ -26,3 +26,21 @@ Files
 When adding new components, add them to `static/css/main.css` under `@layer components` and rebuild `npx tailwindcss -i static/css/main.css -o static/css/output.css --minify`.
 
 If you want, I can expand this into a living style guide with examples and screenshots.
+
+Animations
+ - `animate-fade-in`: subtle opacity entrance (use for hero sections and main content wrappers).
+ - `animate-fade-up`: small upward entrance with fade (use for cards, product items, and list entries).
+ - `animate-scale-in`: very small scale + fade for overlays, dropdowns, and modals.
+ - `animate-subtle-pop`: quick pop animation for toasts or one-off attention-grabbers.
+ - `smooth-hover` / `smooth-transition`: utility class applying `transition-all duration-150 ease-out` for buttons and CTAs.
+
+How to use
+- Add `animate-fade-in` to large hero containers: they will gently fade in on load.
+- Add `animate-fade-up` to cards and list items to create a cohesive staggered entrance when combined with small JS delays.
+- Use `animate-scale-in` on dropdowns and modals to avoid abrupt pop-in behaviour (also works together with Alpine `x-transition`).
+- Prefer `smooth-hover` on interactive CTAs to standardize hover timing.
+
+After editing animations or utilities, rebuild Tailwind:
+```
+npx tailwindcss -i static/css/main.css -o static/css/output.css --minify
+```
