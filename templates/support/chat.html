@@ -54,7 +54,7 @@
           {% else %}
             <div class="alert">این گفت‌وگو بسته شده است. برای شروع گفت‌وگوی جدید به صفحه پشتیبانی برگردید.</div>
           {% endif %}
-          <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto">شروع گفت‌وگوی جدید</a>
+          <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">شروع گفت‌وگوی جدید</a>
         {% else %}
           <form id="user-message-form" class="space-y-3">
             <input id="session-id-input" type="hidden" name="session_id" value="{{ session.id }}">
@@ -70,7 +70,7 @@
             ></textarea>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-xs text-slate-500">حداکثر 500 کاراکتر</p>
-              <button type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پیام</button>
+              <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">ارسال پیام</button>
             </div>
           </form>
         {% endif %}
