@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}خانه | {{ block.super }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="relative bg-slate-900 overflow-hidden isolate border-b border-primary-900/50 animate-fade-in">
+    <!-- Background Decor -->
+    <div class="absolute inset-0 -z-10" aria-hidden="true">
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-primary-950"></div>
+        <div class="absolute top-0 right-0 -translate-y-12 translate-x-12 blur-3xl opacity-20 w-[40rem] h-[40rem] bg-secondary-600 rounded-full hidden sm:block"></div>
+        <div class="absolute bottom-0 left-0 translate-y-12 -translate-x-12 blur-3xl opacity-20 w-[40rem] h-[40rem] bg-primary-600 rounded-full hidden sm:block"></div>
+    </div>
+
+    <div class="container mx-auto px-4 py-20 lg:py-32">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-8 text-center lg:text-start" x-data="{ shown: false }" x-init="setTimeout(() => shown = true, 100)">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-900/30 text-primary-300 text-sm font-medium border border-primary-500/30 backdrop-blur-sm shadow-sm transition-opacity duration-700"
+                     :class="shown ? 'opacity-100' : 'opacity-0'">
+                    <span class="flex h-2 w-2 rounded-full bg-primary-400 animate-pulse"></span>
+                    <span>تخفیف‌های ویژه تابستانه آغاز شد!</span>
+                </div>
+                
+                <h1 class="text-4xl lg:text-6xl font-black text-white leading-tight transition-all duration-700 delay-100 transform" 
+                    :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
+                    دنیای دیجیتال خود را <br/>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-secondary-300">ارتقا دهید</span>
+                </h1>
+                
+                <p class="text-lg text-slate-400 max-w-2xl mx-auto lg:mx-0 leading-relaxed transition-all duration-700 delay-200 transform"
+                   :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
+                    دسترسی آنی به هزاران سرویس پریمیوم جهانی. با اکانتینوکس، بدون محدودیت و با بهترین قیمت از اسپاتیفای، نتفلیکس، اپل و صدها سرویس دیگر لذت ببرید.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 transition-all duration-700 delay-300 transform"
+                     :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
+                    <a href="{% url 'shop:product_list' %}" class="btn-primary px-8 py-3 text-lg min-w-0 sm:min-w-[160px] justify-center smooth-hover">
+                        شروع خرید
+                        <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </a>
+                    <a href="#features" class="btn-secondary bg-white/5 border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg min-w-0 sm:min-w-[160px] justify-center smooth-hover">
+                        چرا ما؟
+                    </a>
+                </div>
+                
+                <!-- Trust Indicators -->
+                <div class="pt-8 flex items-center justify-center lg:justify-start gap-6 border-t border-slate-800/50">
+                    <div class="text-center lg:text-right">
+                        <div class="text-2xl font-bold text-white mb-0.5">+۱۰,۰۰۰</div>
+                        <div class="text-xs text-slate-500">مشتری راضی</div>
+                    </div>
+                    <div class="w-px h-8 bg-slate-800"></div>
+                     <div class="text-center lg:text-right">
+                        <div class="text-2xl font-bold text-white mb-0.5">۲۴/۷</div>
+                        <div class="text-xs text-slate-500">پشتیبانی آنلاین</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hero Image -->
+            <div class="relative hidden lg:block" x-data="{ hover: false }">
+                <div class="relative z-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700 p-2 shadow-2xl transform transition-transform duration-500 hover:scale-[1.02] hover:-rotate-1">
+                    <img src="{% static 'img/hero-mockup.png' %}" alt="App Dashboard" class="w-full h-auto rounded-2xl opacity-90" onerror="this.src='https://placehold.co/600x400/1e293b/FFF?text=Premium+Accounts'">
+                    
+                    <!-- Floating Cards -->
+                    <div class="absolute -bottom-6 -right-6 bg-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-slow">
+                        <div class="w-10 h-10 bg-[#1DB954] rounded-full flex items-center justify-center text-white"><i class="fab fa-spotify"></i></div>
+                        <div>
+                            <div class="text-sm font-bold text-slate-900">Spotify Premium</div>
+                            <div class="text-xs text-slate-500">فعال‌سازی فوری</div>
+                        </div>
+                    </div>
+                    
+                    <div class="absolute -top-6 -left-6 bg-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-slow delay-1s">
+                        <div class="w-10 h-10 bg-[#E50914] rounded-full flex items-center justify-center text-white"><i class="fab fa-netflix"></i></div>
+                        <div>
+                            <div class="text-sm font-bold text-slate-900">Netflix Ultra HD</div>
+                            <div class="text-xs text-slate-500">کاملا قانونی</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Grid -->
+<section id="features" class="py-20 bg-slate-50">
+    <div class="container mx-auto px-4">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+            <h2 class="section-title text-3xl font-bold text-slate-900 mb-4">چرا به ما اعتماد کنید؟</h2>
+            <p class="text-slate-600">ما متعهد به ارائه بهترین خدمات با بالاترین کیفیت و پشتیبانی واقعی هستیم.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Feature 1 -->
+            <div class="card group hover:shadow-md transition-all animate-fade-up">
+                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-900">تحویل آنی</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">سیستم اتوماتیک ما بلافاصله پس از پرداخت، اطلاعات اکانت را برای شما ارسال می‌کند.</p>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="card group hover:shadow-md transition-all animate-fade-up">
+                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-900">تضمین امنیت</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">تمامی اکانت‌ها قانونی بوده و دارای ضمانت کامل تا آخرین روز اشتراک می‌باشند.</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="card group hover:shadow-md transition-all animate-fade-up">
+                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-900">پشتیبانی ۲۴ ساعته</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">تیم پشتیبانی ما در ۷ روز هفته آماده پاسخگویی به سوالات و مشکلات شماست.</p>
+            </div>
+            
+             <!-- Feature 4 -->
+            <div class="card group hover:shadow-md transition-all animate-fade-up">
+                 <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-900">قیمت رقابتی</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">حذف واسطه‌ها به ما اجازه می‌دهد بهترین قیمت ممکن را به شما ارائه دهیم.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Latest Products -->
+<section class="py-20">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between mb-10">
+            <h2 class="section-title text-2xl md:text-3xl font-bold text-slate-900">جدیدترین محصولات</h2>
+            <a href="{% url 'shop:product_list' %}" class="flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                مشاهده همه
+               <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Product Card Mockup 1 -->
+            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
+                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
+                    <img src="https://placehold.co/400x300?text=Spotify" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <div class="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">20% تخفیف</div>
+                </div>
+                <div class="flex flex-col flex-grow">
+                    <div class="flex items-start justify-between mb-2">
+                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">موزیک</div>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
+                        <a href="#">اکانت پرمیوم اسپاتیفای</a>
+                    </h3>
+                    <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-slate-400 line-through">120,000</span>
+                            <span class="text-lg font-black text-slate-900">98,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
+                        </div>
+                        <button class="btn-icon w-10 h-10">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+             <!-- Product Card Mockup 2 -->
+            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
+                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
+                     <img src="https://placehold.co/400x300?text=Netflix" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="flex flex-col flex-grow">
+                     <div class="flex items-start justify-between mb-2">
+                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">فیلم و سریال</div>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
+                        <a href="#">اشتراک نتفلیکس 4K</a>
+                    </h3>
+                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black text-slate-900">185,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
+                        </div>
+                        <button class="btn-icon w-10 h-10">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Product Card Mockup 3 -->
+            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
+                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
+                     <img src="https://placehold.co/400x300?text=YouTube" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="flex flex-col flex-grow">
+                     <div class="flex items-start justify-between mb-2">
+                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">ویدیو</div>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
+                        <a href="#">YouTube Premium</a>
+                    </h3>
+                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black text-slate-900">75,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
+                        </div>
+                        <button class="btn-icon w-10 h-10">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Product Card Mockup 4 -->
+            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
+                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
+                     <img src="https://placehold.co/400x300?text=Apple" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="flex flex-col flex-grow">
+                     <div class="flex items-start justify-between mb-2">
+                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">اپل</div>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
+                        <a href="#">Apple Music</a>
+                    </h3>
+                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black text-slate-900">110,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
+                        </div>
+                        <button class="btn-icon w-10 h-10">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- Stats/CTA -->
+<section class="py-20 bg-primary-600 relative overflow-hidden">
+     <div class="absolute inset-0 opacity-10 pattern-dots"></div>
+     <div class="container mx-auto px-4 relative z-10 text-center text-white">
+        <h2 class="section-title text-3xl md:text-4xl font-black mb-6">هنوز مطمئن نیستید؟</h2>
+        <p class="text-lg text-primary-100 mb-10 max-w-2xl mx-auto">همین حالا با کارشناسان ما تماس بگیرید یا در بخش سوالات متداول پاسخ خود را بیابید.</p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="#" class="btn btn-primary bg-white text-primary-700 hover:bg-primary-50 px-8 py-3 text-lg font-bold smooth-hover">سوالات متداول</a>
+            <a href="#" class="btn btn-secondary border border-primary-200 text-white hover:bg-primary-700 hover:border-primary-700 px-8 py-3 text-lg smooth-hover">ارسال تیکت</a>
+        </div>
+     </div>
+</section>
+{% endblock %}
