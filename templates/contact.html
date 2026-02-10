@@ -12,7 +12,7 @@
       برای پیگیری سفارش، سوالات پیش از خرید یا گزارش مشکل از مسیرهای زیر استفاده کنید تا سریع‌تر راهنمایی شوید.
     </p>
     <div class="flex flex-col sm:flex-row gap-3 pt-1">
-      <a href="{% url 'support:chat' %}" class="btn btn-primary">چت پشتیبانی</a>
+      <a href="{% url 'support:chat' %}" class="btn btn-primary smooth-hover">چت پشتیبانی</a>
       {% if site_settings.telegram_admin_url %}
         <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
           ارتباط تلگرام
