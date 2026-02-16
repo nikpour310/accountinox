@@ -31,13 +31,13 @@ echo "Installing Accountinox -> $APP_DIR (DB: $DB_CHOICE)"
 apt_update_install() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
-  apt-get install -y git curl "$PYTHON_BIN" "${PYTHON_BIN}-venv" "${PYTHON_BIN}-dev" build-essential nginx openssl pkg-config libssl-dev libffi-dev libmariadb-dev default-libmysqlclient-dev
+  apt-get install -y git curl "$PYTHON_BIN" "${PYTHON_BIN}-venv" "${PYTHON_BIN}-dev" build-essential nginx openssl pkg-config libssl-dev libffi-dev
   if [ "$DB_CHOICE" = "postgres" ]; then
     apt-get install -y postgresql libpq-dev
   elif [ "$DB_CHOICE" = "mysql" ]; then
     apt-get install -y default-mysql-server default-libmysqlclient-dev
   elif [ "$DB_CHOICE" = "mariadb" ]; then
-    apt-get install -y mariadb-server default-libmysqlclient-dev
+    apt-get install -y mariadb-server libmariadb-dev
   fi
   if [ "$USE_REDIS" = "1" ]; then
     apt-get install -y redis-server
