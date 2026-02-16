@@ -84,6 +84,8 @@ clone_repo_and_venv() {
   if [ -f "$APP_DIR/requirements.txt" ]; then
     pip install --no-cache-dir -r "$APP_DIR/requirements.txt"
   fi
+  # Ensure PyJWT is available for packages that import `jwt` during app startup
+  pip install --no-cache-dir PyJWT
   pip install --upgrade "gunicorn" "uvicorn[standard]" "django-environ"
   deactivate
 }
