@@ -4,23 +4,35 @@ from .models import GlobalFAQ, HeroBanner, TrustStat, FeatureCard, FooterLink
 
 
 def landing(request):
-    faqs = GlobalFAQ.objects.all()[:10]
+    try:
+        faqs = list(GlobalFAQ.objects.all()[:10])
+    except Exception:
+        faqs = []
 
     # Active hero banners for the slider
-    banners = list(HeroBanner.objects.filter(is_active=True)[:10])
+    try:
+        banners = list(HeroBanner.objects.filter(is_active=True)[:10])
+    except Exception:
+        banners = []
 
     # Trust stats strip
-    trust_stats = TrustStat.objects.filter(is_active=True)[:6]
+    try:
+        trust_stats = list(TrustStat.objects.filter(is_active=True)[:6])
+    except Exception:
+        trust_stats = []
 
     # Feature cards
-    feature_cards = FeatureCard.objects.filter(is_active=True)[:8]
+    try:
+        feature_cards = list(FeatureCard.objects.filter(is_active=True)[:8])
+    except Exception:
+        feature_cards = []
 
     # Latest products for the landing page grid
     try:
         from apps.shop.models import Product
-        latest_products = Product.objects.select_related(
+        latest_products = list(Product.objects.select_related(
             'category', 'service'
-        ).filter(is_active=True).order_by('-created_at', '-pk')[:8]
+        ).filter(is_active=True).order_by('-created_at', '-pk')[:8])
     except Exception:
         latest_products = []
 
@@ -29,16 +41,16 @@ def landing(request):
         from apps.shop.models import Service
         from django.db import models
         from django.db.models import Count
-        services = Service.objects.filter(active=True).annotate(
+        services = list(Service.objects.filter(active=True).annotate(
             products_count=Count('products', filter=models.Q(products__is_active=True))
-        ).order_by('order', 'name')[:6]
+        ).order_by('order', 'name')[:6])
     except Exception:
         services = []
 
     # Latest published blog posts
     try:
         from apps.blog.models import Post
-        latest_posts = Post.objects.filter(published=True).order_by('-created_at')[:3]
+        latest_posts = list(Post.objects.filter(published=True).order_by('-created_at')[:3])
     except Exception:
         latest_posts = []
 

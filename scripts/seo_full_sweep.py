@@ -191,3 +191,142 @@ with open('seo_full_sweep_summary.json', 'w', encoding='utf-8') as fh:
 
 print('Done. total=', counts['total'], 'failed=', counts['failed'])
 print('Summary written to seo_full_sweep_summary.json')
+
+# --- Extended audit pass (redirects, headers, hreflang, accessibility, fonts, JSON-LD coverage)
+EXT_COUNTS = {'total': 0, 'issues': 0}
+EXT_FAILURES = []
+
+def check_page_extended(url, html, resp):
+    issues = []
+    # Redirect chain
+    if resp.history:
+        chain = [{'code': h.status_code, 'url': h.headers.get('Location') or ''} for h in resp.history]
+        issues.append({'code': 'REDIRECT_CHAIN', 'msg': chain})
+
+    # canonical vs final url
+    canon_match = re.search(r'<link[^>]+rel=["\']canonical["\'][^>]*href=["\']([^"\']+)["\']', html, re.I)
+    final_url = resp.url
+    if canon_match:
+        canon = canon_match.group(1)
+        if not canon.startswith('https://'):
+            issues.append({'code': 'CANONICAL_NOT_HTTPS_EXT', 'msg': canon})
+        # if redirect final differs from canonical path
+        if urlparse(canon).path != urlparse(final_url).path:
+            issues.append({'code': 'CANONICAL_VS_FINAL_MISMATCH', 'msg': {'canonical': canon, 'final': final_url}})
+    else:
+        issues.append({'code': 'CANONICAL_MISSING_EXT', 'msg': ''})
+
+    # hreflang
+    hreflangs = re.findall(r'<link[^>]+rel=["\']alternate["\'][^>]*hreflang=["\']([^"\']+)["\'][^>]*href=["\']([^"\']+)["\']', html, re.I)
+    if hreflangs:
+        # check absolute
+        for lang, href in hreflangs:
+            if not href.startswith('https://'):
+                issues.append({'code': 'HREFLANG_NOT_ABSOLUTE', 'msg': {'lang': lang, 'href': href}})
+
+    # security headers
+    sec_headers = resp.headers
+    if 'strict-transport-security' not in {k.lower() for k in sec_headers.keys()}:
+        issues.append({'code': 'HSTS_MISSING', 'msg': ''})
+    if 'content-security-policy' not in {k.lower() for k in sec_headers.keys()}:
+        issues.append({'code': 'CSP_MISSING', 'msg': ''})
+
+    # caching headers
+    cache_ok = False
+    cc = sec_headers.get('Cache-Control') or ''
+    if cc and ('max-age' in cc or 'public' in cc):
+        cache_ok = True
+    if not cache_ok:
+        issues.append({'code': 'CACHE_HEADERS_MISSING', 'msg': cc})
+
+    # resource hints: preload fonts, preconnect/dns-prefetch
+    if not re.search(r'<link[^>]+rel=["\']preload["\'][^>]*as=["\']font["\']', html, re.I):
+        issues.append({'code': 'FONT_PRELOAD_MISSING', 'msg': ''})
+    if not re.search(r'<link[^>]+rel=["\']preconnect|dns-prefetch["\']', html, re.I):
+        issues.append({'code': 'RESOURCE_HINTS_MISSING', 'msg': ''})
+
+    # accessibility: images missing alt or empty alt
+    imgs = re.findall(r'<img\b[^>]*>', html, re.I)
+    missing_alt = 0
+    for im in imgs:
+        if not re.search(r'\balt=\s*["\']', im, re.I):
+            missing_alt += 1
+        else:
+            m = re.search(r'\balt=\s*["\']([^"\']*)["\']', im, re.I)
+            if m and m.group(1).strip() == '':
+                missing_alt += 1
+    if missing_alt:
+        issues.append({'code': 'IMAGES_MISSING_ALT', 'msg': f'{missing_alt} images'})
+
+    # JSON-LD coverage heuristics
+    expected = None
+    p = urlparse(url).path
+    if '/shop/product/' in p:
+        expected = 'product'
+    elif p.startswith('/blog/'):
+        expected = 'article'
+    elif p.startswith('/shop') or p == '/' or p.startswith('/category'):
+        expected = 'breadcrumb'
+
+    scripts = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.I | re.S)
+    parsed_ok = True
+    parsed_objs = []
+    for block in scripts:
+        txt = block.strip()
+        if not txt:
+            continue
+        try:
+            obj = json.loads(txt)
+            parsed_objs.append(obj)
+        except Exception:
+            parsed_ok = False
+    if expected and not parsed_ok:
+        issues.append({'code': 'JSONLD_PARSE_EXT', 'msg': ''})
+    # if expected product, check product present
+    if expected == 'product':
+        found = False
+        for obj in parsed_objs:
+            typ = (obj.get('@type') or '').lower() if isinstance(obj, dict) else ''
+            if 'product' in typ:
+                found = True
+        if not found:
+            issues.append({'code': 'JSONLD_PRODUCT_MISSING', 'msg': ''})
+    if expected == 'article':
+        found = False
+        for obj in parsed_objs:
+            typ = (obj.get('@type') or '').lower() if isinstance(obj, dict) else ''
+            if 'article' in typ or 'blogposting' in typ or 'newsarticle' in typ:
+                found = True
+        if not found:
+            issues.append({'code': 'JSONLD_ARTICLE_MISSING', 'msg': ''})
+
+    return issues
+
+
+print('Running extended audit across sitemap URLs...')
+for url in locs:
+    EXT_COUNTS['total'] += 1
+    time.sleep(RATE_DELAY)
+    # Prefer using local BASE mapping to avoid DNS issues for hostnames like 'http://accountinox/...'
+    parsed = urlparse(url)
+    fetch_url = BASE + parsed.path
+    if parsed.query:
+        fetch_url += '?' + parsed.query
+    try:
+        r = requests.get(fetch_url, timeout=30, allow_redirects=True)
+    except Exception as e:
+        EXT_FAILURES.append({'url': url, 'errors': [{'code': 'HTTP_ERROR_EXT', 'msg': str(e)}]})
+        EXT_COUNTS['issues'] += 1
+        continue
+    html = r.text
+    ex_issues = check_page_extended(url, html, r)
+    if ex_issues:
+        EXT_FAILURES.append({'url': url, 'errors': ex_issues})
+        EXT_COUNTS['issues'] += 1
+
+ext_summary = {'counts': EXT_COUNTS, 'failures': EXT_FAILURES}
+with open('seo_full_audit_summary.json', 'w', encoding='utf-8') as fh:
+    json.dump(ext_summary, fh, indent=2, ensure_ascii=False)
+
+print('Extended audit done. total=', EXT_COUNTS['total'], 'issues=', EXT_COUNTS['issues'])
+print('Extended summary written to seo_full_audit_summary.json')

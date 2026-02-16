@@ -4,7 +4,7 @@ import socket
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
-BASE = 'http://127.0.0.1:8005'
+BASE = 'http://127.0.0.1:8000'
 PATHS = [
     '/',
     '/shop/',

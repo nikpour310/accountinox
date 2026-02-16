@@ -1,0 +1,261 @@
+[
+  {
+    "url": "http://127.0.0.1:8005/shop/product/dropbox-plus-1m/",
+    "status": 200,
+    "canonical_count": 1,
+    "canonical_href": "https://example.com/shop/product/dropbox-plus-1m/",
+    "canonical_ok": true,
+    "canonical_leaks": [],
+    "og_url": "https://example.com/shop/product/dropbox-plus-1m/",
+    "jsonld_blocks": [
+      "{\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"WebSite\",\n      \"name\": \"Accountinox\",\n      \"url\": \"https://example.com\"\n    }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Product\",\n    \"name\": \"Dropbox Plus ۱ ماهه\",\n    \"description\": \"۲ ترابایت فضای ذخیره‌سازی Dropbox.\",\n    \"url\": \"https://example.com/shop/product/dropbox-plus-1m/\",\n    \"image\": \"https://example.com/static/img/og-fallback.svg\",\n    \"offers\": {\n      \"@type\": \"Offer\",\n      \"priceCurrency\": \"IRR\",\n      \"price\": \"195000\",\n      \"availability\": \"https://schema.org/InStock\",\n      \"url\": \"https://example.com/shop/product/dropbox-plus-1m/\"\n    }\n  }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"BreadcrumbList\",\n    \"itemListElement\": [\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 1,\n        \"name\": \"خانه\",\n        \"item\": \"https://example.com/\"\n      },\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 2,\n        \"name\": \"فروشگاه\",\n        \"item\": \"https://example.com/shop/\"\n      },\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 3,\n        \"name\": \"Dropbox Plus ۱ ماهه\",\n        \"item\": \"https://example.com/shop/product/dropbox-plus-1m/\"\n      }\n      \n    ]\n  }"
+    ],
+    "jsonld_parsed": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Accountinox",
+        "url": "https://example.com"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Dropbox Plus ۱ ماهه",
+        "description": "۲ ترابایت فضای ذخیره‌سازی Dropbox.",
+        "url": "https://example.com/shop/product/dropbox-plus-1m/",
+        "image": "https://example.com/static/img/og-fallback.svg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "IRR",
+          "price": "195000",
+          "availability": "https://schema.org/InStock",
+          "url": "https://example.com/shop/product/dropbox-plus-1m/"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "خانه",
+            "item": "https://example.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "فروشگاه",
+            "item": "https://example.com/shop/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Dropbox Plus ۱ ماهه",
+            "item": "https://example.com/shop/product/dropbox-plus-1m/"
+          }
+        ]
+      }
+    ],
+    "jsonld_parse_errors": [],
+    "robots_count": 1,
+    "robots_meta": "index,follow",
+    "checks": []
+  },
+  {
+    "url": "http://127.0.0.1:8005/shop/product/google-one-100gb-1y/",
+    "status": 200,
+    "canonical_count": 1,
+    "canonical_href": "https://example.com/shop/product/google-one-100gb-1y/",
+    "canonical_ok": true,
+    "canonical_leaks": [],
+    "og_url": "https://example.com/shop/product/google-one-100gb-1y/",
+    "jsonld_blocks": [
+      "{\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"WebSite\",\n      \"name\": \"Accountinox\",\n      \"url\": \"https://example.com\"\n    }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Product\",\n    \"name\": \"Google One 100 GB ۱ ساله\",\n    \"description\": \"فضای ابری ۱۰۰ گیگابایت گوگل.\",\n    \"url\": \"https://example.com/shop/product/google-one-100gb-1y/\",\n    \"image\": \"https://example.com/static/img/og-fallback.svg\",\n    \"offers\": {\n      \"@type\": \"Offer\",\n      \"priceCurrency\": \"IRR\",\n      \"price\": \"320000\",\n      \"availability\": \"https://schema.org/InStock\",\n      \"url\": \"https://example.com/shop/product/google-one-100gb-1y/\"\n    }\n  }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"BreadcrumbList\",\n    \"itemListElement\": [\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 1,\n        \"name\": \"خانه\",\n        \"item\": \"https://example.com/\"\n      },\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 2,\n        \"name\": \"فروشگاه\",\n        \"item\": \"https://example.com/shop/\"\n      },\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 3,\n        \"name\": \"Google One 100 GB ۱ ساله\",\n        \"item\": \"https://example.com/shop/product/google-one-100gb-1y/\"\n      }\n      \n    ]\n  }"
+    ],
+    "jsonld_parsed": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Accountinox",
+        "url": "https://example.com"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Google One 100 GB ۱ ساله",
+        "description": "فضای ابری ۱۰۰ گیگابایت گوگل.",
+        "url": "https://example.com/shop/product/google-one-100gb-1y/",
+        "image": "https://example.com/static/img/og-fallback.svg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "IRR",
+          "price": "320000",
+          "availability": "https://schema.org/InStock",
+          "url": "https://example.com/shop/product/google-one-100gb-1y/"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "خانه",
+            "item": "https://example.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "فروشگاه",
+            "item": "https://example.com/shop/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Google One 100 GB ۱ ساله",
+            "item": "https://example.com/shop/product/google-one-100gb-1y/"
+          }
+        ]
+      }
+    ],
+    "jsonld_parse_errors": [],
+    "robots_count": 1,
+    "robots_meta": "index,follow",
+    "checks": []
+  },
+  {
+    "url": "http://127.0.0.1:8005/blog/audit-post/",
+    "status": 200,
+    "canonical_count": 1,
+    "canonical_href": "https://example.com/blog/audit-post/",
+    "canonical_ok": true,
+    "canonical_leaks": [],
+    "og_url": "https://example.com/blog/audit-post/",
+    "jsonld_blocks": [
+      "{\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"WebSite\",\n      \"name\": \"Accountinox\",\n      \"url\": \"https://example.com\"\n    }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Article\",\n    \"headline\": \"Audit Post\",\n    \"description\": \"audit content\",\n    \"url\": \"https://example.com/blog/audit-post/\",\n    \"datePublished\": \"2026-02-07T15:40:25.419219+03:30\",\n    \"dateModified\": \"2026-02-07T15:40:25.419219+03:30\",\n    \"image\": \"https://example.com/static/img/og-fallback.svg\",\n    \"author\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Accountinox\"\n    },\n    \"publisher\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Accountinox\"\n    }\n  }"
+    ],
+    "jsonld_parsed": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Accountinox",
+        "url": "https://example.com"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Audit Post",
+        "description": "audit content",
+        "url": "https://example.com/blog/audit-post/",
+        "datePublished": "2026-02-07T15:40:25.419219+03:30",
+        "dateModified": "2026-02-07T15:40:25.419219+03:30",
+        "image": "https://example.com/static/img/og-fallback.svg",
+        "author": {
+          "@type": "Organization",
+          "name": "Accountinox"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Accountinox"
+        }
+      }
+    ],
+    "jsonld_parse_errors": [],
+    "robots_count": 1,
+    "robots_meta": "index,follow",
+    "checks": []
+  },
+  {
+    "url": "http://127.0.0.1:8005/blog/release-smoke-post/",
+    "status": 200,
+    "canonical_count": 1,
+    "canonical_href": "https://example.com/blog/release-smoke-post/",
+    "canonical_ok": true,
+    "canonical_leaks": [],
+    "og_url": "https://example.com/blog/release-smoke-post/",
+    "jsonld_blocks": [
+      "{\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"WebSite\",\n      \"name\": \"Accountinox\",\n      \"url\": \"https://example.com\"\n    }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Article\",\n    \"headline\": \"Release Smoke Post\",\n    \"description\": \"smoke\",\n    \"url\": \"https://example.com/blog/release-smoke-post/\",\n    \"datePublished\": \"2026-02-07T15:31:49.096643+03:30\",\n    \"dateModified\": \"2026-02-07T15:31:49.096643+03:30\",\n    \"image\": \"https://example.com/static/img/og-fallback.svg\",\n    \"author\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Accountinox\"\n    },\n    \"publisher\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Accountinox\"\n    }\n  }"
+    ],
+    "jsonld_parsed": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Accountinox",
+        "url": "https://example.com"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Release Smoke Post",
+        "description": "smoke",
+        "url": "https://example.com/blog/release-smoke-post/",
+        "datePublished": "2026-02-07T15:31:49.096643+03:30",
+        "dateModified": "2026-02-07T15:31:49.096643+03:30",
+        "image": "https://example.com/static/img/og-fallback.svg",
+        "author": {
+          "@type": "Organization",
+          "name": "Accountinox"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Accountinox"
+        }
+      }
+    ],
+    "jsonld_parse_errors": [],
+    "robots_count": 1,
+    "robots_meta": "index,follow",
+    "checks": []
+  },
+  {
+    "url": "http://127.0.0.1:8005/shop/",
+    "status": 200,
+    "canonical_count": 1,
+    "canonical_href": "https://example.com/shop/",
+    "canonical_ok": true,
+    "canonical_leaks": [],
+    "og_url": "https://example.com/shop/",
+    "jsonld_blocks": [
+      "{\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"WebSite\",\n      \"name\": \"Accountinox\",\n      \"url\": \"https://example.com\"\n    }",
+      "{\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"BreadcrumbList\",\n    \"itemListElement\": [\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 1,\n        \"name\": \"خانه\",\n        \"item\": \"https://example.com/\"\n      },\n      {\n        \"@type\": \"ListItem\",\n        \"position\": 2,\n        \"name\": \"فروشگاه\",\n        \"item\": \"https://example.com/shop/\"\n      }\n    ]\n  }"
+    ],
+    "jsonld_parsed": [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Accountinox",
+        "url": "https://example.com"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "خانه",
+            "item": "https://example.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "فروشگاه",
+            "item": "https://example.com/shop/"
+          }
+        ]
+      }
+    ],
+    "jsonld_parse_errors": [],
+    "robots_count": 1,
+    "robots_meta": "index,follow",
+    "checks": []
+  }
+]

@@ -19,8 +19,8 @@ def site_settings(request):
     # Footer links (grouped as quick / legal)
     try:
         from apps.core.models import FooterLink
-        footer_links_quick = FooterLink.objects.filter(is_active=True, column='quick')
-        footer_links_legal = FooterLink.objects.filter(is_active=True, column='legal')
+        footer_links_quick = list(FooterLink.objects.filter(is_active=True, column='quick'))
+        footer_links_legal = list(FooterLink.objects.filter(is_active=True, column='legal'))
     except Exception:
         footer_links_quick = []
         footer_links_legal = []

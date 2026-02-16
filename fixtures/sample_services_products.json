@@ -1,0 +1,223 @@
+[
+  {
+    "model": "shop.service",
+    "pk": 1,
+    "fields": {
+      "name": "سرویس‌های موزیک",
+      "slug": "music-services",
+      "description": "اشتراک‌های استریم موسیقی",
+      "icon": "🎵",
+      "active": true,
+      "order": 10
+    }
+  },
+  {
+    "model": "shop.service",
+    "pk": 2,
+    "fields": {
+      "name": "سرویس‌های ویدیو",
+      "slug": "video-services",
+      "description": "پلتفرم‌های استریم فیلم و سریال",
+      "icon": "🎬",
+      "active": true,
+      "order": 20
+    }
+  },
+  {
+    "model": "shop.service",
+    "pk": 3,
+    "fields": {
+      "name": "ابزارهای طراحی",
+      "slug": "design-tools",
+      "description": "لایسنس نرم‌افزارهای طراحی و گرافیک",
+      "icon": "🎨",
+      "active": true,
+      "order": 30
+    }
+  },
+  {
+    "model": "shop.service",
+    "pk": 4,
+    "fields": {
+      "name": "سرویس‌های ابری",
+      "slug": "cloud-services",
+      "description": "فضای ذخیره‌سازی و سرویس‌های ابری",
+      "icon": "☁️",
+      "active": true,
+      "order": 40
+    }
+  },
+
+  {
+    "model": "shop.product",
+    "pk": 1,
+    "fields": {
+      "service": 1,
+      "title": "اسپاتیفای پریمیوم ۱ ماهه",
+      "slug": "spotify-premium-1m",
+      "description": "اشتراک یک‌ماهه Spotify Premium با تحویل فوری.",
+      "price": "89000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 2,
+    "fields": {
+      "service": 1,
+      "title": "اسپاتیفای فمیلی ۳ ماهه",
+      "slug": "spotify-family-3m",
+      "description": "اشتراک سه‌ماهه Spotify Family (حداکثر ۶ نفر).",
+      "price": "215000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 3,
+    "fields": {
+      "service": 1,
+      "title": "اسپاتیفای پریمیوم ۶ ماهه",
+      "slug": "spotify-premium-6m",
+      "description": "اشتراک شش‌ماهه با تخفیف ویژه.",
+      "price": "399000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 4,
+    "fields": {
+      "service": 1,
+      "title": "Apple Music ۱ ماهه",
+      "slug": "apple-music-1m",
+      "description": "اشتراک یک‌ماهه اپل موزیک.",
+      "price": "110000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+
+  {
+    "model": "shop.product",
+    "pk": 5,
+    "fields": {
+      "service": 2,
+      "title": "نتفلیکس 4K پرمیوم ۱ ماهه",
+      "slug": "netflix-4k-1m",
+      "description": "اشتراک نتفلیکس کیفیت ۴K.",
+      "price": "185000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 6,
+    "fields": {
+      "service": 2,
+      "title": "نتفلیکس استاندارد ۱ ماهه",
+      "slug": "netflix-standard-1m",
+      "description": "اشتراک نتفلیکس کیفیت Full-HD.",
+      "price": "135000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 7,
+    "fields": {
+      "service": 2,
+      "title": "YouTube Premium ۱ ماهه",
+      "slug": "youtube-premium-1m",
+      "description": "بدون تبلیغات + YouTube Music.",
+      "price": "75000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 8,
+    "fields": {
+      "service": 2,
+      "title": "Disney+ ۱ ماهه",
+      "slug": "disney-plus-1m",
+      "description": "اشتراک Disney Plus با محتوای انحصاری.",
+      "price": "155000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+
+  {
+    "model": "shop.product",
+    "pk": 9,
+    "fields": {
+      "service": 3,
+      "title": "لایسنس Figma Pro ۱ ماهه",
+      "slug": "figma-pro-1m",
+      "description": "اکانت فیگما پرو برای طراحان UI/UX.",
+      "price": "249000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 10,
+    "fields": {
+      "service": 3,
+      "title": "Canva Pro ۱ ماهه",
+      "slug": "canva-pro-1m",
+      "description": "دسترسی کامل به قالب‌ها و ابزارهای Canva.",
+      "price": "120000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 11,
+    "fields": {
+      "service": 3,
+      "title": "Adobe Creative Cloud ۱ ماهه",
+      "slug": "adobe-cc-1m",
+      "description": "شامل Photoshop، Illustrator و سایر نرم‌افزارها.",
+      "price": "450000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+
+  {
+    "model": "shop.product",
+    "pk": 12,
+    "fields": {
+      "service": 4,
+      "title": "Google One 100 GB ۱ ساله",
+      "slug": "google-one-100gb-1y",
+      "description": "فضای ابری ۱۰۰ گیگابایت گوگل.",
+      "price": "320000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  },
+  {
+    "model": "shop.product",
+    "pk": 13,
+    "fields": {
+      "service": 4,
+      "title": "Dropbox Plus ۱ ماهه",
+      "slug": "dropbox-plus-1m",
+      "description": "۲ ترابایت فضای ذخیره‌سازی Dropbox.",
+      "price": "195000.00",
+      "category": null,
+      "featured_image": ""
+    }
+  }
+]

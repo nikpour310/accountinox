@@ -209,14 +209,20 @@ def _checkout_initial_data(request):
 
 
 def product_list(request):
-    products = Product.objects.filter(is_active=True).select_related('category', 'service')[:20]
+    try:
+        products = Product.objects.filter(is_active=True).select_related('category', 'service')[:20]
+    except Exception:
+        products = []
     return render(request, 'shop/product_list.html', {'products': products})
 
 
 def service_list(request):
-    services = Service.objects.filter(active=True).annotate(
-        products_count=Count('products', filter=models.Q(products__is_active=True))
-    ).order_by('order', 'name')
+    try:
+        services = Service.objects.filter(active=True).annotate(
+            products_count=Count('products', filter=models.Q(products__is_active=True))
+        ).order_by('order', 'name')
+    except Exception:
+        services = []
     return render(request, 'shop/services_list.html', {'services': services})
 
 

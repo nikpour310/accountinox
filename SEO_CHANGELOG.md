@@ -375,5 +375,56 @@ Notes / next actions:
 
 Files produced:
 - `seo_full_sweep_summary.json` — full JSON summary (in repo root)
+**Quick Inspection & Prioritized Fixes (executive summary)**
+
+Scope run: automated sitemap sweep (local), canonical/JSON-LD parsing for sampled pages, and static repo inspection for headers, fonts and resource hints.
+
+High-level findings (actions completed):
+- Canonical handling: implemented via `canonical_url` tag and wired into `templates/base.html`. Local sweep shows canonical tags are absolute `https://example.com/...` for sampled pages.
+- Sitemap: tightened in `config/sitemaps.py` to include only indexable products/posts.
+- JSON-LD: Product, Article and BreadcrumbList JSON-LD blocks added/validated on sampled pages.
+
+High-priority issues and fixes (recommended, actionable):
+1) Canonical vs final URL / redirects
+  - Finding: sitemap contains hostnames like `http://accountinox/...` which are non-resolvable from local QA. Local sweep used a fallback mapping (mapped paths to `http://127.0.0.1:8005`) to validate pages.
+  - Fix: regenerate sitemap using `SITE_BASE_URL` (ensure `SITE_BASE_URL` env var is set to the canonical production host) so sitemap URLs resolve in CI and external validators.
+
+2) Hreflang / Internationalization
+  - Finding: no `hreflang` links observed in templates. If you support multiple languages/regions, add `<link rel="alternate" hreflang="xx" href="https://...">` entries.
+  - Fix: add hreflang generation in `base.html` or via a small context processor that outputs canonical absolute URLs per language.
+
+3) Security headers (production)
+  - Finding: `Strict-Transport-Security` (HSTS) and `Content-Security-Policy` (CSP) are not set in templates — HSTS is configured in `settings.py` only when `DEBUG=False` (production). CSP not configured in settings.
+  - Fix: configure CSP header (start in report-only mode), enable HSTS in production with conservative values, and validate in staging before increasing HSTS duration.
+
+4) Fonts & resource hints (performance)
+  - Finding: `templates/base.html` includes `preconnect` to Google Fonts but does not `preload` font files. Fonts are loaded via Google Fonts stylesheet (render-blocking). No font `preload` observed.
+  - Fix: consider self-hosting critical fonts or use `link rel="preload" as="font" crossorigin href="..."` for critical fonts, and `font-display: swap` in CSS. Keep `preconnect` to Google Fonts if continuing to use them.
+
+5) Caching and CDN
+  - Finding: caching headers depend on runtime (`DEBUG`); staticfiles storage uses manifest hashed files in production. No CDN-specific headers detected in repo (depends on deployment).
+  - Fix: ensure static assets are served via a CDN (or reverse proxy) in production with proper Cache-Control max-age and immutable headers for hashed assets.
+
+6) Accessibility (image alt)
+  - Finding: central `partials/image.html` now provides alt fallbacks; there are still some direct `<img>` usages in templates (intentional to avoid DOM changes). A small number of templates may still output `<img alt="">` — these should be converted to the partial where safe.
+  - Fix: run an accessibility audit (axe / lighthouse) and convert remaining direct `<img>` usages to `partials/image.html` or `image_plain.html` where alt text is required.
+
+Medium-priority checks (recommendations / next steps):
+- Run `scripts/analyze_site.py` (Django test client) in CI/staging to capture header presence, cookie attributes, and large images.
+- Run the extended audit (`scripts/seo_full_sweep.py`) against a staging/prod `SITE_BASE_URL` to collect `seo_full_audit_summary.json` under a live host (no code changes required). Example:
+
+  venv/Scripts/python.exe scripts/seo_full_sweep.py https://staging.example.com
+
+- Run Lighthouse / WebPageTest for prioritized pages (home, product, listing, blog) to measure and fix render-blocking resources.
+
+Summary (status):
+- Inspect URL structure & redirects: reviewed and validated locally via fallback mapping; sitemap needs canonical host fix for external validation.
+- Summarize findings & prioritized fixes: completed (this section).
+- Performance & static files audit: initial static findings provided above; recommend running `analyze_site.py` plus Lighthouse for deeper results.
+- Accessibility & structured-data review: JSON-LD validated for sampled pages; recommend running full sitemap structured-data sweep in staging/prod and an a11y scan with axe in CI.
+
+If you want, I can:
+- Re-run `scripts/seo_full_sweep.py` against a staging/prod base URL you provide (no code changes) and attach `seo_full_audit_summary.json` to the PR, or
+- Start Phase 8 (performance headers & fonts) and open a branch with template/middleware suggestions.
 
 

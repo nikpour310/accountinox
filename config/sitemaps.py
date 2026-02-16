@@ -1,7 +1,5 @@
 from django.urls import reverse
 from django.contrib.sitemaps import Sitemap
-from apps.blog.models import Post
-from apps.shop.models import Product
 
 
 class StaticViewSitemap(Sitemap):
@@ -28,7 +26,11 @@ class BlogSitemap(Sitemap):
     priority = 0.6
 
     def items(self):
-        return Post.objects.filter(published=True).order_by('-created_at')
+        try:
+            from apps.blog.models import Post
+            return Post.objects.filter(published=True).order_by('-created_at')
+        except Exception:
+            return []
 
     def lastmod(self, obj):
         # prefer `updated_at` if model provides it, otherwise fall back to created_at
@@ -40,8 +42,11 @@ class ProductSitemap(Sitemap):
     priority = 0.7
 
     def items(self):
-        # Only include products that are active and available for sale
-        return Product.objects.filter(is_active=True, is_available=True).order_by('-id')
+        try:
+            from apps.shop.models import Product
+            return Product.objects.filter(is_active=True, is_available=True).order_by('-id')
+        except Exception:
+            return []
 
     def location(self, item):
         return reverse('shop:product_detail', args=[item.slug])
