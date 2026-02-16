@@ -12,14 +12,20 @@
 {% block nav-sidebar %}{% endblock %}
 
 {% block content %}
-<section class="admin-overview-card">
-  <h2>داشبورد عملیات</h2>
-  <p>Workspace مناسب را انتخاب کنید تا مهم‌ترین کارها را در ۱ تا ۲ کلیک انجام دهید.</p>
+<div class="dashboard-grid">
+<div class="dashboard-main">
+
+<section class="admin-overview-card admin-overview-card--gradient">
+  <div class="admin-overview-icon">👋</div>
+  <div>
+    <h2>داشبورد عملیات</h2>
+    <p>Workspace مناسب را انتخاب کنید تا مهم‌ترین کارها را در ۱ تا ۲ کلیک انجام دهید.</p>
+  </div>
 </section>
 
-<section class="admin-role-priority" aria-label="اقدام‌های اولویت‌دار نقش">
+<section class="admin-role-priority">
   <div class="admin-section-head">
-    <h2>اقدام‌های سریع شما</h2>
+    <h2>⚡ اقدام‌های سریع شما</h2>
     <p>بر اساس سطح دسترسی فعلی شما نمایش داده می‌شود.</p>
   </div>
   <div class="admin-workspace-actions admin-role-priority-links">
@@ -69,22 +75,31 @@
 <section
   class="admin-workspace-switcher"
   data-workspace-switcher
-  data-default-workspace="{% if admin_primary_role == 'content' %}blog{% elif admin_primary_role == 'crm' or admin_primary_role == 'support' %}support{% elif admin_primary_role == 'owner' %}support{% else %}settings{% endif %}"
+  data-default-workspace="{% if admin_primary_role == 'content' %}blog{% elif admin_primary_role == 'crm' or admin_primary_role == 'support' %}support{% elif admin_primary_role == 'owner' %}support{% else %}orders{% endif %}"
 >
   <div class="admin-workspace-tabs" role="tablist" aria-label="انتخاب فضای کاری">
-    <button type="button" class="admin-workspace-tab is-active" data-workspace-tab="support" role="tab" aria-selected="true">پشتیبانی</button>
-    <button type="button" class="admin-workspace-tab" data-workspace-tab="orders" role="tab" aria-selected="false">سفارش‌ها</button>
-    <button type="button" class="admin-workspace-tab" data-workspace-tab="products" role="tab" aria-selected="false">محصولات</button>
-    <button type="button" class="admin-workspace-tab" data-workspace-tab="blog" role="tab" aria-selected="false">بلاگ</button>
-    <button type="button" class="admin-workspace-tab" data-workspace-tab="settings" role="tab" aria-selected="false">تنظیمات</button>
+    <button type="button" class="admin-workspace-tab is-active" data-workspace-tab="support" role="tab" aria-selected="true">💬 پشتیبانی</button>
+    <button type="button" class="admin-workspace-tab" data-workspace-tab="orders" role="tab" aria-selected="false">🛒 سفارش‌ها</button>
+    <button type="button" class="admin-workspace-tab" data-workspace-tab="products" role="tab" aria-selected="false">📦 محصولات</button>
+    <button type="button" class="admin-workspace-tab" data-workspace-tab="blog" role="tab" aria-selected="false">✍️ بلاگ</button>
+    <button type="button" class="admin-workspace-tab" data-workspace-tab="content" role="tab" aria-selected="false">🎨 محتوای سایت</button>
+    {% if admin_primary_role == 'owner' %}
+    <button type="button" class="admin-workspace-tab" data-workspace-tab="settings" role="tab" aria-selected="false">⚙️ تنظیمات</button>
+    {% endif %}
   </div>
 
   <article class="admin-workspace-panel is-active" data-workspace-panel="support" role="tabpanel">
     <div class="admin-workspace-actions">
       {% if perms.support.view_chatsession %}
-        <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes">صندوق خوانده‌نشده</a>
-        <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&assigned_to__id__exact={{ user.id }}">گفتگوهای من</a>
-        <a href="{% url 'admin:support_chatsession_changelist' %}">همه گفتگوها</a>
+        <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes">📥 صندوق خوانده‌نشده</a>
+        <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&assigned_to__id__exact={{ user.id }}">👤 گفتگوهای من</a>
+        <a href="{% url 'admin:support_chatsession_changelist' %}">📋 همه گفتگوها</a>
+      {% endif %}
+      {% if perms.support.view_supportcontact %}
+        <a href="{% url 'admin:support_supportcontact_changelist' %}">📇 مخاطبین</a>
+      {% endif %}
+      {% if perms.support.view_supportrating %}
+        <a href="{% url 'admin:support_supportrating_changelist' %}">⭐ امتیازها</a>
       {% endif %}
     </div>
     <div class="admin-workspace-counters">
@@ -102,11 +117,13 @@
   <article class="admin-workspace-panel" data-workspace-panel="orders" role="tabpanel" hidden>
     <div class="admin-workspace-actions">
       {% if perms.shop.view_order %}
-        <a href="{% url 'admin:shop_order_changelist' %}?paid__exact=0">سفارش پرداخت‌نشده</a>
-        <a href="{% url 'admin:shop_order_changelist' %}">همه سفارش‌ها</a>
+        <a href="{% url 'admin:shop_order_changelist' %}?paid__exact=0">⏳ در انتظار پرداخت</a>
+        <a href="{% url 'admin:shop_order_changelist' %}?status__exact=pending_review">🔍 در بررسی</a>
+        <a href="{% url 'admin:shop_order_changelist' %}">📋 همه سفارش‌ها</a>
       {% endif %}
       {% if perms.shop.view_transactionlog %}
-        <a href="{% url 'admin:shop_transactionlog_changelist' %}?success__exact=0">تراکنش ناموفق</a>
+        <a href="{% url 'admin:shop_transactionlog_changelist' %}?success__exact=0">❌ تراکنش ناموفق</a>
+        <a href="{% url 'admin:shop_transactionlog_changelist' %}">💳 همه تراکنش‌ها</a>
       {% endif %}
     </div>
     <div class="admin-workspace-counters">
@@ -116,8 +133,8 @@
       {% if perms.shop.view_transactionlog %}
         <div><span>پرداخت ناموفق</span><strong>{{ admin_dashboard_stats.shop_failed_payments|default:"-" }}</strong></div>
       {% endif %}
-      {% if perms.shop.view_product %}
-        <div><span>محصول ثبت‌شده</span><strong>{{ admin_dashboard_stats.shop_products_count|default:"-" }}</strong></div>
+      {% if perms.shop.view_order %}
+        <div><span>کل سفارش‌ها</span><strong>{{ admin_dashboard_stats.shop_total_orders|default:"-" }}</strong></div>
       {% endif %}
     </div>
     <div class="admin-pinned-views" data-pinned-views data-pinned-scope="orders"></div>
@@ -126,24 +143,27 @@
   <article class="admin-workspace-panel" data-workspace-panel="products" role="tabpanel" hidden>
     <div class="admin-workspace-actions">
       {% if perms.shop.view_product %}
-        <a href="{% url 'admin:shop_product_changelist' %}">لیست محصولات</a>
+        <a href="{% url 'admin:shop_product_changelist' %}">📦 لیست محصولات</a>
       {% endif %}
       {% if perms.shop.add_product %}
-        <a href="{% url 'admin:shop_product_add' %}">افزودن محصول</a>
+        <a href="{% url 'admin:shop_product_add' %}">➕ افزودن محصول</a>
+      {% endif %}
+      {% if perms.shop.view_service %}
+        <a href="{% url 'admin:shop_service_changelist' %}">🏷️ سرویس‌ها</a>
       {% endif %}
       {% if perms.shop.view_category %}
-        <a href="{% url 'admin:shop_category_changelist' %}">دسته‌بندی‌ها</a>
+        <a href="{% url 'admin:shop_category_changelist' %}">📂 دسته‌بندی‌ها</a>
+      {% endif %}
+      {% if perms.shop.view_accountitem %}
+        <a href="{% url 'admin:shop_accountitem_changelist' %}">🔑 آیتم‌های اکانت</a>
       {% endif %}
     </div>
     <div class="admin-workspace-counters">
       {% if perms.shop.view_product %}
         <div><span>تعداد محصولات</span><strong>{{ admin_dashboard_stats.shop_products_count|default:"-" }}</strong></div>
       {% endif %}
-      {% if perms.shop.view_order %}
-        <div><span>سفارش پرداخت‌نشده</span><strong>{{ admin_dashboard_stats.shop_pending_orders|default:"-" }}</strong></div>
-      {% endif %}
-      {% if perms.shop.view_transactionlog %}
-        <div><span>تراکنش ناموفق</span><strong>{{ admin_dashboard_stats.shop_failed_payments|default:"-" }}</strong></div>
+      {% if perms.shop.view_accountitem %}
+        <div><span>آیتم آزاد</span><strong>{{ admin_dashboard_stats.shop_free_items|default:"-" }}</strong></div>
       {% endif %}
     </div>
     <div class="admin-pinned-views" data-pinned-views data-pinned-scope="products"></div>
@@ -152,11 +172,11 @@
   <article class="admin-workspace-panel" data-workspace-panel="blog" role="tabpanel" hidden>
     <div class="admin-workspace-actions">
       {% if perms.blog.view_post %}
-        <a href="{% url 'admin:blog_post_changelist' %}?published__exact=0">پیش‌نویس‌ها</a>
-        <a href="{% url 'admin:blog_post_changelist' %}">همه پست‌ها</a>
+        <a href="{% url 'admin:blog_post_changelist' %}?published__exact=0">📝 پیش‌نویس‌ها</a>
+        <a href="{% url 'admin:blog_post_changelist' %}">📋 همه پست‌ها</a>
       {% endif %}
       {% if perms.blog.add_post %}
-        <a href="{% url 'admin:blog_post_add' %}">پست جدید</a>
+        <a href="{% url 'admin:blog_post_add' %}">➕ پست جدید</a>
       {% endif %}
     </div>
     <div class="admin-workspace-counters">
@@ -164,32 +184,68 @@
         <div><span>پیش‌نویس</span><strong>{{ admin_dashboard_stats.blog_draft_posts|default:"-" }}</strong></div>
         <div><span>کل پست‌ها</span><strong>{{ admin_dashboard_stats.blog_total_posts|default:"-" }}</strong></div>
       {% endif %}
-      {% if perms.blog.view_postfaq %}
-        <div><span>FAQ بلاگ</span><strong>{{ admin_dashboard_stats.blog_faq_count|default:"-" }}</strong></div>
-      {% endif %}
     </div>
     <div class="admin-pinned-views" data-pinned-views data-pinned-scope="blog"></div>
   </article>
 
-  <article class="admin-workspace-panel" data-workspace-panel="settings" role="tabpanel" hidden>
+  <article class="admin-workspace-panel" data-workspace-panel="content" role="tabpanel" hidden>
     <div class="admin-workspace-actions">
-      {% if perms.core.view_sitesettings %}
-        <a href="{% url 'admin:core_sitesettings_changelist' %}">تنظیمات سایت</a>
+      {% if perms.core.view_herobanner %}
+        <a href="{% url 'admin:core_herobanner_changelist' %}">🖼️ بنرهای اسلایدر</a>
       {% endif %}
-      {% if perms.auth.view_user %}
-        <a href="{% url 'admin:auth_user_changelist' %}">کاربران</a>
+      {% if perms.core.view_featurecard %}
+        <a href="{% url 'admin:core_featurecard_changelist' %}">💎 کارت ویژگی‌ها</a>
       {% endif %}
-      {% if perms.auth.view_group %}
-        <a href="{% url 'admin:auth_group_changelist' %}">گروه‌ها</a>
+      {% if perms.core.view_truststat %}
+        <a href="{% url 'admin:core_truststat_changelist' %}">📊 آمار اعتماد</a>
+      {% endif %}
+      {% if perms.core.view_footerlink %}
+        <a href="{% url 'admin:core_footerlink_changelist' %}">🔗 لینک‌های فوتر</a>
+      {% endif %}
+      {% if perms.core.view_globalfaq %}
+        <a href="{% url 'admin:core_globalfaq_changelist' %}">❓ سوالات متداول</a>
       {% endif %}
     </div>
     <div class="admin-workspace-counters">
-      <div><span>جلسات فعال پشتیبانی</span><strong>{{ admin_dashboard_stats.support_active_sessions|default:"-" }}</strong></div>
-      <div><span>سفارش در انتظار</span><strong>{{ admin_dashboard_stats.shop_pending_orders|default:"-" }}</strong></div>
-      <div><span>پیش‌نویس بلاگ</span><strong>{{ admin_dashboard_stats.blog_draft_posts|default:"-" }}</strong></div>
+      {% if perms.core.view_herobanner %}
+        <div><span>بنرهای فعال</span><strong>{{ admin_dashboard_stats.core_active_banners|default:"-" }}</strong></div>
+      {% endif %}
+      {% if perms.core.view_featurecard %}
+        <div><span>کارت ویژگی</span><strong>{{ admin_dashboard_stats.core_feature_cards|default:"-" }}</strong></div>
+      {% endif %}
+      {% if perms.core.view_footerlink %}
+        <div><span>لینک فوتر</span><strong>{{ admin_dashboard_stats.core_footer_links|default:"-" }}</strong></div>
+      {% endif %}
+    </div>
+    <div class="admin-pinned-views" data-pinned-views data-pinned-scope="content"></div>
+  </article>
+
+  {% if admin_primary_role == 'owner' %}
+  <article class="admin-workspace-panel" data-workspace-panel="settings" role="tabpanel" hidden>
+    <div class="admin-workspace-actions">
+      {% if perms.core.view_sitesettings %}
+        <a href="{% url 'admin:core_sitesettings_changelist' %}">⚙️ تنظیمات سایت</a>
+      {% endif %}
+      {% if perms.auth.view_user %}
+        <a href="{% url 'admin:auth_user_changelist' %}">👥 کاربران</a>
+      {% endif %}
+      {% if perms.auth.view_group %}
+        <a href="{% url 'admin:auth_group_changelist' %}">🔐 گروه‌ها و دسترسی‌ها</a>
+      {% endif %}
+      {% if perms.accounts.view_profile %}
+        <a href="{% url 'admin:accounts_profile_changelist' %}">📌 پروفایل‌ها</a>
+      {% endif %}
+      {% if perms.accounts.view_phoneotp %}
+        <a href="{% url 'admin:accounts_phoneotp_changelist' %}">📲 کدهای OTP</a>
+      {% endif %}
+    </div>
+    <div class="admin-workspace-counters">
+      <div><span>کل کاربران</span><strong>{{ admin_dashboard_stats.accounts_total_users|default:"-" }}</strong></div>
+      <div><span>فعال ۳۰ روز</span><strong>{{ admin_dashboard_stats.accounts_active_users_30d|default:"-" }}</strong></div>
     </div>
     <div class="admin-pinned-views" data-pinned-views data-pinned-scope="settings"></div>
   </article>
+  {% endif %}
 </section>
 
 <section class="admin-favorites-panel" aria-label="ادامه کار">
@@ -218,12 +274,12 @@
 <div id="content-main" class="app-list">
   {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 </div>
-{% endblock %}
 
-{% block sidebar %}
-<div id="content-related">
-  <div class="module" id="recent-actions-module">
-    <h2>{% translate 'Recent actions' %}</h2>
+</div>{# end .dashboard-main #}
+
+<aside class="dashboard-sidebar">
+  <div class="module admin-recent-module" id="recent-actions-module">
+    <h2>📋 {% translate 'Recent actions' %}</h2>
     <h3>{% translate 'My actions' %}</h3>
     {% get_admin_log 10 as admin_log for_user user %}
     {% if not admin_log %}
@@ -253,5 +309,8 @@
       </ul>
     {% endif %}
   </div>
-</div>
+</aside>
+</div>{# end .dashboard-grid #}
 {% endblock %}
+
+{% block sidebar %}{% endblock %}

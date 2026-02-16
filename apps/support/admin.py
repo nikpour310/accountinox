@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.db.models import Count, Exists, Max, OuterRef, Subquery, Q
 from openpyxl import Workbook
+import logging
 
 from .models import (
     ChatMessage,
@@ -19,6 +20,8 @@ from .models import (
     SupportAuditLog,
     SupportRating,
 )
+
+logger = logging.getLogger('apps')
 
 
 class HasActiveSessionFilter(admin.SimpleListFilter):
@@ -84,13 +87,13 @@ class ChatSessionAdmin(admin.ModelAdmin):
     actions = ('close_selected_sessions',)
 
     fieldsets = (
-        ('Session Info', {
+        ('اطلاعات جلسه', {
             'fields': ('user', 'contact', 'user_name', 'user_phone', 'user_email', 'subject'),
         }),
-        ('Operator', {
+        ('اپراتور', {
             'fields': ('operator', 'assigned_to', 'closed_by'),
         }),
-        ('Status', {
+        ('وضعیت', {
             'fields': ('is_active', 'updated_at', 'created_at', 'closed_at'),
         }),
     )
@@ -314,13 +317,13 @@ class ChatMessageAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     
     fieldsets = (
-        ('Message', {
+        ('محتوای پیام', {
             'fields': ('session', 'message'),
         }),
-        ('Sender', {
+        ('فرستنده', {
             'fields': ('user', 'name', 'is_from_user'),
         }),
-        ('Status', {
+        ('وضعیت', {
             'fields': ('read', 'created_at'),
         }),
     )
@@ -463,12 +466,41 @@ class SupportContactAdmin(admin.ModelAdmin):
             raise PermissionDenied('You do not have permission to export support contacts.')
         changelist = self.get_changelist_instance(request)
         queryset = changelist.get_queryset(request)
+        try:
+            count = queryset.count()
+        except Exception:
+            count = None
+        logger.info(
+            'support:export_filtered contacts',
+            extra={
+                'user_id': getattr(request.user, 'id', None),
+                'username': getattr(request.user, 'username', None),
+                'is_superuser': getattr(request.user, 'is_superuser', False),
+                'export_count': count,
+                'path': request.path,
+                'query': request.GET.dict(),
+            },
+        )
         return self._export_contacts_queryset(queryset, filename='support_contacts_filtered.xlsx')
 
     @admin.action(description='Export selected contacts to Excel (.xlsx)')
     def export_contacts_xlsx(self, request, queryset):
         if not self._has_export_permission(request):
             raise PermissionDenied('You do not have permission to export support contacts.')
+        try:
+            count = queryset.count()
+        except Exception:
+            count = None
+        logger.info(
+            'support:export selected contacts',
+            extra={
+                'user_id': getattr(request.user, 'id', None),
+                'username': getattr(request.user, 'username', None),
+                'is_superuser': getattr(request.user, 'is_superuser', False),
+                'export_count': count,
+                'path': request.path,
+            },
+        )
         return self._export_contacts_queryset(queryset, filename='support_contacts.xlsx')
 
     @admin.display(description='تعداد جلسات', ordering='sessions_count_value')

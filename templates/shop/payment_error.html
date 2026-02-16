@@ -1,27 +1,51 @@
 {% extends 'base.html' %}
 
 {% block meta_title %}خطا در پرداخت | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-2xl">
-    <div class="card p-6 sm:p-8">
-      <div class="alert alert-warning">
-        <h1 class="text-xl font-bold sm:text-2xl">خطا در پردازش پرداخت</h1>
-        <p class="mt-1 text-sm">در زمان بررسی تراکنش مشکلی رخ داد.</p>
-      </div>
+<div class="page-wrapper">
+  <section class="reveal mx-auto max-w-lg py-12 text-center sm:py-20">
 
-      <dl class="mt-4 space-y-2 text-sm text-slate-700">
-        <div><dt class="font-semibold">پیام</dt><dd>{{ error|default:'-' }}</dd></div>
-        {% if reference %}<div><dt class="font-semibold">مرجع</dt><dd>{{ reference }}</dd></div>{% endif %}
-        {% if order %}<div><dt class="font-semibold">شماره سفارش</dt><dd>#{{ order.id }}</dd></div>{% endif %}
-      </dl>
-
-      <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <a href="{% url 'shop:checkout' %}" class="btn btn-primary w-full smooth-hover">بازگشت به تسویه حساب</a>
-        <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">تماس با پشتیبانی</a>
-      </div>
+    {# ── Warning Icon ── #}
+    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100">
+      <svg class="h-10 w-10 text-yellow-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
     </div>
+
+    <h1 class="section-title">خطا در پردازش پرداخت</h1>
+    <p class="section-subtitle mt-2">در زمان بررسی تراکنش مشکلی رخ داد.</p>
+
+    {# ── Details Card ── #}
+    <div class="card card-elevated mx-auto mt-8 max-w-md p-6 text-start sm:p-8">
+      <dl class="space-y-4 text-sm">
+        <div class="flex items-start justify-between gap-4">
+          <dt class="shrink-0 text-gray-500">پیام</dt>
+          <dd class="text-end font-medium text-gray-900">{{ error|default:'-' }}</dd>
+        </div>
+        {% if reference %}
+        <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+          <dt class="text-gray-500">مرجع</dt>
+          <dd class="font-medium text-gray-900">{{ reference }}</dd>
+        </div>
+        {% endif %}
+        {% if order %}
+        <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+          <dt class="text-gray-500">شماره سفارش</dt>
+          <dd class="font-medium text-gray-900 font-mono">{{ order.order_number }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+    </div>
+
+    {# ── Actions ── #}
+    <div class="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+      <a href="{% url 'shop:checkout' %}" class="btn-primary btn-lg w-full sm:w-auto">بازگشت به تسویه حساب</a>
+      <a href="{% url 'support:chat' %}" class="btn-ghost btn-lg w-full sm:w-auto">تماس با پشتیبانی</a>
+    </div>
+
   </section>
+</div>
 {% endblock %}
 

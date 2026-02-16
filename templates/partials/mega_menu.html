@@ -1,0 +1,83 @@
+{% load static seo_tags %}
+{# ─── Desktop Mega Menu Content ─── #}
+{# Included inside navbar.html — Alpine state (megaOpen, selectedService) lives on <header> #}
+
+<div class="mega-menu-grid">
+    {# ── Right column: Service categories (appears on RIGHT in RTL) ── #}
+    <div class="mega-menu-categories">
+        <div class="space-y-0.5" role="listbox" aria-label="فهرست خدمات">
+            {% for svc in services %}
+            <button
+                @mouseenter="selectedService = '{{ svc.slug }}'"
+                @focus="selectedService = '{{ svc.slug }}'"
+                @keydown.arrow-down.prevent="$el.nextElementSibling?.focus()"
+                @keydown.arrow-up.prevent="$el.previousElementSibling?.focus()"
+                role="option"
+                :aria-selected="selectedService === '{{ svc.slug }}'"
+                class="mega-menu-svc-btn"
+                :class="selectedService === '{{ svc.slug }}' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+            >
+                {% if svc.icon %}
+                <span class="mega-menu-svc-icon">{{ svc.icon }}</span>
+                {% else %}
+                <span class="mega-menu-svc-icon">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                </span>
+                {% endif %}
+                <span>{{ svc.name }}</span>
+            </button>
+            {% endfor %}
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-gray-100 px-1">
+            <a href="{% url 'shop:service_list' %}" class="text-[13px] text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 transition-colors">
+                مشاهده همه خدمات
+                <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    {# ── Left column: Products of selected service ── #}
+    <div class="mega-menu-products">
+        {% for svc in services %}
+        <div x-show="selectedService === '{{ svc.slug }}'" x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            {% if svc.products.all %}
+            <div class="grid grid-cols-2 gap-2">
+                {% for product in svc.products.all|slice:":8" %}
+                <a href="{% if product.slug %}{% url 'shop:product_detail' product.slug %}{% else %}#{% endif %}"
+                   class="mega-menu-product-card group/card"
+                   @keydown.arrow-right.prevent="$el.nextElementSibling?.focus()"
+                   @keydown.arrow-left.prevent="$el.previousElementSibling?.focus()"
+                   @keydown.escape.prevent="megaOpen = false"
+                   tabindex="0">
+                    <div class="mega-menu-product-thumb">
+                        {% if product.featured_image %}
+                        {% include 'partials/image.html' with image=product.featured_image alt=product.title class="w-12 h-8 object-cover" %}
+                        {% else %}
+                        <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="mega-menu-product-title line-clamp-2 group-hover/card:text-primary-700 transition-colors">{{ product.title }}</div>
+                        {% if product.price %}
+                        <div class="mega-menu-product-price">{{ product.price|price_format }} <span class="text-xs text-gray-400">تومان</span></div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-10 text-center">
+                <svg class="w-8 h-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                <p class="text-[13px] text-gray-400">محصولی در این دسته موجود نیست.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>

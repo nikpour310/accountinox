@@ -4,14 +4,18 @@ from .models import OrderAddress, Profile
 
 
 class ProfileForm(forms.ModelForm):
+    """Profile form that saves name fields directly.
+
+    Phone and email are displayed as read-only here — they require
+    separate OTP / email-code verification flows (handled via AJAX).
+    """
     first_name = forms.CharField(max_length=150, required=False, label='نام')
     last_name = forms.CharField(max_length=150, required=False, label='نام خانوادگی')
-    email = forms.EmailField(required=False, label='ایمیل')
     username = forms.CharField(max_length=150, required=False, label='شناسه کاربری', disabled=True)
 
     class Meta:
         model = Profile
-        fields = ('phone',)
+        fields = ()  # phone is managed via verification flow, not this form
         labels = {'phone': 'موبایل'}
 
     def __init__(self, *args, **kwargs):
@@ -20,18 +24,16 @@ class ProfileForm(forms.ModelForm):
         self.user = user
         self.fields['first_name'].initial = user.first_name
         self.fields['last_name'].initial = user.last_name
-        self.fields['email'].initial = user.email
         self.fields['username'].initial = user.username
-        for field_name in ('first_name', 'last_name', 'email', 'username', 'phone'):
+        for field_name in ('first_name', 'last_name', 'username'):
             self.fields[field_name].widget.attrs.setdefault('class', 'ui-input')
 
     def save(self, commit=True):
         profile = super().save(commit=False)
         self.user.first_name = self.cleaned_data.get('first_name', '').strip()
         self.user.last_name = self.cleaned_data.get('last_name', '').strip()
-        self.user.email = self.cleaned_data.get('email', '').strip()
         if commit:
-            self.user.save(update_fields=['first_name', 'last_name', 'email'])
+            self.user.save(update_fields=['first_name', 'last_name'])
             profile.user = self.user
             profile.save()
         return profile

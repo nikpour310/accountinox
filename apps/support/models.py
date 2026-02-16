@@ -15,6 +15,8 @@ class SupportContact(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
+        verbose_name = 'مخاطب پشتیبانی'
+        verbose_name_plural = 'مخاطبین پشتیبانی'
         permissions = (
             ('can_export_support_contacts', 'Can export support contacts'),
         )
@@ -68,6 +70,11 @@ class ChatSession(models.Model):
     closed_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        verbose_name = 'جلسه گفتگو'
+        verbose_name_plural = 'جلسات گفتگو'
+        ordering = ['-created_at']
+
     def __str__(self):
         return f"Chat #{self.id} - {self.user_name or self.user}"
 
@@ -89,6 +96,8 @@ class ChatMessage(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        verbose_name = 'پیام چت'
+        verbose_name_plural = 'پیام‌های چت'
 
     def __str__(self):
         return f"Msg {self.id} in Chat #{self.session_id} by {'user' if self.is_from_user else 'op'}"
@@ -117,6 +126,8 @@ class SupportPushSubscription(models.Model):
             ),
         ]
         ordering = ['-updated_at']
+        verbose_name = 'اشتراک پوش'
+        verbose_name_plural = 'اشتراک‌های پوش'
 
     def __str__(self):
         return f"PushSub user={self.user_id} active={self.is_active}"
@@ -132,6 +143,8 @@ class SupportOperatorPresence(models.Model):
 
     class Meta:
         ordering = ['-last_seen_at']
+        verbose_name = 'حضور اپراتور'
+        verbose_name_plural = 'حضور اپراتورها'
 
     def __str__(self):
         return f"Presence user={self.user_id} active_session={self.active_session_id}"
@@ -166,6 +179,8 @@ class SupportAuditLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'لاگ عملیات'
+        verbose_name_plural = 'لاگ‌های عملیات'
 
     def __str__(self):
         return f"Audit {self.action} by {self.staff_id} at {self.created_at.isoformat()}"
@@ -188,6 +203,8 @@ class SupportRating(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'امتیاز پشتیبانی'
+        verbose_name_plural = 'امتیازهای پشتیبانی'
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(score__gte=1, score__lte=5),

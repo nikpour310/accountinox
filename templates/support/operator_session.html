@@ -1,14 +1,16 @@
 {% extends 'base.html' %}
 
 {% block title %}گفت‌وگوی پشتیبانی #{{ session.id }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-<section class="mx-auto max-w-7xl px-2 sm:px-4 py-6 sm:py-8">
-  <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+<div class="page-wrapper max-w-7xl">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4 reveal">
     <div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">گفت‌وگوی پشتیبانی</h1>
-      <p class="text-sm text-gray-600 mt-1">
+      <h1 class="section-title">گفت‌وگوی پشتیبانی</h1>
+      <p class="section-subtitle mt-1">
         {% if session.contact %}
           {{ session.contact.name }} - {{ session.contact.phone }}
         {% elif session.user_phone %}
@@ -23,38 +25,38 @@
       {% endif %}
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
-        <input id="sound-toggle" type="checkbox" class="h-4 w-4">
+      <label class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600">
+        <input id="sound-toggle" type="checkbox" class="h-4 w-4 rounded border-gray-300">
         <span>صدای اعلان</span>
       </label>
-      <a href="{% url 'support:operator_dashboard' %}" class="btn btn-ghost">بازگشت به داشبورد</a>
-      <a href="{% url 'support:close_session' session.id %}" class="btn btn-secondary" onclick="return confirm('گفتگو بسته شود؟');">بستن گفتگو</a>
+      <a href="{% url 'support:operator_dashboard' %}" class="btn btn-ghost btn-sm">بازگشت به داشبورد</a>
+      <a href="{% url 'support:close_session' session.id %}" class="btn btn-soft btn-sm text-red-600" onclick="return confirm('گفتگو بسته شود؟');">بستن گفتگو</a>
     </div>
   </div>
 
-  <div id="unread-banner" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 {% if unread_count == 0 %}hidden{% endif %}">
+  <div id="unread-banner" class="alert alert-warning mb-5 {% if unread_count == 0 %}hidden{% endif %} reveal">
     <span id="unread-count" class="font-semibold">{{ unread_count }}</span>
     <span> پیام خوانده‌نشده در گفتگوهای فعال وجود دارد.</span>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 reveal">
     <aside class="lg:col-span-4 xl:col-span-3">
       <div class="card overflow-hidden">
-        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-          <h2 class="font-semibold text-gray-900">گفتگوهای فعال</h2>
+        <div class="border-b border-gray-100 bg-gray-50/60 px-4 py-3">
+          <h2 class="text-sm font-semibold text-gray-900">گفتگوهای فعال</h2>
         </div>
-        <div class="max-h-[65vh] overflow-y-auto divide-y divide-slate-100">
+        <div class="max-h-[65vh] overflow-y-auto divide-y divide-gray-100">
           {% for active in active_sessions %}
             <a
               href="{% url 'support:operator_session' active.id %}"
-              class="block px-4 py-3 transition {% if active.id == session.id %}bg-blue-50{% else %}hover:bg-slate-50{% endif %}"
+              class="block px-4 py-3 transition-colors {% if active.id == session.id %}bg-primary-50{% else %}hover:bg-gray-50/60{% endif %}"
             >
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                   <p class="truncate text-sm font-semibold text-gray-900">
                     {% if active.contact %}{{ active.contact.name }}{% else %}{{ active.user_name|default:active.user }}{% endif %}
                   </p>
-                  <p class="mt-1 truncate text-[11px] text-gray-600">
+                  <p class="mt-1 truncate text-[11px] text-gray-500">
                     {% if active.contact %}
                       {{ active.contact.phone }}
                     {% elif active.user_phone %}
@@ -65,39 +67,41 @@
                   </p>
                 </div>
                 {% if active.unread_count %}
-                  <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                  <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
                     {{ active.unread_count }}
                   </span>
                 {% endif %}
               </div>
             </a>
           {% empty %}
-            <div class="px-4 py-7 text-center text-sm text-gray-500">گفتگوی فعالی وجود ندارد.</div>
+            <div class="px-4 py-10 text-center text-sm text-gray-400">گفتگوی فعالی وجود ندارد.</div>
           {% endfor %}
         </div>
       </div>
     </aside>
 
     <div class="lg:col-span-8 xl:col-span-9">
-      <div class="card overflow-hidden">
-        <div id="operator-messages" class="h-[58vh] sm:h-[30rem] overflow-y-auto bg-slate-50 p-3 sm:p-5 space-y-3">
+      <div class="card-elevated overflow-hidden">
+        <div id="operator-messages" class="h-[58vh] sm:h-[30rem] overflow-y-auto bg-gray-50/60 p-4 sm:p-6 space-y-3">
           {% for message in messages %}
             <div class="flex {% if message.is_from_user %}justify-start{% else %}justify-end{% endif %}" data-message-id="{{ message.id }}">
-              <div class="max-w-[88%] sm:max-w-[76%]">
-                <p class="mb-1 text-[11px] text-gray-500 {% if message.is_from_user %}text-right{% else %}text-left{% endif %}">
+              <div class="max-w-[85%] sm:max-w-[74%]">
+                <p class="mb-1 text-[11px] text-gray-400 {% if message.is_from_user %}text-right{% else %}text-left{% endif %}">
                   {{ message.name }} - {{ message.created_at|date:'H:i' }}
                 </p>
-                <div class="rounded-2xl px-4 py-2 text-sm leading-relaxed break-words {% if message.is_from_user %}border border-slate-200 bg-white text-gray-900 rounded-bl-sm{% else %}bg-primary text-white rounded-br-sm{% endif %}">
+                <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm {% if message.is_from_user %}bg-white border border-gray-200 text-gray-900 rounded-bl-sm{% else %}bg-primary-600 text-white rounded-br-sm{% endif %}">
                   {{ message.message }}
                 </div>
               </div>
             </div>
           {% empty %}
-            <div id="empty-thread" class="py-12 text-center text-sm text-gray-500">هنوز پیامی ثبت نشده است.</div>
+            <div id="empty-thread" class="py-16 text-center text-sm text-gray-400">هنوز پیامی ثبت نشده است.</div>
           {% endfor %}
         </div>
 
-        <div class="border-t border-slate-200 bg-white p-3 sm:p-4">
+        <div class="divider"></div>
+
+        <div class="bg-white p-4 sm:p-5">
           <form id="operator-reply-form" method="post" action="{% url 'support:operator_send_message' %}" class="space-y-3">
             {% csrf_token %}
             <input type="hidden" name="session_id" value="{{ session.id }}">
@@ -111,15 +115,15 @@
               required
             ></textarea>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p id="send-status" class="text-xs text-gray-500">ارسال پاسخ بدون ترک صفحه انجام می‌شود.</p>
-              <button id="operator-send-btn" type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">ارسال پاسخ</button>
+              <p id="send-status" class="text-xs text-gray-400">ارسال پاسخ بدون ترک صفحه انجام می‌شود.</p>
+              <button id="operator-send-btn" type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پاسخ</button>
             </div>
           </form>
         </div>
       </div>
     </div>
   </div>
-</section>
+</div>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
@@ -174,13 +178,13 @@
         return;
       }
       sendStatus.textContent = text;
-      sendStatus.classList.remove('text-gray-500', 'text-red-600', 'text-emerald-700');
+      sendStatus.classList.remove('text-gray-400', 'text-red-600', 'text-emerald-600');
       if (tone === 'error') {
         sendStatus.classList.add('text-red-600');
       } else if (tone === 'success') {
-        sendStatus.classList.add('text-emerald-700');
+        sendStatus.classList.add('text-emerald-600');
       } else {
-        sendStatus.classList.add('text-gray-500');
+        sendStatus.classList.add('text-gray-400');
       }
     };
 
@@ -204,10 +208,10 @@
       wrapper.dataset.messageId = String(message.id);
 
       const bubbleWrap = document.createElement('div');
-      bubbleWrap.className = 'max-w-[88%] sm:max-w-[76%]';
+      bubbleWrap.className = 'max-w-[85%] sm:max-w-[74%]';
 
       const meta = document.createElement('p');
-      meta.className = 'mb-1 text-[11px] text-gray-500';
+      meta.className = 'mb-1 text-[11px] text-gray-400';
       meta.style.textAlign = message.is_from_user ? 'right' : 'left';
       const formattedTime = new Date(message.created_at).toLocaleTimeString('fa-IR', {
         hour: '2-digit',
@@ -216,10 +220,10 @@
       meta.textContent = `${message.name || 'اپراتور'} - ${formattedTime}`;
 
       const bubble = document.createElement('div');
-      bubble.className = `rounded-2xl px-4 py-2 text-sm leading-relaxed break-words ${
+      bubble.className = `rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm ${
         message.is_from_user
-          ? 'border border-slate-200 bg-white text-gray-900 rounded-bl-sm'
-          : 'bg-primary text-white rounded-br-sm'
+          ? 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm'
+          : 'bg-primary-600 text-white rounded-br-sm'
       }`;
       bubble.textContent = message.message || '';
 

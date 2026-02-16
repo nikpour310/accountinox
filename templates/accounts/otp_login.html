@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}ورود با کد تایید | {{ block.super }}{% endblock %}
+
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  [x-cloak] { display: none !important; }
+  .otp-input-group {
+    display: flex;
+    direction: ltr;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .otp-input-group input {
+    width: 3rem;
+    height: 3.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: 2px solid #d1d5db;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    outline: none;
+  }
+  .otp-input-group input:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+  }
+  .otp-input-group input.filled {
+    border-color: #14b8a6;
+    background: #f0fdfa;
+  }
+  .timer-ring {
+    width: 48px;
+    height: 48px;
+  }
+  .timer-ring circle {
+    fill: none;
+    stroke-width: 3;
+  }
+  .timer-ring .bg {
+    stroke: #e5e7eb;
+  }
+  .timer-ring .progress {
+    stroke: #14b8a6;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dashoffset 1s linear;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center py-16 px-4">
+  <div class="max-w-md w-full" x-data="otpLogin()" x-cloak>
+    <div class="text-center mb-8">
+      <h1 class="section-title">ورود / ثبت‌نام</h1>
+      <p class="section-subtitle">با شماره موبایل خود وارد شوید یا ثبت‌نام کنید</p>
+    </div>
+
+    {% csrf_token %}
+    <div class="card-elevated p-8">
+      <!-- Step 1: Phone Input -->
+      <div x-show="step === 'phone'" x-transition>
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-50 mb-4">
+            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+          </div>
+          <p class="text-sm text-gray-500">شماره موبایل خود را وارد کنید</p>
+        </div>
+
+        <div class="mb-5">
+          <label class="form-label">شماره موبایل</label>
+          <div class="relative">
+            <input
+              type="tel"
+              x-model="phone"
+              @keydown.enter.prevent="sendOtp()"
+              class="form-input text-center text-lg tracking-widest"
+              dir="ltr"
+              placeholder="09123456789"
+              maxlength="11"
+              inputmode="numeric"
+              autocomplete="tel"
+            >
+          </div>
+        </div>
+
+        <button
+          @click="sendOtp()"
+          :disabled="loading || !phoneValid"
+          class="btn btn-primary btn-lg w-full justify-center"
+          :class="{ 'opacity-60 cursor-not-allowed': loading || !phoneValid }"
+        >
+          <span x-show="!loading">دریافت کد تایید</span>
+          <span x-show="loading" class="inline-flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            در حال ارسال...
+          </span>
+        </button>
+
+        <!-- Feedback -->
+        <div x-show="feedback" x-transition class="mt-4 text-center text-sm" :class="feedbackClass" x-text="feedback"></div>
+
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-500">
+            ورود با رمز عبور؟
+            <a href="{% url 'account_login' %}" class="font-semibold text-primary-600 hover:text-primary-700">اینجا کلیک کنید</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 2: OTP Code Input -->
+      <div x-show="step === 'verify'" x-transition>
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-50 mb-4">
+            <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <p class="text-sm text-gray-500">
+            کد ۶ رقمی ارسال‌شده به
+            <span class="font-bold text-gray-800 dir-ltr inline-block" dir="ltr" x-text="phone"></span>
+            را وارد کنید
+          </p>
+        </div>
+
+        <!-- OTP Code Boxes -->
+        <div class="otp-input-group mb-5">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp0" :value="otpDigits[0]" @input="handleOtpInput($event, 0)" @keydown="handleOtpKeydown($event, 0)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[0] }">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp1" :value="otpDigits[1]" @input="handleOtpInput($event, 1)" @keydown="handleOtpKeydown($event, 1)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[1] }">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp2" :value="otpDigits[2]" @input="handleOtpInput($event, 2)" @keydown="handleOtpKeydown($event, 2)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[2] }">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp3" :value="otpDigits[3]" @input="handleOtpInput($event, 3)" @keydown="handleOtpKeydown($event, 3)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[3] }">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp4" :value="otpDigits[4]" @input="handleOtpInput($event, 4)" @keydown="handleOtpKeydown($event, 4)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[4] }">
+          <input type="text" inputmode="numeric" maxlength="1" x-ref="otp5" :value="otpDigits[5]" @input="handleOtpInput($event, 5)" @keydown="handleOtpKeydown($event, 5)" @paste.prevent="handleOtpPaste($event)" :class="{ 'filled': otpDigits[5] }">
+        </div>
+
+        <!-- Timer -->
+        <div class="flex items-center justify-center gap-3 mb-5">
+          <div class="timer-ring" x-show="timerSeconds > 0">
+            <svg viewBox="0 0 48 48">
+              <circle class="bg" cx="24" cy="24" r="20"/>
+              <circle class="progress" cx="24" cy="24" r="20"
+                :stroke-dasharray="125.6"
+                :stroke-dashoffset="125.6 - (125.6 * timerSeconds / {{ otp_expiry|default:'300' }})"/>
+            </svg>
+          </div>
+          <div class="text-sm text-gray-500">
+            <template x-if="timerSeconds > 0">
+              <span>اعتبار کد: <span class="font-bold text-gray-800" x-text="formatTime(timerSeconds)"></span></span>
+            </template>
+            <template x-if="timerSeconds <= 0 && step === 'verify'">
+              <span class="text-red-600 font-medium">کد منقضی شد</span>
+            </template>
+          </div>
+        </div>
+
+        <button
+          @click="verifyOtp()"
+          :disabled="loading || otpCode.length < 6"
+          class="btn btn-primary btn-lg w-full justify-center mb-3"
+          :class="{ 'opacity-60 cursor-not-allowed': loading || otpCode.length < 6 }"
+        >
+          <span x-show="!loading">تایید و ورود</span>
+          <span x-show="loading" class="inline-flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            در حال بررسی...
+          </span>
+        </button>
+
+        <!-- Resend -->
+        <div class="text-center">
+          <template x-if="resendSeconds > 0">
+            <p class="text-sm text-gray-400">ارسال مجدد تا <span class="font-bold" x-text="resendSeconds"></span> ثانیه دیگر</p>
+          </template>
+          <template x-if="resendSeconds <= 0">
+            <button @click="resendOtp()" :disabled="loading" class="text-sm font-semibold text-primary-600 hover:text-primary-700">
+              ارسال مجدد کد
+            </button>
+          </template>
+        </div>
+
+        <!-- Change phone -->
+        <div class="text-center mt-4">
+          <button @click="resetToPhone()" class="text-xs text-gray-400 hover:text-gray-600">
+            ← تغییر شماره موبایل
+          </button>
+        </div>
+
+        <!-- Feedback -->
+        <div x-show="feedback" x-transition class="mt-4 text-center text-sm" :class="feedbackClass" x-text="feedback"></div>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div x-show="step === 'success'" x-transition>
+        <div class="text-center py-6">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 mb-4">
+            <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h2 class="text-lg font-bold text-gray-800 mb-2">ورود موفق!</h2>
+          <p class="text-sm text-gray-500">در حال هدایت به پنل کاربری...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function otpLogin() {
+  return {
+    step: 'phone',
+    phone: '',
+    otpDigits: ['', '', '', '', '', ''],
+    loading: false,
+    feedback: '',
+    feedbackClass: '',
+    timerSeconds: 0,
+    resendSeconds: 0,
+    timerInterval: null,
+    resendInterval: null,
+
+    get phoneValid() {
+      return /^09\d{9}$/.test(this.phone);
+    },
+
+    get otpCode() {
+      return this.otpDigits.join('');
+    },
+
+    formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m + ':' + (sec < 10 ? '0' : '') + sec;
+    },
+
+    getCsrfToken() {
+      const el = document.querySelector('[name=csrfmiddlewaretoken]');
+      if (el) return el.value;
+      const match = document.cookie.match(/csrftoken=([^;]+)/);
+      return match ? match[1] : '';
+    },
+
+    async postJson(url, data) {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-CSRFToken': this.getCsrfToken(),
+        },
+        body: new URLSearchParams(data),
+      });
+      const body = await resp.json();
+      return { ok: resp.ok, status: resp.status, body };
+    },
+
+    showFeedback(msg, type) {
+      this.feedback = msg;
+      this.feedbackClass = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-gray-500';
+    },
+
+    startTimers() {
+      this.timerSeconds = {{ otp_expiry|default:'300' }};
+      this.resendSeconds = {{ otp_cooldown|default:'60' }};
+      clearInterval(this.timerInterval);
+      clearInterval(this.resendInterval);
+
+      this.timerInterval = setInterval(() => {
+        this.timerSeconds--;
+        if (this.timerSeconds <= 0) {
+          clearInterval(this.timerInterval);
+        }
+      }, 1000);
+
+      this.resendInterval = setInterval(() => {
+        this.resendSeconds--;
+        if (this.resendSeconds <= 0) {
+          clearInterval(this.resendInterval);
+        }
+      }, 1000);
+    },
+
+    async sendOtp() {
+      if (!this.phoneValid || this.loading) return;
+      this.loading = true;
+      this.feedback = '';
+      try {
+        const res = await this.postJson('/accounts/otp/send/', { phone: this.phone });
+        if (res.ok && res.body.ok) {
+          this.step = 'verify';
+          this.startTimers();
+          this.showFeedback('کد تایید ارسال شد', 'success');
+          this.$nextTick(() => {
+            if (this.$refs.otp0) this.$refs.otp0.focus();
+          });
+        } else {
+          const msg = res.body.error || 'خطا در ارسال کد';
+          this.showFeedback(msg, 'error');
+        }
+      } catch (e) {
+        this.showFeedback('خطای شبکه — دوباره تلاش کنید', 'error');
+      }
+      this.loading = false;
+    },
+
+    async verifyOtp() {
+      if (this.otpCode.length < 6 || this.loading) return;
+      this.loading = true;
+      this.feedback = '';
+      try {
+        const res = await this.postJson('/accounts/otp/verify-login/', {
+          phone: this.phone,
+          code: this.otpCode,
+        });
+        if (res.ok && res.body.ok) {
+          this.step = 'success';
+          clearInterval(this.timerInterval);
+          clearInterval(this.resendInterval);
+          setTimeout(() => {
+            window.location.href = '{% url "accounts:dashboard" %}';
+          }, 800);
+        } else {
+          const errors = {
+            'invalid': 'کد وارد شده صحیح نیست',
+            'expired': 'کد منقضی شده — دوباره ارسال کنید',
+            'locked': 'تعداد تلاش زیاد — چند دقیقه صبر کنید',
+            'no otp': 'ابتدا کد را دریافت کنید',
+          };
+          const msg = errors[res.body.error] || res.body.error || 'خطا در تایید کد';
+          this.showFeedback(msg, 'error');
+          // Clear digits on error
+          this.otpDigits = ['', '', '', '', '', ''];
+          for (let i = 0; i < 6; i++) {
+            if (this.$refs['otp' + i]) this.$refs['otp' + i].value = '';
+          }
+          this.$nextTick(() => {
+            if (this.$refs.otp0) this.$refs.otp0.focus();
+          });
+        }
+      } catch (e) {
+        this.showFeedback('خطای شبکه — دوباره تلاش کنید', 'error');
+      }
+      this.loading = false;
+    },
+
+    async resendOtp() {
+      this.otpDigits = ['', '', '', '', '', ''];
+      for (let i = 0; i < 6; i++) {
+        if (this.$refs['otp' + i]) this.$refs['otp' + i].value = '';
+      }
+      this.feedback = '';
+      await this.sendOtp();
+    },
+
+    resetToPhone() {
+      this.step = 'phone';
+      this.otpDigits = ['', '', '', '', '', ''];
+      for (let i = 0; i < 6; i++) {
+        if (this.$refs['otp' + i]) this.$refs['otp' + i].value = '';
+      }
+      this.feedback = '';
+      clearInterval(this.timerInterval);
+      clearInterval(this.resendInterval);
+    },
+
+    handleOtpInput(event, index) {
+      const raw = event.target.value.replace(/\D/g, '');
+      if (!raw) {
+        this.otpDigits[index] = '';
+        event.target.value = '';
+        return;
+      }
+      // If multiple digits typed quickly (e.g. autofill), spread them
+      if (raw.length > 1) {
+        for (let i = 0; i < raw.length && (index + i) < 6; i++) {
+          this.otpDigits[index + i] = raw[i];
+          this.$refs['otp' + (index + i)].value = raw[i];
+        }
+        const nextIdx = Math.min(index + raw.length, 5);
+        this.$refs['otp' + nextIdx].focus();
+      } else {
+        this.otpDigits[index] = raw;
+        event.target.value = raw;
+        if (index < 5) {
+          this.$refs['otp' + (index + 1)].focus();
+        }
+      }
+      // Auto-verify when all 6 digits filled
+      if (this.otpCode.length === 6) {
+        this.verifyOtp();
+      }
+    },
+
+    handleOtpKeydown(event, index) {
+      if (event.key === 'Backspace') {
+        if (this.otpDigits[index]) {
+          this.otpDigits[index] = '';
+          event.target.value = '';
+          event.preventDefault();
+        } else if (index > 0) {
+          this.otpDigits[index - 1] = '';
+          this.$refs['otp' + (index - 1)].value = '';
+          this.$refs['otp' + (index - 1)].focus();
+          event.preventDefault();
+        }
+      } else if (event.key === 'ArrowLeft' && index > 0) {
+        this.$refs['otp' + (index - 1)].focus();
+        event.preventDefault();
+      } else if (event.key === 'ArrowRight' && index < 5) {
+        this.$refs['otp' + (index + 1)].focus();
+        event.preventDefault();
+      } else if (/^\d$/.test(event.key) && this.otpDigits[index]) {
+        // Overwrite current digit and move to next
+        this.otpDigits[index] = event.key;
+        event.target.value = event.key;
+        if (index < 5) {
+          this.$refs['otp' + (index + 1)].focus();
+        }
+        event.preventDefault();
+        if (this.otpCode.length === 6) {
+          this.verifyOtp();
+        }
+      }
+    },
+
+    handleOtpPaste(event) {
+      const text = (event.clipboardData || window.clipboardData).getData('text').trim();
+      const digits = text.replace(/\D/g, '').slice(0, 6);
+      for (let i = 0; i < 6; i++) {
+        this.otpDigits[i] = digits[i] || '';
+        this.$refs['otp' + i].value = digits[i] || '';
+      }
+      if (digits.length > 0) {
+        const focusIdx = Math.min(digits.length, 5);
+        this.$refs['otp' + focusIdx].focus();
+      }
+      if (digits.length === 6) {
+        this.verifyOtp();
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

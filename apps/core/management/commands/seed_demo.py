@@ -5,6 +5,9 @@ from apps.shop.models import Category, Product, AccountItem
 from apps.blog.models import Post
 from django.conf import settings
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -13,7 +16,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User = get_user_model()
         if not User.objects.filter(is_superuser=True).exists():
-            print('Creating superuser: admin@example.com / pass: admin')
+            logger.info('Creating superuser: admin@example.com / pass: admin')
             User.objects.create_superuser('admin@example.com', 'admin@example.com', 'admin')
 
         ss = SiteSettings.load()

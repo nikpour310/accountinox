@@ -1,0 +1,184 @@
+{% load static %}
+{# ─── Hero Slider — Dynamic from HeroBanner model ─── #}
+{# Content is managed from Django Admin → بنرهای اسلایدر #}
+
+{% if banners %}
+<section class="relative overflow-hidden bg-gray-950 isolate z-0"
+    x-data="{
+        current: 0,
+        total: {{ banners|length }},
+        timer: null,
+        paused: false,
+        init() {
+            if (this.total > 1) this.startAutoplay();
+        },
+        startAutoplay() {
+            this.timer = setInterval(() => {
+                if (!this.paused) this.next();
+            }, 5500);
+        },
+        pause() { this.paused = true; },
+        resume() { this.paused = false; },
+        next() { this.current = (this.current + 1) % this.total; },
+        prev() { this.current = (this.current - 1 + this.total) % this.total; },
+        goTo(i) { this.current = i; }
+    }"
+    @mouseenter="pause()"
+    @mouseleave="resume()"
+    @keydown.arrow-left.prevent="next()"
+    @keydown.arrow-right.prevent="prev()"
+    role="region"
+    aria-roledescription="carousel"
+    aria-label="اسلایدر بنرهای اصلی">
+
+    {# ── Slides Container ── #}
+    <div class="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[540px]">
+
+        {% for banner in banners %}
+        <div class="hero-slide absolute inset-0 flex items-center"
+             x-show="current === {{ forloop.counter0 }}"
+             x-transition:enter="transition-opacity ease-out duration-700"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-500"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             role="group" aria-roledescription="slide" aria-label="اسلاید {{ forloop.counter }} از {{ banners|length }}">
+
+            {# Background: image if uploaded, otherwise gradient glow #}
+            <div class="absolute inset-0 -z-10" aria-hidden="true">
+                {% if banner.background_image %}
+                {% include 'partials/image.html' with image=banner.background_image alt="" class="absolute inset-0 w-full h-full object-cover" %}
+                <div class="absolute inset-0 bg-gray-950/60"></div>
+                {% else %}
+                <div class="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950"></div>
+                {# Colored glow based on badge_color #}
+                {% if banner.badge_color == 'amber' %}
+                <div class="absolute top-1/3 end-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[130px]"></div>
+                {% elif banner.badge_color == 'emerald' %}
+                <div class="absolute bottom-1/3 start-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]"></div>
+                {% elif banner.badge_color == 'sky' %}
+                <div class="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-sky-500/8 rounded-full blur-[140px]"></div>
+                {% elif banner.badge_color == 'red' %}
+                <div class="absolute top-1/3 start-1/3 w-[600px] h-[600px] bg-red-500/10 rounded-full blur-[120px]"></div>
+                {% elif banner.badge_color == 'violet' %}
+                <div class="absolute top-1/2 end-1/4 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[130px]"></div>
+                {% else %}{# primary (default) #}
+                <div class="absolute top-1/2 start-1/3 -translate-y-1/2 w-[700px] h-[700px] bg-primary-500/10 rounded-full blur-[120px]"></div>
+                <div class="absolute bottom-0 end-0 w-[400px] h-[400px] bg-secondary-500/5 rounded-full blur-[100px]"></div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="container mx-auto px-4">
+                <div class="max-w-3xl">
+                    {# Badge #}
+                    {% if banner.badge_text %}
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm mb-6
+                        {% if banner.badge_color == 'amber' %}bg-amber-500/10 border border-amber-500/20 text-amber-300
+                        {% elif banner.badge_color == 'emerald' %}bg-emerald-500/10 border border-emerald-500/20 text-emerald-300
+                        {% elif banner.badge_color == 'sky' %}bg-sky-500/10 border border-sky-500/20 text-sky-300
+                        {% elif banner.badge_color == 'red' %}bg-red-500/10 border border-red-500/20 text-red-300
+                        {% elif banner.badge_color == 'violet' %}bg-violet-500/10 border border-violet-500/20 text-violet-300
+                        {% else %}bg-white/5 border border-white/10 text-primary-300{% endif %}">
+                        <span class="flex h-1.5 w-1.5 rounded-full animate-pulse
+                            {% if banner.badge_color == 'amber' %}bg-amber-400
+                            {% elif banner.badge_color == 'emerald' %}bg-emerald-400
+                            {% elif banner.badge_color == 'sky' %}bg-sky-400
+                            {% elif banner.badge_color == 'red' %}bg-red-400
+                            {% elif banner.badge_color == 'violet' %}bg-violet-400
+                            {% else %}bg-primary-400{% endif %}"></span>
+                        {{ banner.badge_text }}
+                    </div>
+                    {% endif %}
+
+                    {# Title #}
+                    <h2 class="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-[1.15] tracking-tight">
+                        {{ banner.title }}
+                        {% if banner.title_highlight %}
+                        <span class="block text-gradient mt-2">{{ banner.title_highlight }}</span>
+                        {% endif %}
+                    </h2>
+
+                    {# Description #}
+                    {% if banner.description %}
+                    <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-xl leading-relaxed">
+                        {{ banner.description }}
+                    </p>
+                    {% endif %}
+
+                    {# Buttons #}
+                    {% if banner.button_text or banner.button2_text %}
+                    <div class="flex flex-wrap items-center gap-3 mt-8">
+                        {% if banner.button_text %}
+                        <a href="{{ banner.button_url }}" class="btn-primary btn-lg">
+                            {{ banner.button_text }}
+                            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                        </a>
+                        {% endif %}
+                        {% if banner.button2_text %}
+                        <a href="{{ banner.button2_url }}" class="btn-soft btn-lg">{{ banner.button2_text }}</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    {# ── Navigation: show only when more than 1 slide ── #}
+    {% if banners|length > 1 %}
+    {# Prev / Next Buttons #}
+    <div class="absolute inset-y-0 start-4 sm:start-6 flex items-center z-10">
+        <button @click="prev()" class="hero-slider-btn" aria-label="اسلاید قبلی">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+    </div>
+    <div class="absolute inset-y-0 end-4 sm:end-6 flex items-center z-10">
+        <button @click="next()" class="hero-slider-btn" aria-label="اسلاید بعدی">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+    </div>
+
+    {# Pagination Dots #}
+    <div class="absolute bottom-6 sm:bottom-8 inset-x-0 flex items-center justify-center gap-2 z-10" role="tablist" aria-label="انتخاب اسلاید">
+        <template x-for="i in total" :key="i">
+            <button @click="goTo(i - 1)"
+                    class="hero-slider-dot"
+                    :class="current === (i - 1) ? 'bg-white w-8' : 'bg-white/30 w-2.5 hover:bg-white/50'"
+                    :aria-selected="current === (i - 1)"
+                    :aria-label="'رفتن به اسلاید ' + i"
+                    role="tab">
+            </button>
+        </template>
+    </div>
+    {% endif %}
+</section>
+
+{% else %}
+{# ── Fallback: static hero when no banners exist in DB ── #}
+<section class="relative overflow-hidden bg-gray-950 isolate z-0">
+    <div class="absolute inset-0 -z-10" aria-hidden="true">
+        <div class="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950"></div>
+        <div class="absolute top-1/2 start-1/3 -translate-y-1/2 w-[700px] h-[700px] bg-primary-500/10 rounded-full blur-[120px]"></div>
+    </div>
+    <div class="relative min-h-[420px] sm:min-h-[480px] lg:min-h-[540px] flex items-center">
+        <div class="container mx-auto px-4">
+            <div class="max-w-3xl">
+                <h2 class="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-[1.15] tracking-tight">
+                    اکانت‌های پریمیوم
+                    <span class="block text-gradient mt-2">با تضمین کیفیت</span>
+                </h2>
+                <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-xl leading-relaxed">
+                    دسترسی آنی به سرویس‌های پریمیوم جهانی با بهترین قیمت.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mt-8">
+                    <a href="/shop/" class="btn-primary btn-lg">مشاهده محصولات</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}

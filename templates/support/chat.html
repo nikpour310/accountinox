@@ -1,86 +1,87 @@
 {% extends 'base.html' %}
 
 {% block meta_title %}گفت‌وگوی پشتیبانی | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-3xl py-2">
-    {% if request.GET.rated == '1' %}
-      <div class="alert alert-success mb-4">امتیاز شما ثبت شد. متشکریم.</div>
-    {% endif %}
+<div class="page-wrapper max-w-3xl">
+  {% if request.GET.rated == '1' %}
+    <div class="alert alert-success mb-6 reveal">امتیاز شما ثبت شد. متشکریم.</div>
+  {% endif %}
 
-    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">گفت‌وگو با پشتیبانی</h1>
-        {% if contact %}
-          <p class="text-xs text-slate-500">{{ contact.name }} - {{ contact.phone }}</p>
-        {% endif %}
-        {% if session_closed %}
-          <p class="text-xs text-amber-700">این گفتگو بسته شده است.</p>
-        {% endif %}
-      </div>
-      <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full sm:w-auto">ویرایش اطلاعات</a>
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between reveal">
+    <div>
+      <h1 class="section-title">گفت‌وگو با پشتیبانی</h1>
+      {% if contact %}
+        <p class="section-subtitle">{{ contact.name }} - {{ contact.phone }}</p>
+      {% endif %}
+      {% if session_closed %}
+        <p class="mt-1 text-xs font-medium text-amber-600">این گفتگو بسته شده است.</p>
+      {% endif %}
     </div>
+    <a href="{% url 'support:chat' %}" class="btn btn-ghost btn-sm w-full sm:w-auto">ویرایش اطلاعات</a>
+  </div>
 
-    <div class="card overflow-hidden h-[600px] flex flex-col shadow-floating border-0 rounded-3xl">
-      <!-- Chat Header (Visible in widget mode, or we use page title. Keeping page title external, customizing internal header if needed or just using message area) -->
-      <!-- We will just style the message area and footer to match the Design System Widget -->
-      
-      <div id="messages" class="flex-1 overflow-y-auto bg-[#f0f4f8] p-4 space-y-4" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;">
-        {% if messages %}
-          {% for message in messages %}
-            <div class="flex {% if message.is_from_user %}justify-end{% else %}justify-start{% endif %}" data-message-id="{{ message.id }}">
-              <div class="max-w-[85%] flex flex-col {% if message.is_from_user %}items-end{% else %}items-start{% endif %} gap-1">
-                <div class="px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm {% if message.is_from_user %}bg-primary-600 text-white rounded-2xl rounded-tl-none shadow-primary-500/20{% else %}bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tr-none{% endif %}">
-                  {{ message.message }}
-                </div>
-                <p class="text-[10px] text-slate-400 px-1">
-                  {% if not message.is_from_user %}{{ message.name }} - {% endif %}{{ message.created_at|date:'H:i' }}
-                </p>
+  <div class="card-elevated overflow-hidden reveal">
+    <div id="messages" class="h-[60vh] overflow-y-auto bg-gray-50/60 p-4 sm:h-[30rem] sm:p-6 space-y-3">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="flex {% if message.is_from_user %}justify-end{% else %}justify-start{% endif %}" data-message-id="{{ message.id }}">
+            <div class="max-w-[85%] sm:max-w-[70%]">
+              <p class="mb-1 text-[11px] text-gray-400 {% if message.is_from_user %}text-left{% else %}text-right{% endif %}">
+                {{ message.name }} - {{ message.created_at|date:'H:i' }}
+              </p>
+              <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm {% if message.is_from_user %}bg-primary-600 text-white rounded-br-sm{% else %}bg-white border border-gray-200 text-gray-900 rounded-bl-sm{% endif %}">
+                {{ message.message }}
               </div>
             </div>
-          {% endfor %}
-        {% else %}
-          <div id="empty-message" class="py-10 text-center text-sm text-slate-400">هنوز پیامی ارسال نشده است.</div>
-        {% endif %}
-      </div>
-
-      <div class="border-t border-slate-100 bg-white p-3 sm:p-4 rounded-b-3xl">
-        {% if session_closed %}
-          {% if session_rating %}
-            <div class="alert alert-success">امتیاز ثبت‌شده: {{ session_rating.score }} از 5</div>
-          {% elif can_rate %}
-            <div class="alert alert-info">
-              گفت‌وگو بسته شده است.
-              <a class="font-semibold underline" href="{% url 'support:rate_session' session.id %}">ثبت امتیاز اپراتور</a>
-            </div>
-          {% else %}
-            <div class="alert">این گفت‌وگو بسته شده است. برای شروع گفت‌وگوی جدید به صفحه پشتیبانی برگردید.</div>
-          {% endif %}
-          <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">شروع گفت‌وگوی جدید</a>
-        {% else %}
-          <form id="user-message-form" class="relative flex items-end gap-2">
-            <input id="session-id-input" type="hidden" name="session_id" value="{{ session.id }}">
-            <label for="user-message-input" class="sr-only">پیام</label>
-            <div class="relative flex-grow">
-                <textarea
-                  id="user-message-input"
-                  name="message"
-                  rows="1"
-                  maxlength="500"
-                  class="w-full pl-4 pr-4 py-3 bg-slate-50 border-0 rounded-xl text-sm focus:ring-2 focus:ring-primary-100 placeholder-slate-400 resize-none min-h-[48px] max-h-32"
-                  placeholder="پیام خود را بنویسید..."
-                  required
-                ></textarea>
-            </div>
-            <button type="submit" class="flex-shrink-0 p-3 bg-primary-600 text-white rounded-xl shadow-lg shadow-primary-500/30 hover:bg-primary-500 hover:shadow-primary-500/40 hover:-translate-y-0.5 transition-all">
-                <svg class="w-5 h-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-            </button>
-          </form>
-        {% endif %}
-      </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div id="empty-message" class="py-16 text-center text-sm text-gray-400">هنوز پیامی ارسال نشده است.</div>
+      {% endif %}
     </div>
-  </section>
+
+    <div class="divider"></div>
+
+    <div class="bg-white p-4 sm:p-5 space-y-3">
+      {% if session_closed %}
+        {% if session_rating %}
+          <div class="alert alert-success">امتیاز ثبت‌شده: {{ session_rating.score }} از 5</div>
+        {% elif can_rate %}
+          <div class="alert alert-info">
+            گفت‌وگو بسته شده است.
+            <a class="font-semibold underline" href="{% url 'support:rate_session' session.id %}">ثبت امتیاز اپراتور</a>
+          </div>
+        {% else %}
+          <div class="alert">این گفت‌وگو بسته شده است. برای شروع گفت‌وگوی جدید به صفحه پشتیبانی برگردید.</div>
+        {% endif %}
+        <a href="{% url 'support:chat' %}" class="btn btn-primary w-full sm:w-auto">شروع گفت‌وگوی جدید</a>
+      {% else %}
+        <form id="user-message-form" class="space-y-3">
+          {% csrf_token %}
+          <input id="session-id-input" type="hidden" name="session_id" value="{{ session.id }}">
+          <label for="user-message-input" class="sr-only">پیام</label>
+          <textarea
+            id="user-message-input"
+            name="message"
+            rows="3"
+            maxlength="500"
+            class="form-input"
+            placeholder="پیام خود را بنویسید..."
+            required
+          ></textarea>
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-xs text-gray-400">حداکثر 500 کاراکتر</p>
+            <button type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پیام</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -123,10 +124,10 @@
         wrapper.dataset.messageId = String(message.id);
 
         const bubbleWrap = document.createElement('div');
-        bubbleWrap.className = 'max-w-[88%] sm:max-w-[72%]';
+        bubbleWrap.className = 'max-w-[85%] sm:max-w-[70%]';
 
         const meta = document.createElement('p');
-        meta.className = 'mb-1 text-[11px] text-slate-500';
+        meta.className = 'mb-1 text-[11px] text-gray-400';
         meta.style.textAlign = message.is_from_user ? 'left' : 'right';
         const formattedTime = new Date(message.created_at).toLocaleTimeString('fa-IR', {
           hour: '2-digit',
@@ -135,10 +136,10 @@
         meta.textContent = `${message.name || 'کاربر'} - ${formattedTime}`;
 
         const bubble = document.createElement('div');
-        bubble.className = `rounded-2xl px-4 py-2 text-sm leading-relaxed break-words ${
+        bubble.className = `rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words shadow-sm ${
           message.is_from_user
-            ? 'bg-slate-900 text-white rounded-br-sm'
-            : 'bg-white border border-slate-200 text-slate-900 rounded-bl-sm'
+            ? 'bg-primary-600 text-white rounded-br-sm'
+            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm'
         }`;
         bubble.textContent = message.message || '';
 

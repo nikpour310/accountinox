@@ -520,7 +520,6 @@ def chat_room(request):
     })
 
 
-@csrf_exempt
 @require_POST
 def send_message(request):
     """Send a customer message while keeping long-polling mode."""
@@ -534,8 +533,11 @@ def send_message(request):
     if not session:
         return JsonResponse({'error': 'session not found'}, status=404)
 
-    if request.user.is_authenticated and session.user_id and session.user_id != request.user.id and not request.user.is_staff:
-        return JsonResponse({'error': 'forbidden'}, status=403)
+    # Security: block access if caller doesn't own this session
+    if request.user.is_authenticated:
+        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    # anonymous users allowed to post messages by session id (no session cookie required)
 
     if not session.is_active:
         contact = session.contact or _resolve_contact_from_request(request)
@@ -631,6 +633,12 @@ def get_messages(request):
     except ChatSession.DoesNotExist:
         return JsonResponse({'error': 'session not found'}, status=404)
 
+    # Security: verify caller owns this session or is staff
+    if request.user.is_authenticated:
+        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    # anonymous users allowed to long-poll by session id
+
     start_time = time.time()
     while (time.time() - start_time) < timeout:
         messages = session.messages.filter(id__gt=last_id).values(
@@ -670,6 +678,12 @@ def poll_messages(request):
         session = _session_from_request_state(request)
         if not session:
             return JsonResponse({'error': 'thread_id required or no active session found'}, status=400)
+
+    # Security: verify caller owns this session or is staff
+    if request.user.is_authenticated:
+        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    # anonymous allowed for poll_messages by session id
 
     start_time = time.time()
     while (time.time() - start_time) < timeout:
@@ -964,6 +978,7 @@ def operator_send_message(request):
 
 
 @staff_member_required
+@require_http_methods(["GET", "POST"])
 def close_session(request, session_id):
     """Close a support session."""
     session = get_object_or_404(ChatSession, id=session_id)

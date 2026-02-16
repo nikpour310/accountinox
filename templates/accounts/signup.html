@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block title %}ثبت نام | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center py-16 px-4">
+  <div class="max-w-md w-full">
+    <div class="text-center mb-8">
+      <h1 class="section-title">ثبت نام</h1>
+      <p class="section-subtitle">یک حساب جدید بسازید تا از خدمات ما استفاده کنید</p>
+    </div>
+
+    <div class="card-elevated p-8">
+      <form method="POST" action="{% url 'account_signup' %}" class="space-y-5">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="alert-error">
+          {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for field in form.visible_fields %}
+        <div class="mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="text-xs text-red-600 mt-1.5">{{ field.errors.0 }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary btn-lg w-full justify-center">ثبت نام</button>
+
+        <!-- OTP Signup Option -->
+        <div class="relative my-4">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">یا</span></div>
+        </div>
+        <a href="{% url 'accounts:otp_login' %}" class="btn btn-lg w-full justify-center border-2 border-teal-500 text-teal-600 hover:bg-teal-50 transition-colors font-semibold rounded-xl">
+          <svg class="w-5 h-5 ml-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          ثبت‌نام سریع با موبایل
+        </a>
+
+        <p class="text-center text-sm text-gray-500 mt-4">
+          حساب کاربری دارید؟
+          <a href="{% url 'account_login' %}" class="font-semibold text-primary-600 hover:text-primary-700">وارد شوید</a>
+        </p>
+      </form>
+      <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        var form = document.querySelector('form[action="{% url "account_signup" %}"]');
+        if(!form) return;
+        var controls = form.querySelectorAll('input, select, textarea');
+        controls.forEach(function(el){
+          el.classList.add('form-input');
+          if(!el.getAttribute('placeholder')){
+            var lbl = el.previousElementSibling;
+            if(lbl && lbl.tagName && lbl.tagName.toLowerCase() === 'label'){
+              el.setAttribute('placeholder', lbl.innerText.trim());
+            }
+          }
+        });
+      });
+      </script>
+    </div>
+  </div>
+</div>
+{% endblock %}

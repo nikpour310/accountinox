@@ -1,119 +1,180 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block meta_title %}تسویه حساب | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}تکمیل سفارش در {{ site_settings.site_name|default:'Accountinox' }} با پرداخت امن و مسیر ساده.{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 {% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'shop:checkout' %}">{% endblock %}
 
 {% block content %}
-  <section class="mb-6 sm:mb-8">
+<div class="page-wrapper">
+
+  {# ── Page Header ── #}
+  <header class="page-header reveal">
     <h1 class="section-title">تسویه حساب</h1>
-    <p class="mt-2 text-sm text-slate-600">در سه مرحله کوتاه سفارش را نهایی کنید.</p>
-    <ol class="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-      <li class="card p-3 font-semibold text-slate-900">1. اطلاعات تماس</li>
-      <li class="card p-3 font-semibold text-slate-900">2. آدرس</li>
-      <li class="card p-3 font-semibold text-slate-900">3. پرداخت</li>
+    <p class="section-subtitle">در سه مرحله کوتاه سفارش را نهایی کنید.</p>
+  </header>
+
+  {# ── Stepper ── #}
+  <nav class="reveal mx-auto mb-10 max-w-xl" aria-label="مراحل تسویه">
+    <ol class="flex items-center justify-between">
+      {# Step 1 #}
+      <li class="flex flex-col items-center gap-1.5">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white shadow-sm">۱</span>
+        <span class="text-xs font-medium text-gray-900">اطلاعات تماس</span>
+      </li>
+      <li class="h-px flex-1 bg-gray-200" aria-hidden="true"></li>
+      {# Step 2 #}
+      <li class="flex flex-col items-center gap-1.5">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white shadow-sm">۲</span>
+        <span class="text-xs font-medium text-gray-900">آدرس</span>
+      </li>
+      <li class="h-px flex-1 bg-gray-200" aria-hidden="true"></li>
+      {# Step 3 #}
+      <li class="flex flex-col items-center gap-1.5">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white shadow-sm">۳</span>
+        <span class="text-xs font-medium text-gray-900">پرداخت</span>
+      </li>
     </ol>
-  </section>
+  </nav>
 
   {% if cart_lines %}
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <section class="lg:col-span-2">
-        <form method="post" action="{% url 'shop:checkout' %}" class="card p-4 sm:p-6">
-          {% csrf_token %}
+  <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
 
-          <fieldset>
-            <legend class="text-base font-bold text-slate-900">اطلاعات تماس</legend>
-            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="sm:col-span-2">
-                <label for="full_name" class="mb-1 block text-sm text-slate-700">نام تحویل‌گیرنده</label>
-                <input id="full_name" name="full_name" type="text" class="form-input" value="{{ checkout_data.full_name|default:'' }}" required>
-                {% if form_errors.full_name %}<p class="mt-1 text-xs text-red-700">{{ form_errors.full_name }}</p>{% endif %}
-              </div>
-              <div>
-                <label for="phone" class="mb-1 block text-sm text-slate-700">شماره موبایل</label>
-                <input id="phone" name="phone" type="tel" class="form-input" value="{{ checkout_data.phone|default:'' }}" required>
-                {% if form_errors.phone %}<p class="mt-1 text-xs text-red-700">{{ form_errors.phone }}</p>{% endif %}
-              </div>
-              <div>
-                <label for="email" class="mb-1 block text-sm text-slate-700">ایمیل (اختیاری)</label>
-                <input id="email" name="email" type="email" class="form-input" value="{{ checkout_data.email|default:'' }}">
-              </div>
+    {# ══════════ Form Column ══════════ #}
+    <section class="lg:col-span-2 reveal">
+      <form method="post" action="{% url 'shop:checkout' %}" class="space-y-8">
+        {% csrf_token %}
+
+        {# ─── Contact Info ─── #}
+        <fieldset class="card card-elevated p-5 sm:p-7">
+          <legend class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">۱</span>
+            اطلاعات تماس
+          </legend>
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label for="full_name" class="form-label">نام تحویل‌گیرنده</label>
+              <input id="full_name" name="full_name" type="text" class="form-input" value="{{ checkout_data.full_name|default:'' }}" required>
+              {% if form_errors.full_name %}<p class="mt-1.5 text-xs text-red-600">{{ form_errors.full_name }}</p>{% endif %}
             </div>
-          </fieldset>
-
-          <fieldset class="mt-5">
-            <legend class="text-base font-bold text-slate-900">آدرس</legend>
-            {% if addresses %}
-              <label for="address_id" class="mb-1 mt-3 block text-sm text-slate-700">انتخاب از نشانی‌های ذخیره‌شده</label>
-              <select id="address_id" name="address_id" class="form-input">
-                <option value="">انتخاب دستی</option>
-                {% for address in addresses %}
-                  <option value="{{ address.id }}" {% if checkout_data.address_id|stringformat:'s' == address.id|stringformat:'s' %}selected{% endif %}>
-                    {{ address.full_name }} - {{ address.province }}، {{ address.city }}{% if address.is_default %} (پیش‌فرض){% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-            {% endif %}
-
-            <label for="address_text" class="mb-1 mt-3 block text-sm text-slate-700">آدرس کامل تحویل</label>
-            <textarea id="address_text" name="address_text" rows="3" class="form-input" required>{{ checkout_data.address_text|default:'' }}</textarea>
-            {% if form_errors.address_text %}<p class="mt-1 text-xs text-red-700">{{ form_errors.address_text }}</p>{% endif %}
-          </fieldset>
-
-          <fieldset class="mt-5">
-            <legend class="text-base font-bold text-slate-900">روش پرداخت</legend>
-            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label class="card flex items-center gap-2 p-3">
-                <input type="radio" name="gateway" value="zarinpal" {% if checkout_data.gateway != 'zibal' %}checked{% endif %}>
-                <span class="text-sm text-slate-700">زرین‌پال</span>
-              </label>
-              <label class="card flex items-center gap-2 p-3">
-                <input type="radio" name="gateway" value="zibal" {% if checkout_data.gateway == 'zibal' %}checked{% endif %}>
-                <span class="text-sm text-slate-700">زیبال</span>
-              </label>
+            <div>
+              <label for="phone" class="form-label">شماره موبایل</label>
+              <input id="phone" name="phone" type="tel" class="form-input" value="{{ checkout_data.phone|default:'' }}" required>
+              {% if form_errors.phone %}<p class="mt-1.5 text-xs text-red-600">{{ form_errors.phone }}</p>{% endif %}
             </div>
-          </fieldset>
-
-          <div class="mt-6 flex flex-col gap-2 sm:flex-row">
-            <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">پرداخت و ثبت سفارش</button>
-            <a href="{% url 'shop:cart' %}" class="btn btn-ghost w-full sm:w-auto">بازگشت به سبد</a>
+            <div>
+              <label for="email" class="form-label">ایمیل (اختیاری)</label>
+              <input id="email" name="email" type="email" class="form-input" value="{{ checkout_data.email|default:'' }}">
+            </div>
           </div>
-          <p class="mt-3 text-xs text-slate-500">وضعیت سفارش در پنل کاربری با مراحل «درحال بررسی»، «تأیید شد» و «تحویل داده شد» قابل مشاهده است.</p>
-        </form>
-      </section>
+        </fieldset>
 
-      <aside class="card h-fit p-4 sm:p-5">
-        <h2 class="text-lg font-bold text-slate-900">خلاصه سفارش</h2>
-        <ul class="mt-3 space-y-2 text-sm text-slate-700">
+        {# ─── Address ─── #}
+        <fieldset class="card card-elevated p-5 sm:p-7">
+          <legend class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">۲</span>
+            آدرس
+          </legend>
+          {% if addresses %}
+          <div class="mb-5">
+            <label for="address_id" class="form-label">انتخاب از نشانی‌های ذخیره‌شده</label>
+            <select id="address_id" name="address_id" class="form-input">
+              <option value="">انتخاب دستی</option>
+              {% for address in addresses %}
+                <option value="{{ address.id }}" {% if checkout_data.address_id|stringformat:'s' == address.id|stringformat:'s' %}selected{% endif %}>
+                  {{ address.full_name }} - {{ address.province }}، {{ address.city }}{% if address.is_default %} (پیش‌فرض){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          <div>
+            <label for="address_text" class="form-label">آدرس کامل تحویل</label>
+            <textarea id="address_text" name="address_text" rows="3" class="form-input" required>{{ checkout_data.address_text|default:'' }}</textarea>
+            {% if form_errors.address_text %}<p class="mt-1.5 text-xs text-red-600">{{ form_errors.address_text }}</p>{% endif %}
+          </div>
+        </fieldset>
+
+        {# ─── Payment Gateway ─── #}
+        <fieldset class="card card-elevated p-5 sm:p-7">
+          <legend class="mb-4 flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700">۳</span>
+            روش پرداخت
+          </legend>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label class="card-hover flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-4 transition hover:border-primary-400 hover:shadow-sm has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:ring-1 has-[:checked]:ring-primary-500">
+              <input type="radio" name="gateway" value="zarinpal" class="accent-primary-600" {% if checkout_data.gateway != 'zibal' %}checked{% endif %}>
+              <span class="text-sm font-medium text-gray-800">زرین‌پال</span>
+            </label>
+            <label class="card-hover flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-4 transition hover:border-primary-400 hover:shadow-sm has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:ring-1 has-[:checked]:ring-primary-500">
+              <input type="radio" name="gateway" value="zibal" class="accent-primary-600" {% if checkout_data.gateway == 'zibal' %}checked{% endif %}>
+              <span class="text-sm font-medium text-gray-800">زیبال</span>
+            </label>
+          </div>
+        </fieldset>
+
+        {# ─── Actions ─── #}
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <button type="submit" class="btn-primary btn-lg w-full sm:w-auto">
+            <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+            پرداخت و ثبت سفارش
+          </button>
+          <a href="{% url 'shop:cart' %}" class="btn-ghost btn-lg w-full sm:w-auto">بازگشت به سبد</a>
+        </div>
+        <p class="text-xs leading-relaxed text-gray-500">وضعیت سفارش در پنل کاربری با مراحل «درحال بررسی»، «تأیید شد» و «تحویل داده شد» قابل مشاهده است.</p>
+      </form>
+    </section>
+
+    {# ══════════ Sidebar — Order Summary ══════════ #}
+    <aside class="reveal lg:sticky lg:top-24">
+      <div class="card card-elevated p-5 sm:p-6">
+        <h2 class="text-base font-semibold text-gray-900">خلاصه سفارش</h2>
+
+        <ul class="stagger-children mt-5 divide-y divide-gray-100 text-sm">
           {% for line in cart_lines %}
-            <li class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
-              <span class="truncate">{{ line.product.title }} × {{ line.quantity }}</span>
-              <strong>{{ line.line_total|floatformat:0 }}</strong>
-            </li>
+          <li class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+            <div class="min-w-0">
+              <span class="truncate text-gray-700 block">{{ line.product.title }} <span class="text-gray-400">×</span> {{ line.quantity }}</span>
+              {% if line.variant %}<span class="text-xs text-primary-600">{{ line.variant.name }}</span>{% endif %}
+              {% if line.region %}<span class="text-xs text-blue-600 mr-1">{{ line.region.name }}</span>{% endif %}
+            </div>
+            <strong class="shrink-0 font-medium text-gray-900">{{ line.line_total|price_format }}</strong>
+          </li>
           {% endfor %}
         </ul>
-        <dl class="mt-4 space-y-2 text-sm text-slate-700">
-          <div class="flex items-center justify-between">
+
+        <dl class="mt-5 space-y-3 border-t border-gray-100 pt-5 text-sm">
+          <div class="flex items-center justify-between text-gray-600">
             <dt>تعداد آیتم‌ها</dt>
             <dd>{{ total_quantity }}</dd>
           </div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between text-gray-600">
             <dt>جمع جزء</dt>
-            <dd>{{ subtotal|floatformat:0 }} تومان</dd>
+            <dd>{{ subtotal|price_format }} <span class="text-xs">تومان</span></dd>
           </div>
-          <div class="flex items-center justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900">
+          <div class="flex items-center justify-between border-t border-gray-200 pt-3 text-base font-semibold text-gray-900">
             <dt>مبلغ پرداخت</dt>
-            <dd>{{ final_total|floatformat:0 }} تومان</dd>
+            <dd>{{ final_total|price_format }} <span class="text-sm font-normal">تومان</span></dd>
           </div>
         </dl>
-      </aside>
-    </div>
+      </div>
+    </aside>
+  </div>
+
   {% else %}
-      <div class="card p-8 text-center">
-      <h2 class="text-xl font-bold text-slate-900">سبد خرید خالی است</h2>
-      <p class="mt-2 text-sm text-slate-600">برای تسویه حساب ابتدا محصولی به سبد اضافه کنید.</p>
-      <a href="{% url 'shop:product_list' %}" class="btn btn-primary mt-4 smooth-hover">مشاهده محصولات</a>
+  {# ══════════ Empty Cart ══════════ #}
+  <div class="reveal mx-auto max-w-md py-16 text-center">
+    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+      <svg class="h-10 w-10 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
     </div>
+    <h2 class="text-xl font-semibold text-gray-900">سبد خرید خالی است</h2>
+    <p class="mt-2 text-sm text-gray-500">برای تسویه حساب ابتدا محصولی به سبد اضافه کنید.</p>
+    <a href="{% url 'shop:product_list' %}" class="btn-primary mt-6 inline-block">مشاهده محصولات</a>
+  </div>
   {% endif %}
+
+</div>
 {% endblock %}

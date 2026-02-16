@@ -1,26 +1,43 @@
 {% extends 'base.html' %}
 
 {% block meta_title %}پرداخت ناموفق | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-2xl">
-    <div class="card p-6 sm:p-8">
-      <div class="alert alert-danger">
-        <h1 class="text-xl font-bold sm:text-2xl">پرداخت ناموفق</h1>
-        <p class="mt-1 text-sm">پرداخت انجام نشد. می‌توانید دوباره تلاش کنید.</p>
-      </div>
+<div class="page-wrapper">
+  <section class="reveal mx-auto max-w-lg py-12 text-center sm:py-20">
 
-      <dl class="mt-4 space-y-2 text-sm text-slate-700">
-        <div><dt class="font-semibold">جزئیات خطا</dt><dd>{{ error|default:'-' }}</dd></div>
-        <div><dt class="font-semibold">مرجع</dt><dd>{{ reference|default:'-' }}</dd></div>
-      </dl>
-
-      <div class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <a href="{% url 'shop:checkout' %}" class="btn btn-primary w-full smooth-hover">تلاش مجدد پرداخت</a>
-        <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">نیاز به راهنمایی</a>
-      </div>
+    {# ── Failed Icon ── #}
+    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+      <svg class="h-10 w-10 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
     </div>
+
+    <h1 class="section-title">پرداخت ناموفق</h1>
+    <p class="section-subtitle mt-2">پرداخت انجام نشد. می‌توانید دوباره تلاش کنید.</p>
+
+    {# ── Details Card ── #}
+    <div class="card card-elevated mx-auto mt-8 max-w-md p-6 text-start sm:p-8">
+      <dl class="space-y-4 text-sm">
+        <div class="flex items-start justify-between gap-4">
+          <dt class="shrink-0 text-gray-500">جزئیات خطا</dt>
+          <dd class="text-end font-medium text-gray-900">{{ error|default:'-' }}</dd>
+        </div>
+        <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+          <dt class="text-gray-500">مرجع</dt>
+          <dd class="font-medium text-gray-900">{{ reference|default:'-' }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    {# ── Actions ── #}
+    <div class="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+      <a href="{% url 'shop:checkout' %}" class="btn-primary btn-lg w-full sm:w-auto">تلاش مجدد پرداخت</a>
+      <a href="{% url 'support:chat' %}" class="btn-ghost btn-lg w-full sm:w-auto">نیاز به راهنمایی</a>
+    </div>
+
   </section>
+</div>
 {% endblock %}
 

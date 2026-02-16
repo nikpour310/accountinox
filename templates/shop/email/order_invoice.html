@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+{% load seo_tags %}
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فاکتور سفارش {{ order.order_number }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:Tahoma,Arial,sans-serif;direction:rtl;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 0;">
+<tr><td align="center">
+
+{# ── Main Card ── #}
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-width:100%;">
+
+{# ── Header ── #}
+<tr>
+<td style="background:linear-gradient(135deg,#0468BD 0%,#1ABBC8 100%);padding:28px 32px;text-align:center;">
+    <h1 style="color:#ffffff;font-size:22px;margin:0 0 4px 0;">{{ site_name }}</h1>
+    <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;">فاکتور خرید</p>
+</td>
+</tr>
+
+{# ── Intro Text ── #}
+{% if email_intro %}
+<tr>
+<td style="padding:24px 32px 0 32px;">
+    <p style="color:#374151;font-size:14px;line-height:1.8;margin:0;">{{ email_intro }}</p>
+</td>
+</tr>
+{% endif %}
+
+{# ── Order Info Box ── #}
+<tr>
+<td style="padding:20px 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+    <tr>
+    <td style="padding:16px 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="color:#166534;font-size:13px;font-weight:bold;padding-bottom:8px;">شماره سفارش</td>
+            <td style="color:#166534;font-size:15px;font-weight:bold;text-align:left;padding-bottom:8px;font-family:Consolas,monospace;letter-spacing:1px;">{{ order.order_number }}</td>
+        </tr>
+        <tr>
+            <td style="color:#4b5563;font-size:12px;">تاریخ</td>
+            <td style="color:#4b5563;font-size:12px;text-align:left;">{{ order.created_at|date:"Y/m/d H:i" }}</td>
+        </tr>
+        <tr>
+            <td style="color:#4b5563;font-size:12px;padding-top:4px;">نام مشتری</td>
+            <td style="color:#4b5563;font-size:12px;text-align:left;padding-top:4px;">{{ order.customer_name }}</td>
+        </tr>
+        {% if order.customer_phone and order.customer_phone != 'نامشخص' %}
+        <tr>
+            <td style="color:#4b5563;font-size:12px;padding-top:4px;">تلفن</td>
+            <td style="color:#4b5563;font-size:12px;text-align:left;padding-top:4px;">{{ order.customer_phone }}</td>
+        </tr>
+        {% endif %}
+        </table>
+    </td>
+    </tr>
+    </table>
+</td>
+</tr>
+
+{# ── Items Table ── #}
+<tr>
+<td style="padding:0 32px 16px 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    {# Table Header #}
+    <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;">ردیف</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;">محصول</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;text-align:left;">قیمت (تومان)</td>
+    </tr>
+    {# Items #}
+    {% for item in items %}
+    <tr>
+        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">{{ forloop.counter }}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">{{ item.product.title|default:"محصول حذف‌شده" }}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:left;font-family:Consolas,monospace;">{{ item.price|price_format }}</td>
+    </tr>
+    {% endfor %}
+    {# Total Row #}
+    <tr style="background-color:#f0f9ff;">
+        <td colspan="2" style="padding:12px;font-size:14px;font-weight:bold;color:#1e40af;border-top:2px solid #bfdbfe;">جمع کل</td>
+        <td style="padding:12px;font-size:16px;font-weight:bold;color:#1e40af;text-align:left;border-top:2px solid #bfdbfe;font-family:Consolas,monospace;">{{ order.total|price_format }} تومان</td>
+    </tr>
+    </table>
+</td>
+</tr>
+
+{# ── Status Badge ── #}
+<tr>
+<td style="padding:0 32px 20px 32px;text-align:center;">
+    <span style="display:inline-block;background-color:#dcfce7;color:#166534;font-size:13px;font-weight:bold;padding:8px 20px;border-radius:20px;">✅ پرداخت موفق</span>
+</td>
+</tr>
+
+{# ── Footer Text ── #}
+{% if email_footer %}
+<tr>
+<td style="padding:0 32px 24px 32px;">
+    <p style="color:#6b7280;font-size:12px;line-height:1.8;margin:0;text-align:center;">{{ email_footer }}</p>
+</td>
+</tr>
+{% endif %}
+
+{# ── Divider ── #}
+<tr>
+<td style="padding:0 32px;">
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:0;">
+</td>
+</tr>
+
+{# ── Bottom Footer ── #}
+<tr>
+<td style="padding:20px 32px;text-align:center;">
+    {% if site_url %}
+    <p style="margin:0 0 6px 0;">
+        <a href="{{ site_url }}" style="color:#0468BD;font-size:12px;text-decoration:none;">{{ site_name }}</a>
+    </p>
+    {% endif %}
+    {% if support_email %}
+    <p style="color:#9ca3af;font-size:11px;margin:0;">پشتیبانی: {{ support_email }}</p>
+    {% endif %}
+    <p style="color:#d1d5db;font-size:10px;margin:8px 0 0 0;">این ایمیل به‌صورت خودکار ارسال شده است.</p>
+</td>
+</tr>
+
+</table>
+{# ── End Main Card ── #}
+
+</td></tr>
+</table>
+
+</body>
+</html>

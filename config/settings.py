@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import environ
 from django.core.exceptions import ImproperlyConfigured
+import logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,9 +15,16 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 DEBUG = env('DEBUG')
 
 SECRET_KEY = env('DJANGO_SECRET_KEY', default='change-me')
+if not DEBUG and SECRET_KEY == 'change-me':
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY must be set in production (do not use the default).'
+    )
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost', 'testserver'])
 SITE_URL = env('SITE_URL', default='').strip().rstrip('/')
+# SITE_BASE_URL: canonical base for building absolute URLs used in templates, robots, sitemap
+# Read from env `SITE_BASE_URL` if provided, otherwise fall back to SITE_URL (both without trailing slash)
+SITE_BASE_URL = env('SITE_BASE_URL', default=SITE_URL).strip().rstrip('/')
 SUPPORT_PUSH_ENABLED = env.bool('SUPPORT_PUSH_ENABLED', default=False)
 VAPID_PUBLIC_KEY = env('VAPID_PUBLIC_KEY', default='').strip()
 VAPID_PRIVATE_KEY = env('VAPID_PRIVATE_KEY', default='').strip()
@@ -26,7 +34,7 @@ ADMIN_BRAND_SECONDARY = env('ADMIN_BRAND_SECONDARY', default='').strip()
 ADMIN_BRAND_ACCENT = env('ADMIN_BRAND_ACCENT', default='').strip()
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'apps.core.admin_site.AccountinoxAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -54,6 +62,7 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'apps.core.middleware.VaryAcceptMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,6 +86,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.core.context_processors.site_settings',
+                'apps.accounts.context_processors.panel_sidebar',
             ],
         },
     }
@@ -113,6 +123,12 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
+# Production: use manifest storage for long-term caching of static files
+# This creates hashed filenames (e.g., app.abc123.css) which improves CDN/browser caching
+import sys
+if not DEBUG and 'runserver' not in sys.argv:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -128,6 +144,24 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 # The warning about conflict can be safely ignored (allauth legacy vs new config style)
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email', 'username']
+# Use custom signup form to capture phone and store in Profile
+# Temporarily disabled to avoid import-time circular import during test collection.
+# If you want to enable this in production, ensure allauth is importable
+# before importing this module or move the form to a module that doesn't
+# trigger circular imports at startup.
+# ACCOUNT_SIGNUP_FORM_CLASS = 'apps.accounts.forms_allauth.CustomSignupForm'
+
+# Email backend: console in dev, SMTP in production
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+    EMAIL_HOST = env('EMAIL_HOST', default='localhost')
+    EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+    EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+    EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+    DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@accountinox.com')
 
 # Allauth social provider settings loaded via env
 SOCIALACCOUNT_PROVIDERS = {
@@ -141,8 +175,10 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # Security defaults
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+#SESSION_COOKIE_SECURE = not DEBUG
+#CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
+CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
 
 # Rate limiting defaults (login endpoints will use decorators)
 
@@ -150,11 +186,21 @@ CSRF_COOKIE_SECURE = not DEBUG
 FERNET_KEY = env('FERNET_KEY', default='')
 OTP_HMAC_KEY = env('OTP_HMAC_KEY', default='')
 
-# Enforce OTP_HMAC_KEY in production
+# IPPanel SMS provider settings
+IPPANEL_API_KEY = env('IPPANEL_API_KEY', default='')
+IPPANEL_SENDER = env('IPPANEL_SENDER', default='')
+IPPANEL_PATTERN_CODE = env('IPPANEL_PATTERN_CODE', default='')
+IPPANEL_ORIGINATOR = env('IPPANEL_ORIGINATOR', default='')
+
+# Enforce OTP_HMAC_KEY and FERNET_KEY in production
 if not DEBUG:
     if not OTP_HMAC_KEY:
         raise ImproperlyConfigured(
             'OTP_HMAC_KEY must be set in production (set OTP_HMAC_KEY in environment).'
+        )
+    if not FERNET_KEY:
+        raise ImproperlyConfigured(
+            'FERNET_KEY must be set in production (set FERNET_KEY in environment).'
         )
     if SUPPORT_PUSH_ENABLED:
         missing_push_fields = [
@@ -298,3 +344,22 @@ LOGGING = {
         },
     },
 }
+
+# Optional Sentry integration: enabled when SENTRY_DSN is provided in environment
+SENTRY_DSN = env('SENTRY_DSN', default='').strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=env.float('SENTRY_TRACES_SAMPLE_RATE', default=0.0),
+            send_default_pii=env.bool('SENTRY_SEND_PII', default=False),
+            environment=env('SENTRY_ENVIRONMENT', default=''),
+        )
+        logging.getLogger('apps').info('Sentry initialized')
+    except Exception:
+        # avoid crashing startup if sentry is unavailable
+        logging.getLogger('apps').exception('Failed to initialize Sentry')

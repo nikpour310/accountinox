@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}خدمات | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <!-- Hero header -->
+  <div class="text-center mb-12">
+    <div class="inline-flex items-center gap-2 bg-primary-50 text-primary-700 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+      مجموعه خدمات ما
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">خدمات دیجیتال</h1>
+    <p class="text-gray-500 max-w-lg mx-auto leading-relaxed">گروه خدمات مورد نظرتان را انتخاب کنید و محصولات مرتبط را مشاهده کنید.</p>
+  </div>
+
+  <!-- Service cards grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+    {% for service in services %}
+    <a href="{% url 'shop:service_detail' service.slug %}" class="group block">
+      <article class="card card-hover relative overflow-hidden transition-all duration-300 h-full">
+        <!-- Gradient accent top -->
+        <div class="h-1 bg-gradient-to-l from-primary-500 to-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            <!-- Logo / Icon -->
+            <div class="flex-shrink-0">
+              {% if service.featured_image %}
+              <div class="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center p-1.5 group-hover:border-primary-200 group-hover:shadow-sm transition-all duration-300">
+                <img src="{{ service.featured_image.url }}" alt="{{ service.name }}" class="w-full h-full object-contain rounded-lg" loading="lazy">
+              </div>
+              {% elif service.icon %}
+              <div class="w-16 h-16 rounded-xl bg-primary-50 border border-primary-100 flex items-center justify-center text-3xl group-hover:bg-primary-100 transition-colors duration-300">
+                <span>{{ service.icon }}</span>
+              </div>
+              {% else %}
+              <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-50 to-teal-50 border border-primary-100 flex items-center justify-center group-hover:from-primary-100 group-hover:to-teal-100 transition-all duration-300">
+                <svg class="w-7 h-7 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-bold text-gray-900 group-hover:text-primary-700 transition-colors duration-200">{{ service.name }}</h3>
+              {% if service.description %}
+              <p class="text-sm text-gray-500 mt-2 leading-relaxed line-clamp-2">{{ service.description }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+            {% if service.products_count %}
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-2.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+              {{ service.products_count }} خدمت
+            </span>
+            {% else %}
+            <span class="text-xs text-gray-400">به‌زودی</span>
+            {% endif %}
+            <span class="inline-flex items-center gap-1 text-sm font-medium text-primary-600 group-hover:gap-2 transition-all duration-200">
+              مشاهده
+              <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </span>
+          </div>
+        </div>
+      </article>
+    </a>
+    {% empty %}
+    <div class="col-span-full text-center py-16">
+      <div class="text-5xl mb-4">🏗️</div>
+      <p class="text-gray-500 text-lg">به‌زودی خدمات جدید اضافه می‌شود.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

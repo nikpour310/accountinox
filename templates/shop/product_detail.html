@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static seo_tags %}
 
 {% block meta_title %}{{ product.seo_title|default:product.title }} | فروشگاه {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}{% endblock %}
@@ -32,61 +32,445 @@
       "@type": "Offer",
       "priceCurrency": "IRR",
       "price": "{{ product.price|floatformat:0 }}",
-      "availability": "https://schema.org/InStock",
+      "availability": "{% if product.is_available %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
       "url": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}"
     }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "خانه",
+        "item": "{{ site_base_url }}/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "فروشگاه",
+        "item": "{{ site_base_url }}{% url 'shop:product_list' %}"
+      }{% if product.category %},
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ product.category.name|escapejs }}",
+        "item": "{{ site_base_url }}{% url 'shop:product_list' %}?category={{ product.category.slug }}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "{{ product.title|escapejs }}",
+        "item": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}"
+      }
+      {% else %},
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ product.title|escapejs }}",
+        "item": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}"
+      }
+      {% endif %}
+    ]
   }
   </script>
 {% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-5xl">
-    <a href="{% url 'shop:product_list' %}" class="btn btn-ghost mb-5 w-full justify-center sm:w-auto sm:justify-start">بازگشت به فروشگاه</a>
+<div class="page-wrapper">
+  {# Breadcrumb #}
+  <nav class="mb-6 reveal">
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+      <a href="{% url 'shop:product_list' %}" class="hover:text-primary-600 transition-colors">فروشگاه</a>
+      <svg class="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      {% if product.category %}
+        <a href="{% url 'shop:product_list' %}?category={{ product.category.slug }}" class="hover:text-primary-600 transition-colors">{{ product.category.name }}</a>
+        <svg class="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      {% endif %}
+      <span class="text-gray-900 font-medium truncate max-w-[200px]">{{ product.title }}</span>
+    </div>
+  </nav>
 
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-      <div class="card overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+  {# ── Product Hero — 2 equal columns ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 items-start gap-8 lg:gap-12 reveal">
+
+    {# ── Left: Image ── #}
+    <div class="lg:sticky lg:top-24">
+      <div class="aspect-square overflow-hidden rounded-2xl bg-gray-50 border border-gray-100">
         {% if product.featured_image %}
-          <img src="{{ product.featured_image.url }}" alt="{{ product.title }}" class="h-full w-full object-cover">
+          <img src="{{ product.featured_image.url }}" alt="{{ product.title }}"
+               class="h-full w-full object-contain p-4 transition-transform duration-500 hover:scale-105"
+               loading="lazy">
         {% else %}
-          <div class="flex h-80 items-center justify-center text-7xl" aria-hidden="true">📦</div>
+          <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100" aria-hidden="true">
+            <span class="text-8xl drop-shadow-sm">{% if product.service and product.service.icon %}{{ product.service.icon }}{% else %}📦{% endif %}</span>
+          </div>
         {% endif %}
       </div>
 
-      <div class="card p-5 sm:p-6">
-        <span class="badge">ارسال اطلاعات پس از پرداخت</span>
-        <h1 class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ product.title }}</h1>
-        <p class="mt-3 text-sm leading-7 text-slate-700">{{ product.description|default:'توضیحات تکمیلی برای این محصول ثبت نشده است.' }}</p>
+      {# Service badge — under image #}
+      {% if product.service %}
+      <div class="mt-4 flex items-center gap-2 text-sm text-gray-500">
+        {% if product.service.icon %}<span class="text-lg">{{ product.service.icon }}</span>{% endif %}
+        <span>سرویس: <strong class="text-gray-700">{{ product.service.name }}</strong></span>
+      </div>
+      {% endif %}
 
-        <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">قیمت نهایی</p>
-          <div class="mt-2 flex items-baseline gap-2">
-            <strong class="text-3xl text-slate-900">{{ product.price|floatformat:0 }}</strong>
-            <span class="text-sm text-slate-500">تومان</span>
-          </div>
+      {# Trust badges — desktop only #}
+      <div class="hidden lg:grid grid-cols-3 gap-2 mt-4">
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-emerald-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">پرداخت امن</p>
         </div>
-
-        <ul class="mt-4 space-y-2 text-sm text-slate-700">
-          <li>تحویل اطلاعات سفارش پس از تایید پرداخت</li>
-          <li>پشتیبانی فعال برای پیگیری سفارش</li>
-          <li>در صورت نیاز، کارشناسان ما برای هماهنگی تماس می‌گیرند</li>
-        </ul>
-
-        <div class="mt-6 grid grid-cols-1 gap-2">
-          <form method="post" action="{% url 'shop:cart_add' %}">
-            {% csrf_token %}
-            <input type="hidden" name="product_id" value="{{ product.id }}">
-            <input type="hidden" name="next" value="{{ request.path }}">
-            <button type="submit" class="btn btn-primary w-full smooth-hover">افزودن به سبد خرید</button>
-          </form>
-          <form method="post" action="{% url 'shop:checkout' %}">
-            {% csrf_token %}
-            <input type="hidden" name="product_id" value="{{ product.id }}">
-            <button type="submit" class="btn btn-secondary w-full smooth-hover">خرید سریع</button>
-          </form>
-          <a href="{% url 'support:chat' %}" class="btn btn-ghost w-full smooth-hover">پرسش قبل از خرید</a>
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-blue-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">تحویل سریع</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-violet-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">پشتیبانی ۲۴/۷</p>
         </div>
       </div>
     </div>
-  </section>
-{% endblock %}
 
+    {# ── Right: Info Column ── #}
+    <div class="flex flex-col gap-6">
+
+      {# ─ Title + Badges ─ #}
+      <div>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          {% if product.category %}
+            <span class="chip">{{ product.category.name }}</span>
+          {% endif %}
+          {% if product.service %}
+            <span class="chip bg-blue-50 text-blue-700 border-blue-200">
+              {% if product.service.icon %}{{ product.service.icon }}{% endif %}
+              {{ product.service.name }}
+            </span>
+          {% endif %}
+          {% if not product.is_available %}
+            <span class="chip bg-red-50 text-red-700 border-red-200">ناموجود</span>
+          {% endif %}
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">{{ product.title }}</h1>
+        {% if product.short_description %}
+          <p class="mt-2 text-base leading-7 text-gray-500">{{ product.short_description }}</p>
+        {% endif %}
+      </div>
+
+      {# ─ Price + Buy CTA ─ #}
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" id="buySection"
+           x-data="{
+             selectedRegion: {% if regions %}{{ regions.0.id }}{% else %}null{% endif %},
+             selectedVariant: null,
+             allVariants: [{% for v in variants %}{ id: {{ v.id }}, name: '{{ v.name|escapejs }}', price: {{ v.price }}, regionId: {{ v.region_id|default:'null' }} }{% if not forloop.last %},{% endif %}{% endfor %}],
+             regions: [{% for r in regions %}{ id: {{ r.id }}, name: '{{ r.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
+             quantity: 1,
+             allowQty: {{ product.allow_quantity|yesno:'true,false' }},
+             basePrice: {{ product.price }},
+             get hasRegions() { return this.regions.length > 0 },
+             get filteredVariants() {
+               if (!this.hasRegions) return this.allVariants;
+               return this.allVariants.filter(v => v.regionId === this.selectedRegion);
+             },
+             get unitPrice() { return this.selectedVariant ? this.allVariants.find(v => v.id == this.selectedVariant)?.price || this.basePrice : this.basePrice },
+             get totalPrice() { return this.unitPrice * this.quantity },
+             formatPrice(n) { return new Intl.NumberFormat('fa-IR').format(Math.round(n)) },
+             selectRegion(id) {
+               this.selectedRegion = id;
+               this.selectedVariant = null;
+             }
+           }">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs font-medium text-gray-400 mb-1">قیمت محصول</p>
+            <div class="flex items-baseline gap-1.5">
+              {% if variants %}
+                <strong class="text-3xl font-extrabold text-gray-900" x-text="formatPrice(unitPrice)">{{ product.price|price_format }}</strong>
+              {% else %}
+                <strong class="text-3xl font-extrabold text-gray-900">{{ product.price|price_format }}</strong>
+              {% endif %}
+              <span class="text-sm font-medium text-gray-400">تومان</span>
+            </div>
+          </div>
+          {% if product.is_available %}
+          <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            موجود
+          </span>
+          {% else %}
+          <span class="inline-flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-50 px-3 py-1.5 rounded-full">
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+            ناموجود
+          </span>
+          {% endif %}
+        </div>
+
+        {% if product.is_available %}
+
+          {# ── Region Selection (above variants) ── #}
+          {% if regions %}
+          <div class="mb-4">
+            <p class="form-label text-xs mb-2">انتخاب ریجن</p>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="r in regions" :key="r.id">
+                <button type="button" @click="selectRegion(r.id)"
+                        class="rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all"
+                        :class="selectedRegion === r.id
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-300'"
+                        x-text="r.name">
+                </button>
+              </template>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Variant Selection (filtered by region) ── #}
+          {% if variants %}
+          <div class="mb-4" x-show="filteredVariants.length > 0">
+            <p class="form-label text-xs mb-2">انتخاب پلن</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <template x-for="v in filteredVariants" :key="v.id">
+                <label class="relative cursor-pointer">
+                  <input type="radio" name="variant_preview" :value="v.id" x-model.number="selectedVariant" class="peer sr-only">
+                  <div class="rounded-xl border-2 border-gray-200 p-3 text-center transition-all
+                              peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500
+                              hover:border-gray-300">
+                    <p class="text-sm font-semibold text-gray-900" x-text="v.name"></p>
+                    <p class="text-xs text-gray-500 mt-0.5" x-text="formatPrice(v.price) + ' تومان'"></p>
+                  </div>
+                </label>
+              </template>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Quantity ── #}
+          {% if product.allow_quantity %}
+          <div class="mb-4">
+            <p class="form-label text-xs mb-2">تعداد</p>
+            <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden w-fit">
+              <button type="button" @click="quantity = Math.max(1, quantity - 1)"
+                      class="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors text-lg">−</button>
+              <span class="w-12 h-10 flex items-center justify-center text-sm font-semibold text-gray-900 border-x border-gray-200" x-text="quantity"></span>
+              <button type="button" @click="quantity = Math.min(10, quantity + 1)"
+                      class="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors text-lg">+</button>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Total when quantity > 1 or variant selected ── #}
+          <template x-if="(allowQty && quantity > 1) || selectedVariant">
+            <div class="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 mb-4 flex items-center justify-between">
+              <span class="text-sm text-gray-600">مبلغ کل</span>
+              <strong class="text-lg font-extrabold text-gray-900" x-text="formatPrice(totalPrice) + ' تومان'"></strong>
+            </div>
+          </template>
+
+          {% if product.credential_type != 'none' %}
+          <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3 mb-4">
+            <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+            <div class="text-sm text-amber-800">
+              <p class="font-medium">
+                {% if product.credential_type == 'email_pass' %}
+                  برای فعال‌سازی این محصول، ایمیل و رمز عبور حساب خود را وارد کنید.
+                {% else %}
+                  برای فعال‌سازی این محصول، ایمیل حساب خود را وارد کنید.
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Delivery type notice ── #}
+          {% if product.delivery_type == 'digital' %}
+          <div class="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 flex items-start gap-3 mb-4">
+            <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            <div class="text-sm text-blue-800">
+              <p class="font-medium">این محصول پس از پرداخت موفق، قابل دانلود خواهد بود.</p>
+            </div>
+          </div>
+          {% endif %}
+
+          <form method="post" action="{% url 'shop:cart_add' %}" id="addToCartForm">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            {% if variants %}
+            <input type="hidden" name="variant_id" :value="selectedVariant">
+            {% endif %}
+            {% if regions %}
+            <input type="hidden" name="region_id" :value="selectedRegion">
+            {% endif %}
+            {% if product.allow_quantity %}
+            <input type="hidden" name="quantity" :value="quantity">
+            {% endif %}
+
+            {% if product.credential_type != 'none' %}
+            <div class="space-y-3 mb-4">
+              <div>
+                <label class="form-label text-xs">{{ product.credential_label|default:'ایمیل حساب' }}</label>
+                <input type="email" name="customer_email" required placeholder="example@email.com" dir="ltr" class="ui-input w-full">
+              </div>
+              {% if product.credential_type == 'email_pass' %}
+              <div>
+                <label class="form-label text-xs">رمز عبور حساب</label>
+                <input type="password" name="customer_password" required placeholder="رمز عبور" dir="ltr" class="ui-input w-full">
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary btn-lg w-full text-base"
+                    {% if variants %}:disabled="!selectedVariant" :class="{'opacity-50 cursor-not-allowed': !selectedVariant}"{% endif %}>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
+              افزودن به سبد خرید
+            </button>
+          </form>
+
+          <form method="post" action="{% url 'shop:checkout' %}" class="mt-3">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            {% if variants %}
+            <input type="hidden" name="variant_id" :value="selectedVariant">
+            {% endif %}
+            {% if regions %}
+            <input type="hidden" name="region_id" :value="selectedRegion">
+            {% endif %}
+            {% if product.allow_quantity %}
+            <input type="hidden" name="quantity" :value="quantity">
+            {% endif %}
+            <button type="submit" class="btn btn-ghost btn-lg w-full text-sm border border-gray-200"
+                    {% if variants %}:disabled="!selectedVariant" :class="{'opacity-50 cursor-not-allowed': !selectedVariant}"{% endif %}>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+              خرید سریع — بدون سبد خرید
+            </button>
+          </form>
+        {% else %}
+          <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-4 text-center">
+            <svg class="w-8 h-8 text-red-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+            <p class="text-sm font-medium text-red-800">این محصول در حال حاضر ناموجود است.</p>
+            <p class="text-xs text-red-600 mt-1">لطفاً بعداً مراجعه کنید یا با پشتیبانی تماس بگیرید.</p>
+          </div>
+        {% endif %}
+
+        <a href="{% url 'support:chat' %}" class="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-primary-600 mt-3 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
+          پرسش قبل از خرید
+        </a>
+      </div>
+
+      {# ─ Features ─ #}
+      {% if product.features %}
+      <div class="card overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
+          <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          <h2 class="font-semibold text-gray-900 text-sm">ویژگی‌ها و مزایا</h2>
+        </div>
+        <div class="p-5">
+          <ul class="space-y-3 text-sm text-gray-600">
+            {% for line in product.features.splitlines %}
+              {% if line.strip %}
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                  <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                </span>
+                <span>{{ line.strip }}</span>
+              </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% else %}
+      <div class="card p-5">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">مزایای خرید</h3>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            </span>
+            <span>تحویل اطلاعات سفارش پس از تایید پرداخت</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            </span>
+            <span>پشتیبانی فعال برای پیگیری سفارش</span>
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            </span>
+            <span>در صورت نیاز، کارشناسان ما برای هماهنگی تماس می‌گیرند</span>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+
+      {# ─ Description ─ #}
+      {% if product.description %}
+      <div class="card overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+          <h2 class="font-semibold text-gray-900 text-sm">توضیحات محصول</h2>
+        </div>
+        <div class="p-5 prose prose-sm max-w-none text-gray-600 leading-7">
+          {{ product.description|safe }}
+        </div>
+      </div>
+      {% endif %}
+
+      {# Trust badges — mobile only #}
+      <div class="grid grid-cols-3 gap-2 lg:hidden">
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-emerald-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">پرداخت امن</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-blue-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">تحویل سریع</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 border border-gray-100 p-3 text-center">
+          <svg class="w-5 h-5 text-violet-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg>
+          <p class="text-[11px] font-medium text-gray-600">پشتیبانی ۲۴/۷</p>
+        </div>
+      </div>
+
+    </div>{# end info column #}
+  </div>{# end grid #}
+</div>{# end page-wrapper #}
+
+{% if product.is_available %}
+{# ── Sticky Buy Bar (mobile) ── #}
+<div class="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-white/95 backdrop-blur-lg border-t border-gray-200 px-4 py-3"
+     x-data="{ show: false }"
+     x-init="const el = document.getElementById('buySection');
+             if(el){ const obs = new IntersectionObserver(([e]) => { show = !e.isIntersecting }, { threshold: 0.1 }); obs.observe(el); }"
+     x-show="show"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="translate-y-full opacity-0"
+     x-transition:enter-end="translate-y-0 opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="translate-y-0 opacity-100"
+     x-transition:leave-end="translate-y-full opacity-0"
+     x-cloak>
+  <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
+    <div class="min-w-0">
+      <p class="text-xs text-gray-500 truncate">{{ product.title }}</p>
+      <p class="text-lg font-extrabold text-gray-900">{{ product.price|price_format }} <span class="text-xs font-medium text-gray-400">تومان</span></p>
+    </div>
+    <a href="#buySection"
+       class="btn btn-primary btn-lg shrink-0 px-6"
+       onclick="document.getElementById('buySection').scrollIntoView({behavior:'smooth',block:'center'}); return false;">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
+      خرید
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -28,7 +28,7 @@
     "description": "{{ post.seo_description|default:post.content|striptags|truncatechars:300|escapejs }}",
     "url": "{{ site_base_url }}{% url 'blog:post_detail' post.slug %}",
     "datePublished": "{{ post.created_at|date:'c' }}",
-    "dateModified": "{{ post.created_at|date:'c' }}",
+    "dateModified": "{% if post.updated_at %}{{ post.updated_at|date:'c' }}{% else %}{{ post.created_at|date:'c' }}{% endif %}",
     "image": "{% if post.featured_image %}{% if post.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ post.featured_image.url }}{% else %}{{ post.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}",
     "author": {
       "@type": "Organization",
@@ -66,61 +66,228 @@
 {% comment %} Article typography moved to `static/css/main.css` under `.article-content` component {% endcomment %}
 
 {% block content %}
-  <article class="mx-auto max-w-4xl">
-    <nav class="mb-4 text-xs text-slate-500" aria-label="breadcrumb">
-      <a href="{% url 'core:landing' %}" class="hover:underline">خانه</a>
-      <span class="mx-1">/</span>
-      <a href="{% url 'blog:post_list' %}" class="hover:underline">بلاگ</a>
-      <span class="mx-1">/</span>
-      <span class="text-slate-700">{{ post.title|truncatechars:50 }}</span>
+<div class="page-wrapper">
+
+  {# ── Reading Progress Bar ── #}
+  <div class="fixed top-0 left-0 right-0 z-50 h-0.5 bg-gray-100" id="progress-bar-track">
+    <div class="h-full bg-gradient-to-r from-primary-500 to-teal-400 transition-all duration-150 ease-out" id="progress-bar" style="width:0%"></div>
+  </div>
+
+  <article class="mx-auto max-w-3xl">
+
+    {# ── Breadcrumb ── #}
+    <nav class="mb-8 reveal" aria-label="breadcrumb">
+      <div class="flex items-center gap-2 text-sm text-gray-400">
+        <a href="{% url 'core:landing' %}" class="hover:text-primary-600 transition-colors">خانه</a>
+        <svg class="w-3 h-3 rotate-180 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <a href="{% url 'blog:post_list' %}" class="hover:text-primary-600 transition-colors">بلاگ</a>
+        <svg class="w-3 h-3 rotate-180 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <span class="text-gray-600 font-medium truncate max-w-[200px]">{{ post.title|truncatechars:40 }}</span>
+      </div>
     </nav>
 
-    <header class="card mb-5 p-5 sm:p-6">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-extrabold text-slate-900 sm:text-3xl md:text-4xl">{{ post.title }}</h1>
-          <p class="mt-2 text-sm text-slate-600">منتشر شده در {{ post.created_at|date:'Y/m/d'|default:'' }}</p>
+    {# ── Post Header ── #}
+    <header class="mb-10 reveal">
+      {# Keywords as tags (max 5) #}
+      {% if post.keywords_list %}
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          {% for kw in post.keywords_list %}
+            {% if forloop.counter <= 5 %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary-50 text-primary-700 text-xs font-medium">{{ kw }}</span>
+            {% endif %}
+          {% endfor %}
         </div>
-        <a href="{% url 'blog:post_list' %}" class="btn btn-ghost w-full sm:w-auto">بازگشت به لیست مقالات</a>
+      {% endif %}
+
+      <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl leading-[1.3]">{{ post.title }}</h1>
+
+      {# Gradient accent line #}
+      <div class="mt-4 h-1 w-16 rounded-full bg-gradient-to-r from-primary-500 to-teal-400"></div>
+
+      {# Meta info #}
+      <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400">
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+          {{ post.created_at|date:'Y/m/d' }}
+        </span>
+        {% if post.reading_time %}
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          {{ post.reading_time }} دقیقه مطالعه
+        </span>
+        {% endif %}
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+          {{ site_settings.site_name|default:'Accountinox' }}
+        </span>
       </div>
+
       {% if post.seo_description %}
-        <p class="mt-3 text-sm leading-7 text-slate-700">{{ post.seo_description }}</p>
+        <p class="mt-5 text-base leading-8 text-gray-500 border-r-2 border-primary-200 pr-4">{{ post.seo_description }}</p>
       {% endif %}
     </header>
 
+    {# ── Featured Image ── #}
     {% if post.featured_image %}
-      <div class="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="h-auto w-full object-cover">
+      <div class="mb-12 overflow-hidden rounded-2xl bg-gray-50 shadow-sm reveal">
+        {% include 'partials/image.html' with image=post.featured_image alt=post.title class="w-full h-auto object-contain" loading="lazy" %}
       </div>
     {% endif %}
 
-    <section class="card p-5 sm:p-6">
-      <div class="article-content">
-        {{ post.content|safe }}
+    {# ── Article Content ── #}
+    <div class="overflow-hidden reveal">
+      <div class="py-4 sm:py-8">
+        <div class="article-content">
+          {{ post.content|safe }}
+        </div>
       </div>
-    </section>
+    </div>
 
+    {# ── Share Section ── #}
+    <div class="mt-8 flex items-center justify-between border-t border-b border-gray-100 py-5 reveal">
+      <span class="text-sm font-medium text-gray-500">این مقاله رو به اشتراک بذارید</span>
+      <div class="flex items-center gap-2">
+        {# Copy link #}
+        <button onclick="copyArticleLink(this)" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors" title="کپی لینک">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.822a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.343 8.52"/></svg>
+          <span class="copy-label">کپی لینک</span>
+        </button>
+        {# Telegram #}
+        <a href="https://t.me/share/url?url={{ request.build_absolute_uri }}&text={{ post.title|urlencode }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="اشتراک در تلگرام">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        </a>
+        {# WhatsApp #}
+        <a href="https://wa.me/?text={{ post.title|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 bg-gray-50 hover:bg-green-50 hover:text-green-600 transition-colors" title="اشتراک در واتساپ">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </a>
+        {# Twitter/X #}
+        <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri|urlencode }}&text={{ post.title|urlencode }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 bg-gray-50 hover:bg-gray-900 hover:text-white transition-colors" title="اشتراک در X">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+      </div>
+    </div>
+
+    {# ── FAQs ── #}
     {% if post.faqs.all %}
-      <section class="card mt-5 p-5 sm:p-6">
-        <h2 class="text-xl font-bold text-slate-900">سوالات متداول این مقاله</h2>
-        <div class="mt-4 space-y-3">
+      <section class="mt-12 reveal">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-gray-900">سوالات متداول</h2>
+            <p class="text-xs text-gray-400 mt-0.5">پاسخ سریع به رایج‌ترین پرسش‌ها</p>
+          </div>
+        </div>
+        <div class="space-y-3 stagger-children">
           {% for faq in post.faqs.all %}
-            <details class="rounded-lg border border-slate-200 bg-white p-3">
-              <summary class="cursor-pointer text-sm font-semibold text-slate-900">{{ faq.question }}</summary>
-              <p class="mt-2 text-sm leading-7 text-slate-700">{{ faq.answer }}</p>
+            <details class="group card overflow-hidden transition-all hover:shadow-md">
+              <summary class="cursor-pointer flex items-center justify-between p-4 sm:p-5 text-sm font-semibold text-gray-900 transition-colors group-open:text-primary-600">
+                <div class="flex items-center gap-3">
+                  <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-gray-100 text-xs font-bold text-gray-500 group-open:bg-primary-50 group-open:text-primary-600 transition-colors flex-shrink-0">{{ forloop.counter }}</span>
+                  <span>{{ faq.question }}</span>
+                </div>
+                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 group-open:rotate-180 flex-shrink-0 ms-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </summary>
+              <div class="px-4 pb-4 sm:px-5 sm:pb-5 -mt-1 mr-9">
+                <p class="text-sm leading-7 text-gray-500">{{ faq.answer }}</p>
+              </div>
             </details>
           {% endfor %}
         </div>
       </section>
     {% endif %}
 
-    <section class="card mt-5 p-5 text-white sm:p-6 bg-primary-600">
-      <h3 class="text-xl font-bold">بعد از مطالعه این مطلب</h3>
-      <p class="mt-2 text-sm text-white/95">برای اقدام سریع، یکی از این دو مسیر را انتخاب کنید.</p>
-      <div class="mt-4 flex flex-col gap-2 sm:flex-row">
-        <a href="{% url 'shop:product_list' %}" class="btn btn-primary w-full sm:w-auto smooth-hover">مشاهده محصولات</a>
-        <a href="{% url 'support:chat' %}" class="btn btn-soft w-full sm:w-auto">مشاوره قبل از خرید</a>
-      </div>
-    </section>
+    {# ── Related Posts ── #}
+    {% if related_posts %}
+      <section class="mt-12 reveal">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-gray-900">مقالات مرتبط</h2>
+            <p class="text-xs text-gray-400 mt-0.5">مطالب بیشتر از بلاگ ما</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
+          {% for rp in related_posts %}
+            <a href="{{ rp.get_absolute_url }}" class="card card-hover overflow-hidden flex flex-col group">
+              <div class="aspect-[4/3] overflow-hidden bg-gray-50">
+                {% if rp.featured_image %}
+                  {% include 'partials/image.html' with image=rp.featured_image alt=rp.title class="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" loading="lazy" %}
+                {% else %}
+                  <div class="flex h-full items-center justify-center text-3xl text-gray-200" aria-hidden="true">📰</div>
+                {% endif %}
+              </div>
+              <div class="p-4 flex-1 flex flex-col">
+                <span class="text-[11px] text-gray-400">{{ rp.created_at|date:'Y/m/d' }}</span>
+                <h3 class="mt-1.5 text-sm font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-primary-600 transition-colors">{{ rp.title }}</h3>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {# ── CTA Cards ── #}
+    <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4 reveal">
+      <a href="{% url 'shop:product_list' %}" class="card card-hover p-5 flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center flex-shrink-0 group-hover:bg-primary-100 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.15c0 .415.336.75.75.75z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">مشاهده محصولات</p>
+          <p class="text-xs text-gray-500 mt-0.5">فروشگاه دیجیتال را ببینید</p>
+        </div>
+      </a>
+      <a href="{% url 'support:chat' %}" class="card card-hover p-5 flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">مشاوره قبل از خرید</p>
+          <p class="text-xs text-gray-500 mt-0.5">پشتیبانی آنلاین</p>
+        </div>
+      </a>
+    </div>
+
+    {# ── Back to blog ── #}
+    <div class="mt-10 mb-4 text-center reveal">
+      <a href="{% url 'blog:post_list' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50/50 transition-all">
+        <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        بازگشت به لیست مقالات
+      </a>
+    </div>
+
   </article>
+</div>
+
+{# ── Scripts ── #}
+<script>
+  // Reading progress bar
+  (function(){
+    const bar = document.getElementById('progress-bar');
+    if (!bar) return;
+    function updateProgress() {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min((scrollTop / docHeight) * 100, 100) : 0;
+      bar.style.width = progress + '%';
+    }
+    window.addEventListener('scroll', updateProgress, {passive: true});
+    updateProgress();
+  })();
+
+  // Copy link
+  function copyArticleLink(btn) {
+    navigator.clipboard.writeText(window.location.href).then(function(){
+      const label = btn.querySelector('.copy-label');
+      if (label) {
+        label.textContent = 'کپی شد!';
+        setTimeout(function(){ label.textContent = 'کپی لینک'; }, 2000);
+      }
+    });
+  }
+</script>
 {% endblock %}

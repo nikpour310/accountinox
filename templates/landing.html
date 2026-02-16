@@ -1,257 +1,431 @@
 {% extends "base.html" %}
-{% load static humanize %}
+{% load static seo_tags webp_tags %}
 
 {% block title %}خانه | {{ block.super }}{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="relative bg-slate-900 overflow-hidden isolate border-b border-primary-900/50 animate-fade-in">
-    <!-- Background Decor -->
-    <div class="absolute inset-0 -z-10" aria-hidden="true">
-        <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-primary-950"></div>
-        <div class="absolute top-0 right-0 -translate-y-12 translate-x-12 blur-3xl opacity-20 w-[40rem] h-[40rem] bg-secondary-600 rounded-full hidden sm:block"></div>
-        <div class="absolute bottom-0 left-0 translate-y-12 -translate-x-12 blur-3xl opacity-20 w-[40rem] h-[40rem] bg-primary-600 rounded-full hidden sm:block"></div>
-    </div>
+<!-- Hero Slider -->
+{% include "partials/hero_slider.html" %}
 
-    <div class="container mx-auto px-4 py-20 lg:py-32">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div class="space-y-8 text-center lg:text-start" x-data="{ shown: false }" x-init="setTimeout(() => shown = true, 100)">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-900/30 text-primary-300 text-sm font-medium border border-primary-500/30 backdrop-blur-sm shadow-sm transition-opacity duration-700"
-                     :class="shown ? 'opacity-100' : 'opacity-0'">
-                    <span class="flex h-2 w-2 rounded-full bg-primary-400 animate-pulse"></span>
-                    <span>تخفیف‌های ویژه تابستانه آغاز شد!</span>
-                </div>
-                
-                <h1 class="text-4xl lg:text-6xl font-black text-white leading-tight transition-all duration-700 delay-100 transform" 
-                    :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-                    دنیای دیجیتال خود را <br/>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-secondary-300">ارتقا دهید</span>
-                </h1>
-                
-                <p class="text-lg text-slate-400 max-w-2xl mx-auto lg:mx-0 leading-relaxed transition-all duration-700 delay-200 transform"
-                   :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-                    دسترسی آنی به هزاران سرویس پریمیوم جهانی. با اکانتینوکس، بدون محدودیت و با بهترین قیمت از اسپاتیفای، نتفلیکس، اپل و صدها سرویس دیگر لذت ببرید.
-                </p>
-                
-                <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 transition-all duration-700 delay-300 transform"
-                     :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'">
-                    <a href="{% url 'shop:product_list' %}" class="btn-primary px-8 py-3 text-lg min-w-0 sm:min-w-[160px] justify-center smooth-hover">
-                        شروع خرید
-                        <svg class="w-5 h-5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                    </a>
-                    <a href="#features" class="btn-secondary bg-white/5 border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg min-w-0 sm:min-w-[160px] justify-center smooth-hover">
-                        چرا ما؟
-                    </a>
-                </div>
-                
-                <!-- Trust Indicators -->
-                <div class="pt-8 flex items-center justify-center lg:justify-start gap-6 border-t border-slate-800/50">
-                    <div class="text-center lg:text-right">
-                        <div class="text-2xl font-bold text-white mb-0.5">+۱۰,۰۰۰</div>
-                        <div class="text-xs text-slate-500">مشتری راضی</div>
-                    </div>
-                    <div class="w-px h-8 bg-slate-800"></div>
-                     <div class="text-center lg:text-right">
-                        <div class="text-2xl font-bold text-white mb-0.5">۲۴/۷</div>
-                        <div class="text-xs text-slate-500">پشتیبانی آنلاین</div>
-                    </div>
-                </div>
+{# ═══════════════════════════════════════════════════ #}
+{# ══  TRUST STATS STRIP  ═══════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+<section class="bg-white border-b border-gray-100">
+    <div class="container mx-auto px-4">
+        <div class="flex items-center justify-center gap-8 sm:gap-16 py-6">
+            {% for stat in trust_stats %}
+            {% if not forloop.first %}<div class="w-px h-8 bg-gray-200"></div>{% endif %}
+            <div class="text-center">
+                <div class="text-xl sm:text-2xl font-black text-gray-900">{{ stat.value }}</div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ stat.label }}</div>
             </div>
-            
-            <!-- Hero Image -->
-            <div class="relative hidden lg:block" x-data="{ hover: false }">
-                <div class="relative z-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700 p-2 shadow-2xl transform transition-transform duration-500 hover:scale-[1.02] hover:-rotate-1">
-                    <img src="{% static 'img/hero-mockup.png' %}" alt="App Dashboard" class="w-full h-auto rounded-2xl opacity-90" onerror="this.src='https://placehold.co/600x400/1e293b/FFF?text=Premium+Accounts'">
-                    
-                    <!-- Floating Cards -->
-                    <div class="absolute -bottom-6 -right-6 bg-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-slow">
-                        <div class="w-10 h-10 bg-[#1DB954] rounded-full flex items-center justify-center text-white"><i class="fab fa-spotify"></i></div>
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Spotify Premium</div>
-                            <div class="text-xs text-slate-500">فعال‌سازی فوری</div>
-                        </div>
-                    </div>
-                    
-                    <div class="absolute -top-6 -left-6 bg-white p-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-slow delay-1s">
-                        <div class="w-10 h-10 bg-[#E50914] rounded-full flex items-center justify-center text-white"><i class="fab fa-netflix"></i></div>
-                        <div>
-                            <div class="text-sm font-bold text-slate-900">Netflix Ultra HD</div>
-                            <div class="text-xs text-slate-500">کاملا قانونی</div>
-                        </div>
-                    </div>
-                </div>
+            {% empty %}
+            <div class="text-center">
+                <div class="text-xl sm:text-2xl font-black text-gray-900">+۱۰,۰۰۰</div>
+                <div class="text-xs text-gray-500 mt-0.5">مشتری راضی</div>
             </div>
+            <div class="w-px h-8 bg-gray-200"></div>
+            <div class="text-center">
+                <div class="text-xl sm:text-2xl font-black text-gray-900">۲۴/۷</div>
+                <div class="text-xs text-gray-500 mt-0.5">پشتیبانی آنلاین</div>
+            </div>
+            <div class="w-px h-8 bg-gray-200"></div>
+            <div class="text-center">
+                <div class="text-xl sm:text-2xl font-black text-gray-900">۱۰۰٪</div>
+                <div class="text-xs text-gray-500 mt-0.5">تضمین اصالت</div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </section>
 
-<!-- Features Grid -->
-<section id="features" class="py-20 bg-slate-50">
+{# ═══════════════════════════════════════════════════ #}
+{# ══  SERVICES SHOWCASE  ═══════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+{% if services %}
+<section class="py-16 sm:py-20">
     <div class="container mx-auto px-4">
-        <div class="text-center max-w-2xl mx-auto mb-16">
-            <h2 class="section-title text-3xl font-bold text-slate-900 mb-4">چرا به ما اعتماد کنید؟</h2>
-            <p class="text-slate-600">ما متعهد به ارائه بهترین خدمات با بالاترین کیفیت و پشتیبانی واقعی هستیم.</p>
+        <div class="text-center max-w-2xl mx-auto mb-10 reveal">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 bg-primary-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                دسته‌بندی خدمات
+            </span>
+            <h2 class="section-title">چه خدماتی ارائه می‌دیم؟</h2>
+            <p class="section-subtitle mx-auto">از اکانت‌های پریمیوم تا ابزارهای حرفه‌ای، هر چیزی که نیاز دارید.</p>
         </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- Feature 1 -->
-            <div class="card group hover:shadow-md transition-all animate-fade-up">
-                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2 text-slate-900">تحویل آنی</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">سیستم اتوماتیک ما بلافاصله پس از پرداخت، اطلاعات اکانت را برای شما ارسال می‌کند.</p>
-            </div>
-            
-            <!-- Feature 2 -->
-            <div class="card group hover:shadow-md transition-all animate-fade-up">
-                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                </div>
-                <h3 class="font-bold text-lg mb-2 text-slate-900">تضمین امنیت</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">تمامی اکانت‌ها قانونی بوده و دارای ضمانت کامل تا آخرین روز اشتراک می‌باشند.</p>
-            </div>
 
-            <!-- Feature 3 -->
-            <div class="card group hover:shadow-md transition-all animate-fade-up">
-                <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 stagger-children">
+            {% for s in services %}
+            <a href="{% url 'shop:service_detail' s.slug %}"
+               class="group relative card card-hover p-5 flex flex-col items-center text-center gap-3 overflow-hidden">
+                <!-- Hover glow -->
+                <div class="absolute inset-0 bg-gradient-to-b from-primary-50/0 to-primary-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+
+                {% if s.featured_image %}
+                <div class="relative z-10 w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center p-1.5 group-hover:border-primary-200 group-hover:shadow-sm transition-all duration-200">
+                    <img src="{{ s.featured_image.url }}" alt="{{ s.name }}" class="w-full h-full object-contain rounded-lg" loading="lazy">
                 </div>
-                <h3 class="font-bold text-lg mb-2 text-slate-900">پشتیبانی ۲۴ ساعته</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">تیم پشتیبانی ما در ۷ روز هفته آماده پاسخگویی به سوالات و مشکلات شماست.</p>
-            </div>
-            
-             <!-- Feature 4 -->
-            <div class="card group hover:shadow-md transition-all animate-fade-up">
-                 <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600 mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                {% elif s.icon %}
+                <div class="relative z-10 w-14 h-14 rounded-xl bg-primary-50 border border-primary-100/50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-200">
+                    <span>{{ s.icon }}</span>
                 </div>
-                <h3 class="font-bold text-lg mb-2 text-slate-900">قیمت رقابتی</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">حذف واسطه‌ها به ما اجازه می‌دهد بهترین قیمت ممکن را به شما ارائه دهیم.</p>
-            </div>
+                {% endif %}
+                <div class="relative z-10">
+                    <span class="text-sm font-bold text-gray-800 group-hover:text-primary-700 transition-colors block">{{ s.name }}</span>
+                    {% if s.products_count %}
+                    <span class="text-[11px] text-gray-400 mt-0.5 block">{{ s.products_count }} خدمت</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
         </div>
     </div>
 </section>
+{% endif %}
 
-<!-- Latest Products -->
-<section class="py-20">
+{# ═══════════════════════════════════════════════════ #}
+{# ══  POPULAR PRODUCTS  ════════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+<section class="py-16 sm:py-20 bg-gray-50/50">
     <div class="container mx-auto px-4">
-        <div class="flex items-center justify-between mb-10">
-            <h2 class="section-title text-2xl md:text-3xl font-bold text-slate-900">جدیدترین محصولات</h2>
-            <a href="{% url 'shop:product_list' %}" class="flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors">
+        <div class="flex items-end justify-between mb-10 reveal">
+            <div>
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                    محبوب‌ترین‌ها
+                </span>
+                <h2 class="section-title">{{ site_settings.products_title|default:"جدیدترین خدمات" }}</h2>
+                <p class="section-subtitle">{{ site_settings.products_subtitle|default:"اکانت‌های پریمیوم با تحویل فوری و ضمانت اصالت." }}</p>
+            </div>
+            <a href="{% url 'shop:product_list' %}" class="hidden sm:flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors group">
                 مشاهده همه
-               <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                <svg class="w-4 h-4 rtl:rotate-180 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>
             </a>
         </div>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Product Card Mockup 1 -->
-            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
-                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
-                    <img src="https://placehold.co/400x300?text=Spotify" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                    <div class="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">20% تخفیف</div>
-                </div>
-                <div class="flex flex-col flex-grow">
-                    <div class="flex items-start justify-between mb-2">
-                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">موزیک</div>
-                    </div>
-                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
-                        <a href="#">اکانت پرمیوم اسپاتیفای</a>
-                    </h3>
-                    <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
-                        <div class="flex flex-col">
-                            <span class="text-xs text-slate-400 line-through">120,000</span>
-                            <span class="text-lg font-black text-slate-900">98,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
-                        </div>
-                        <button class="btn-icon w-10 h-10">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
-                    </div>
-                </div>
-            </article>
 
-             <!-- Product Card Mockup 2 -->
-            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
-                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
-                     <img src="https://placehold.co/400x300?text=Netflix" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                </div>
-                <div class="flex flex-col flex-grow">
-                     <div class="flex items-start justify-between mb-2">
-                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">فیلم و سریال</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 stagger-children">
+            {% for p in latest_products %}
+            <article class="card card-hover flex flex-col h-full overflow-hidden group">
+                <!-- Image -->
+                <a href="{{ p.get_absolute_url }}" class="block aspect-[4/3] overflow-hidden rounded-t-xl bg-gray-50" aria-label="مشاهده {{ p.title }}">
+                    {% if p.featured_image %}
+                    {% prefer_webp p.featured_image "w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500" alt=p.title loading="lazy" %}
+                    {% else %}
+                    <div class="flex h-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-colors duration-300">
+                        {% if p.service and p.service.icon %}
+                        <span class="text-4xl opacity-40">{{ p.service.icon }}</span>
+                        {% else %}
+                        <svg class="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        {% endif %}
                     </div>
-                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
-                        <a href="#">اشتراک نتفلیکس 4K</a>
-                    </h3>
-                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
-                        <div class="flex flex-col">
-                            <span class="text-lg font-black text-slate-900">185,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
-                        </div>
-                        <button class="btn-icon w-10 h-10">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
-                    </div>
-                </div>
-            </article>
+                    {% endif %}
+                </a>
 
-            <!-- Product Card Mockup 3 -->
-            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
-                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
-                     <img src="https://placehold.co/400x300?text=YouTube" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                </div>
-                <div class="flex flex-col flex-grow">
-                     <div class="flex items-start justify-between mb-2">
-                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">ویدیو</div>
-                    </div>
-                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
-                        <a href="#">YouTube Premium</a>
+                <!-- Content -->
+                <div class="flex flex-1 flex-col p-5">
+                    {% if p.service %}
+                    <span class="text-[11px] font-semibold text-primary-600 uppercase tracking-wide">{{ p.service.name }}</span>
+                    {% elif p.category %}
+                    <span class="text-[11px] font-semibold text-primary-600 uppercase tracking-wide">{{ p.category }}</span>
+                    {% endif %}
+                    <h3 class="text-sm font-bold text-gray-900 mt-1 group-hover:text-primary-700 transition-colors leading-snug">
+                        <a href="{{ p.get_absolute_url }}">{{ p.title }}</a>
                     </h3>
-                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
-                        <div class="flex flex-col">
-                            <span class="text-lg font-black text-slate-900">75,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
-                        </div>
-                        <button class="btn-icon w-10 h-10">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
-                    </div>
-                </div>
-            </article>
+                    {% if p.short_description %}
+                    <p class="mt-1.5 text-xs text-gray-500 leading-relaxed line-clamp-2">{{ p.short_description|truncatechars:80 }}</p>
+                    {% endif %}
 
-            <!-- Product Card Mockup 4 -->
-            <article class="card group hover:shadow-xl transition-all duration-300 flex flex-col h-full animate-fade-up">
-                <div class="relative pt-[60%] overflow-hidden rounded-t-2xl bg-gray-100">
-                     <img src="https://placehold.co/400x300?text=Apple" alt="Product" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                </div>
-                <div class="flex flex-col flex-grow">
-                     <div class="flex items-start justify-between mb-2">
-                         <div class="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">اپل</div>
-                    </div>
-                    <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-primary-600 transition-colors">
-                        <a href="#">Apple Music</a>
-                    </h3>
-                     <div class="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
-                        <div class="flex flex-col">
-                            <span class="text-lg font-black text-slate-900">110,000 <span class="text-xs font-normal text-slate-500">تومان</span></span>
+                    <!-- Price + CTA -->
+                    <div class="mt-auto pt-4 flex items-center justify-between border-t border-gray-50">
+                        <div>
+                            <span class="text-base font-black text-gray-900">{{ p.price|price_format }}</span>
+                            <span class="text-[10px] text-gray-400 mr-0.5">تومان</span>
                         </div>
-                        <button class="btn-icon w-10 h-10">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
+                        <a href="{{ p.get_absolute_url }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors group/cta">
+                            مشاهده
+                            <svg class="w-3.5 h-3.5 rtl:rotate-180 group-hover/cta:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </a>
                     </div>
                 </div>
             </article>
+            {% empty %}
+            <div class="col-span-full text-center py-16">
+                <div class="text-5xl mb-4">🛍️</div>
+                <p class="text-gray-500 text-lg">به‌زودی محصولات جدید اضافه می‌شود.</p>
+                <a href="{% url 'shop:product_list' %}" class="inline-block mt-4 btn-primary btn-sm">مشاهده فروشگاه</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-8 sm:hidden">
+            <a href="{% url 'shop:product_list' %}" class="btn-secondary">مشاهده همه خدمات</a>
         </div>
     </div>
 </section>
 
-<!-- Stats/CTA -->
-<section class="py-20 bg-primary-600 relative overflow-hidden">
-     <div class="absolute inset-0 opacity-10 pattern-dots"></div>
-     <div class="container mx-auto px-4 relative z-10 text-center text-white">
-        <h2 class="section-title text-3xl md:text-4xl font-black mb-6">هنوز مطمئن نیستید؟</h2>
-        <p class="text-lg text-primary-100 mb-10 max-w-2xl mx-auto">همین حالا با کارشناسان ما تماس بگیرید یا در بخش سوالات متداول پاسخ خود را بیابید.</p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="#" class="btn btn-primary bg-white text-primary-700 hover:bg-primary-50 px-8 py-3 text-lg font-bold smooth-hover">سوالات متداول</a>
-            <a href="#" class="btn btn-secondary border border-primary-200 text-white hover:bg-primary-700 hover:border-primary-700 px-8 py-3 text-lg smooth-hover">ارسال تیکت</a>
+{# ═══════════════════════════════════════════════════ #}
+{# ══  HOW IT WORKS — 3 Steps  ══════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+<section class="py-16 sm:py-20">
+    <div class="container mx-auto px-4">
+        <div class="text-center max-w-2xl mx-auto mb-12 reveal">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                ساده و سریع
+            </span>
+            <h2 class="section-title">خرید در ۳ قدم</h2>
+            <p class="section-subtitle mx-auto">بدون پیچیدگی، بدون انتظار. فقط چند کلیک تا دریافت اکانت.</p>
         </div>
-     </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10 stagger-children">
+            <!-- Step 1 -->
+            <div class="relative text-center group">
+                <div class="w-16 h-16 rounded-2xl bg-primary-50 border border-primary-100 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-200">
+                    <svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
+                </div>
+                <div class="absolute -top-2 right-1/2 translate-x-1/2 md:right-4 md:translate-x-0 md:-top-1 w-7 h-7 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-black shadow-md shadow-primary-200">۱</div>
+                <h3 class="text-base font-bold text-gray-900 mb-1.5">خدمت مورد نظر رو پیدا کنید</h3>
+                <p class="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">از بین خدمات متنوع، اکانت دلخواهتون رو انتخاب کنید.</p>
+                <!-- Connector line (hidden on mobile) -->
+                <div class="hidden md:block absolute top-8 left-0 w-[calc(50%-2rem)] h-px border-t-2 border-dashed border-gray-200" aria-hidden="true"></div>
+            </div>
+            <!-- Step 2 -->
+            <div class="relative text-center group">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-200">
+                    <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"></path></svg>
+                </div>
+                <div class="absolute -top-2 right-1/2 translate-x-1/2 md:right-4 md:translate-x-0 md:-top-1 w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-black shadow-md shadow-emerald-200">۲</div>
+                <h3 class="text-base font-bold text-gray-900 mb-1.5">سفارش بدید و پرداخت کنید</h3>
+                <p class="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">پرداخت امن با درگاه بانکی مستقیم، بدون واسطه.</p>
+                <!-- Connector line -->
+                <div class="hidden md:block absolute top-8 left-0 w-[calc(50%-2rem)] h-px border-t-2 border-dashed border-gray-200" aria-hidden="true"></div>
+            </div>
+            <!-- Step 3 -->
+            <div class="relative text-center group">
+                <div class="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-200">
+                    <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"></path></svg>
+                </div>
+                <div class="absolute -top-2 right-1/2 translate-x-1/2 md:right-4 md:translate-x-0 md:-top-1 w-7 h-7 bg-amber-600 text-white rounded-full flex items-center justify-center text-xs font-black shadow-md shadow-amber-200">۳</div>
+                <h3 class="text-base font-bold text-gray-900 mb-1.5">اکانتتون رو دریافت کنید</h3>
+                <p class="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">اطلاعات اکانت بلافاصله به پنل کاربریتون ارسال میشه.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# ═══════════════════════════════════════════════════ #}
+{# ══  WHY US — Features  ═══════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+<section class="py-16 sm:py-20 bg-gray-50/50">
+    <div class="container mx-auto px-4">
+        <div class="text-center max-w-2xl mx-auto mb-10 reveal">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                چرا ما؟
+            </span>
+            <h2 class="section-title">{{ site_settings.features_title|default:"چرا اکانتینوکس؟" }}</h2>
+            <p class="section-subtitle mx-auto">{{ site_settings.features_subtitle|default:"سادگی در خرید، سرعت در تحویل و اطمینان در کیفیت." }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 stagger-children">
+            {% for card in feature_cards %}
+            <div class="card card-hover p-6 group">
+                <div class="flex items-start gap-4">
+                    <div class="feature-icon flex-shrink-0 group-hover:scale-110">
+                        {% if card.icon == 'bolt' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        {% elif card.icon == 'shield' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        {% elif card.icon == 'headset' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        {% elif card.icon == 'dollar' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {% elif card.icon == 'star' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                        {% elif card.icon == 'lock' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        {% elif card.icon == 'rocket' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.58-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"></path></svg>
+                        {% elif card.icon == 'gift' %}
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v13m0-13V6a4 4 0 00-4-4 2 2 0 00-2 2v2h6zm0 0V6a4 4 0 014-4 2 2 0 012 2v2h-6zm-9 4h18v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8zm0 0h18a2 2 0 012 2v1H1v-1a2 2 0 012-2z"></path></svg>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">{{ card.title }}</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">{{ card.description }}</p>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <!-- Fallback features -->
+            <div class="card card-hover p-6 group">
+                <div class="flex items-start gap-4">
+                    <div class="feature-icon flex-shrink-0 group-hover:scale-110">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">تحویل آنی</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">بلافاصله پس از پرداخت، اطلاعات اکانت ارسال می‌شود.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-hover p-6 group">
+                <div class="flex items-start gap-4">
+                    <div class="feature-icon flex-shrink-0 group-hover:scale-110">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">تضمین اصالت</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">تمامی اکانت‌ها با ضمانت کامل تا آخرین روز اشتراک.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-hover p-6 group">
+                <div class="flex items-start gap-4">
+                    <div class="feature-icon flex-shrink-0 group-hover:scale-110">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">پشتیبانی ۲۴ ساعته</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">تیم ما در ۷ روز هفته آماده پاسخگویی است.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-hover p-6 group">
+                <div class="flex items-start gap-4">
+                    <div class="feature-icon flex-shrink-0 group-hover:scale-110">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">قیمت منصفانه</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">حذف واسطه‌ها یعنی بهترین قیمت ممکن برای شما.</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# ═══════════════════════════════════════════════════ #}
+{# ══  FAQ ACCORDION  ═══════════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+{% if faqs %}
+<section class="py-16 sm:py-20">
+    <div class="container mx-auto px-4">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-10 reveal">
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    سوالات متداول
+                </span>
+                <h2 class="section-title">پاسخ سوالات شما</h2>
+                <p class="section-subtitle mx-auto">پاسخ سوالات رایج درباره خدمات، تحویل و ضمانت.</p>
+            </div>
+
+            <div class="space-y-3 stagger-children" x-data="{ openFaq: 0 }">
+                {% for faq in faqs %}
+                <div class="card overflow-hidden">
+                    <button @click="openFaq = openFaq === {{ forloop.counter }} ? 0 : {{ forloop.counter }}"
+                            class="flex items-center justify-between w-full p-5 text-right hover:bg-gray-50/50 transition-colors"
+                            :class="{ 'bg-gray-50/50': openFaq === {{ forloop.counter }} }">
+                        <span class="text-sm font-bold text-gray-900">{{ faq.question }}</span>
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200"
+                             :class="{ 'rotate-180': openFaq === {{ forloop.counter }} }"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div x-show="openFaq === {{ forloop.counter }}"
+                         x-collapse
+                         x-cloak>
+                        <div class="px-5 pb-5 text-sm text-gray-600 leading-7 border-t border-gray-50">
+                            {{ faq.answer|linebreaksbr }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# ══  BLOG PREVIEW  ════════════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+{% if latest_posts %}
+<section class="py-16 sm:py-20 bg-gray-50/50">
+    <div class="container mx-auto px-4">
+        <div class="flex items-end justify-between mb-10 reveal">
+            <div>
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1 rounded-full mb-3 tracking-wide">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                    وبلاگ
+                </span>
+                <h2 class="section-title">آخرین مطالب</h2>
+                <p class="section-subtitle">آموزش‌ها و نکات کاربردی برای استفاده بهتر از خدمات.</p>
+            </div>
+            <a href="{% url 'blog:post_list' %}" class="hidden sm:flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors group">
+                همه مطالب
+                <svg class="w-4 h-4 rtl:rotate-180 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children">
+            {% for post in latest_posts %}
+            <article class="card card-hover flex flex-col h-full overflow-hidden group">
+                <a href="{{ post.get_absolute_url }}" class="block aspect-[16/9] overflow-hidden rounded-t-xl bg-gray-100">
+                    {% if post.featured_image %}
+                    <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                    {% else %}
+                    <div class="flex h-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                        <svg class="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                    </div>
+                    {% endif %}
+                </a>
+                <div class="flex flex-1 flex-col p-5">
+                    <span class="text-[11px] text-gray-400 font-medium">{{ post.created_at|date:"j F Y" }}</span>
+                    <h3 class="text-sm font-bold text-gray-900 mt-1.5 group-hover:text-primary-700 transition-colors leading-snug line-clamp-2">
+                        <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+                    </h3>
+                    <div class="mt-auto pt-4">
+                        <a href="{{ post.get_absolute_url }}" class="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors group/link">
+                            ادامه مطلب
+                            <svg class="w-3.5 h-3.5 rtl:rotate-180 group-hover/link:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </a>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# ═══════════════════════════════════════════════════ #}
+{# ══  CTA SECTION  ═════════════════════════════════ #}
+{# ═══════════════════════════════════════════════════ #}
+<section class="py-16 sm:py-20 reveal">
+    <div class="container mx-auto px-4">
+        <div class="relative bg-gray-950 rounded-3xl overflow-hidden p-10 sm:p-16 text-center">
+            <!-- BG Glow -->
+            <div class="absolute inset-0 -z-0" aria-hidden="true">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary-500/15 rounded-full blur-[100px]"></div>
+                <div class="absolute bottom-0 right-0 w-[300px] h-[300px] bg-teal-500/10 rounded-full blur-[80px]"></div>
+            </div>
+
+            <div class="relative z-10">
+                <div class="inline-flex items-center gap-1.5 text-xs font-bold text-primary-300 bg-primary-500/10 px-3 py-1 rounded-full mb-5 border border-primary-500/20">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    پشتیبانی آنلاین
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight">{{ site_settings.cta_title|default:"سوالی دارید؟ ما اینجاییم." }}</h2>
+                <p class="text-gray-400 mt-4 max-w-lg mx-auto text-sm sm:text-base leading-relaxed">{{ site_settings.cta_description|default:"تیم پشتیبانی ما آماده پاسخگویی به تمام سوالات شماست." }}</p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+                    <a href="{{ site_settings.cta_button1_url|default:'/support/' }}" class="btn-primary btn-lg w-full sm:w-auto">{{ site_settings.cta_button1_text|default:"شروع گفتگو" }}</a>
+                    <a href="{{ site_settings.cta_button2_url|default:'/contact/' }}" class="btn-soft btn-lg w-full sm:w-auto">{{ site_settings.cta_button2_text|default:"تماس با ما" }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}

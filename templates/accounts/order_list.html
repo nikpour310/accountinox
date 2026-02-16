@@ -1,36 +1,116 @@
 {% extends 'base.html' %}
+{% load static seo_tags %}
 
-{% block meta_title %}سفارش‌های من | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block title %}سفارش‌های من | {{ block.super }}{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-6xl">
-    <h1 class="mb-4 text-2xl font-bold text-slate-900 sm:text-3xl">سفارش‌های من</h1>
-    {% include 'accounts/_nav.html' %}
+<div class="page-wrapper">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-    {% if orders %}
-      <div class="space-y-3">
-        {% for order in orders %}
-          <article class="card p-4 sm:p-5">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p class="font-semibold text-slate-900">سفارش #{{ order.id }}</p>
-                <p class="text-xs text-slate-500">{{ order.created_at|date:'Y/m/d H:i' }}</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="status-pill {% if order.status == 'pending_review' %}status-pill--pending{% elif order.status == 'confirmed' %}status-pill--confirmed{% elif order.status == 'delivered' %}status-pill--delivered{% elif order.status == 'cancelled' %}status-pill--cancelled{% endif %}">
-                  {{ order.get_status_display }}
-                </span>
-                <a href="{% url 'accounts:order_detail' order.id %}" class="btn btn-ghost text-xs">جزئیات</a>
-              </div>
-            </div>
-            <p class="mt-2 text-sm text-slate-700">مبلغ کل: <strong>{{ order.total|floatformat:0 }} تومان</strong></p>
-          </article>
-        {% endfor %}
+    {% include "accounts/_panel_layout.html" with active_page='orders' %}
+
+    <div class="lg:col-span-9 xl:col-span-9 min-w-0 space-y-6">
+
+      {# ── Header ── #}
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900">سفارش‌های من</h1>
+          <p class="text-sm text-gray-500 mt-1">تاریخچه و وضعیت تمام سفارش‌ها</p>
+        </div>
+        <a href="{% url 'shop:product_list' %}" class="btn btn-primary btn-sm hidden sm:inline-flex">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          سفارش جدید
+        </a>
       </div>
-    {% else %}
-      <div class="alert alert-info">هنوز سفارشی برای این حساب ثبت نشده است.</div>
-    {% endif %}
-  </section>
+
+      {% if orders %}
+        {# ── Orders Table (desktop) ── #}
+        <div class="card overflow-hidden reveal hidden sm:block">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                <th class="px-6 py-4 text-right font-medium">شماره</th>
+                <th class="px-6 py-4 text-right font-medium">تاریخ</th>
+                <th class="px-6 py-4 text-right font-medium">مبلغ</th>
+                <th class="px-6 py-4 text-right font-medium">وضعیت</th>
+                <th class="px-6 py-4 text-right font-medium"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              {% for order in orders %}
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <span class="font-semibold text-gray-900 font-mono text-xs">{{ order.order_number }}</span>
+                </td>
+                <td class="px-6 py-4 text-gray-500">{{ order.created_at|date:'Y/m/d H:i' }}</td>
+                <td class="px-6 py-4">
+                  <span class="font-semibold text-gray-900">{{ order.total|price_format }}</span>
+                  <span class="text-xs text-gray-400">تومان</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="chip text-xs {% if order.status == 'pending_review' %}bg-amber-50 text-amber-700{% elif order.status == 'confirmed' %}bg-primary-50 text-primary-700{% elif order.status == 'delivered' %}bg-green-50 text-green-700{% elif order.status == 'cancelled' %}bg-red-50 text-red-700{% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ order.get_status_display }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-left">
+                  <a href="{% url 'accounts:order_detail' order.id %}" class="btn btn-ghost btn-sm">
+                    جزئیات
+                    <svg class="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {# ── Orders Cards (mobile) ── #}
+        <div class="space-y-3 sm:hidden reveal stagger-children">
+          {% for order in orders %}
+          <a href="{% url 'accounts:order_detail' order.id %}" class="card card-hover p-4 block">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold
+                  {% if order.paid %}bg-emerald-50 text-emerald-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+                  {{ forloop.counter }}
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900">سفارش {{ order.order_number }}</p>
+                  <p class="text-xs text-gray-400">{{ order.created_at|date:'Y/m/d' }}</p>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-gray-400 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="chip text-xs {% if order.status == 'delivered' %}bg-green-50 text-green-700{% elif order.paid %}bg-primary-50 text-primary-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+                {{ order.get_status_display }}
+              </span>
+              <span class="text-sm font-semibold text-gray-900">{{ order.total|price_format }} <span class="text-xs text-gray-400">تومان</span></span>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+
+      {% else %}
+        {# ── Empty State ── #}
+        <div class="card p-12 text-center reveal">
+          <div class="mx-auto w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mb-5">
+            <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">هنوز سفارشی ثبت نشده</h3>
+          <p class="text-sm text-gray-500 mb-6">اولین خرید خود را از فروشگاه ما انجام دهید!</p>
+          <a href="{% url 'shop:product_list' %}" class="btn btn-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+            مشاهده محصولات
+          </a>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
 {% endblock %}
 

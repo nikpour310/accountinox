@@ -1,10 +1,10 @@
-<nav class="card mb-5 p-2" aria-label="منوی پنل کاربری">
-  <ul class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-    <li><a href="{% url 'accounts:dashboard' %}" class="btn {% if request.path == '/accounts/' or request.path == '/account/' %}btn-primary{% else %}btn-ghost{% endif %} w-full">داشبورد</a></li>
-    <li><a href="{% url 'accounts:orders' %}" class="btn {% if '/orders/' in request.path %}btn-primary{% else %}btn-ghost{% endif %} w-full">سفارش‌ها</a></li>
-    <li><a href="{% url 'accounts:profile' %}" class="btn {% if '/profile/' in request.path %}btn-primary{% else %}btn-ghost{% endif %} w-full">پروفایل</a></li>
-    <li><a href="{% url 'accounts:addresses' %}" class="btn {% if '/addresses/' in request.path %}btn-primary{% else %}btn-ghost{% endif %} w-full">آدرس‌ها</a></li>
-    <li><a href="{% url 'support:chat' %}" class="btn btn-ghost w-full">پشتیبانی</a></li>
-  </ul>
+<nav class="mb-6" aria-label="منوی پنل کاربری">
+  <div class="flex flex-wrap gap-1.5 border-b border-gray-200 pb-px">
+    <a href="{% url 'accounts:dashboard' %}" class="btn btn-sm {% if request.path == '/accounts/' or request.path == '/account/' %}btn-primary{% else %}btn-ghost{% endif %}">داشبورد</a>
+    <a href="{% url 'accounts:orders' %}" class="btn btn-sm {% if '/orders/' in request.path %}btn-primary{% else %}btn-ghost{% endif %}">سفارش‌ها</a>
+    <a href="{% url 'accounts:profile' %}" class="btn btn-sm {% if '/profile/' in request.path %}btn-primary{% else %}btn-ghost{% endif %}">پروفایل</a>
+    <a href="{% url 'accounts:addresses' %}" class="btn btn-sm {% if '/addresses/' in request.path %}btn-primary{% else %}btn-ghost{% endif %}">آدرس‌ها</a>
+    <a href="{% url 'support:chat' %}" class="btn btn-sm btn-ghost">پشتیبانی</a>
+  </div>
 </nav>
 

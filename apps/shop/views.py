@@ -3,19 +3,26 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
+from django.db import models
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.accounts.models import OrderAddress, Profile
 
-from .models import AccountItem, Order, OrderItem, Product, TransactionLog
+from .models import AccountItem, CartItem, Order, OrderItem, Product, ProductVariant, ProductRegion, TransactionLog
+from .notifications import notify_order_success
 from .payment_providers import get_payment_provider
+from .models import Service
 
 logger = logging.getLogger('shop.payment')
 CART_SESSION_KEY = 'cart'
+CART_CREDENTIALS_KEY = 'cart_credentials'
+CART_OPTIONS_KEY = 'cart_options'  # variant_id, region_id per product
 MAX_CART_QTY = 10
 
 
@@ -24,6 +31,75 @@ def _safe_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _sync_cart_to_db(request):
+    """Save session cart to DB for the logged-in user."""
+    if not request.user.is_authenticated:
+        return
+    cart = _get_cart(request)
+    creds = request.session.get(CART_CREDENTIALS_KEY, {})
+    options = request.session.get(CART_OPTIONS_KEY, {})
+    for pid_str, qty in cart.items():
+        pid = _safe_int(pid_str, 0)
+        if pid <= 0 or qty <= 0:
+            continue
+        product_creds = creds.get(pid_str, {})
+        product_opts = options.get(pid_str, {})
+        variant_id = _safe_int(product_opts.get('variant_id'), None)
+        region_id = _safe_int(product_opts.get('region_id'), None)
+        CartItem.objects.update_or_create(
+            user=request.user, product_id=pid,
+            defaults={
+                'quantity': qty,
+                'variant_id': variant_id,
+                'region_id': region_id,
+                'customer_email': product_creds.get('email', ''),
+                'customer_password': product_creds.get('password', ''),
+            },
+        )
+    # Remove DB items not in session cart
+    if cart:
+        CartItem.objects.filter(user=request.user).exclude(
+            product_id__in=[int(k) for k in cart.keys()]
+        ).delete()
+    else:
+        CartItem.objects.filter(user=request.user).delete()
+
+
+def _load_cart_from_db(request):
+    """Load DB cart into session for the logged-in user (merge with existing session cart)."""
+    if not request.user.is_authenticated:
+        return
+    session_cart = _get_cart(request)
+    session_creds = request.session.get(CART_CREDENTIALS_KEY, {})
+    session_opts = request.session.get(CART_OPTIONS_KEY, {})
+    db_items = CartItem.objects.filter(user=request.user).select_related('product', 'variant', 'region')
+    for item in db_items:
+        pid_str = str(item.product_id)
+        if pid_str not in session_cart:
+            session_cart[pid_str] = min(item.quantity, MAX_CART_QTY)
+            if item.customer_email or item.customer_password:
+                session_creds[pid_str] = {
+                    'email': item.customer_email,
+                    'password': item.customer_password,
+                }
+            opts = {}
+            if item.variant_id:
+                opts['variant_id'] = item.variant_id
+            if item.region_id:
+                opts['region_id'] = item.region_id
+            if opts:
+                session_opts[pid_str] = opts
+    _save_cart(request, session_cart)
+    if session_creds:
+        request.session[CART_CREDENTIALS_KEY] = session_creds
+        request.session.modified = True
+    if session_opts:
+        request.session[CART_OPTIONS_KEY] = session_opts
+        request.session.modified = True
+    # Now sync merged cart back to DB
+    _sync_cart_to_db(request)
 
 
 def _get_cart(request):
@@ -52,6 +128,19 @@ def _build_cart_lines(request):
     product_ids = [int(pid) for pid in cart.keys()]
     products = Product.objects.filter(id__in=product_ids)
     product_map = {product.id: product for product in products}
+    options = request.session.get(CART_OPTIONS_KEY, {})
+
+    # Preload variants and regions
+    variant_ids = [opts.get('variant_id') for opts in options.values() if opts.get('variant_id')]
+    region_ids = [opts.get('region_id') for opts in options.values() if opts.get('region_id')]
+    variant_map = {}
+    region_map = {}
+    if variant_ids:
+        for v in ProductVariant.objects.filter(id__in=variant_ids):
+            variant_map[v.id] = v
+    if region_ids:
+        for r in ProductRegion.objects.filter(id__in=region_ids):
+            region_map[r.id] = r
 
     lines = []
     subtotal = Decimal('0')
@@ -62,13 +151,23 @@ def _build_cart_lines(request):
         product = product_map.get(int(product_id_str))
         if not product:
             continue
-        line_total = product.price * quantity
+
+        product_opts = options.get(product_id_str, {})
+        variant = variant_map.get(_safe_int(product_opts.get('variant_id'), 0))
+        region = region_map.get(_safe_int(product_opts.get('region_id'), 0))
+
+        # Use variant price if available, else base price
+        unit_price = variant.price if variant else product.price
+        line_total = unit_price * quantity
         subtotal += line_total
         total_quantity += quantity
         normalized_cart[product_id_str] = quantity
         lines.append(
             {
                 'product': product,
+                'variant': variant,
+                'region': region,
+                'unit_price': unit_price,
                 'quantity': quantity,
                 'line_total': line_total,
             }
@@ -110,13 +209,53 @@ def _checkout_initial_data(request):
 
 
 def product_list(request):
-    products = Product.objects.all()[:20]
+    products = Product.objects.filter(is_active=True).select_related('category', 'service')[:20]
     return render(request, 'shop/product_list.html', {'products': products})
+
+
+def service_list(request):
+    services = Service.objects.filter(active=True).annotate(
+        products_count=Count('products', filter=models.Q(products__is_active=True))
+    ).order_by('order', 'name')
+    return render(request, 'shop/services_list.html', {'services': services})
+
+
+def service_detail(request, slug):
+    service = get_object_or_404(Service, slug=slug, active=True)
+    products = service.products.filter(is_active=True).select_related('category')[:50]
+    other_services = Service.objects.filter(active=True).exclude(pk=service.pk).annotate(
+        products_count=Count('products', filter=models.Q(products__is_active=True))
+    ).order_by('order', 'name')[:6]
+
+    # Price range for hero badges
+    prices = [p.price for p in products]
+    min_price = min(prices) if prices else 0
+    max_price = max(prices) if prices else 0
+
+    # Count delivery types
+    digital_count = sum(1 for p in products if p.delivery_type == Product.DELIVERY_DIGITAL)
+    manual_count = len(products) - digital_count
+
+    return render(request, 'shop/service_detail.html', {
+        'service': service,
+        'products': products,
+        'other_services': other_services,
+        'min_price': min_price,
+        'max_price': max_price,
+        'digital_count': digital_count,
+        'manual_count': manual_count,
+    })
 
 
 def product_detail(request, slug):
     product = get_object_or_404(Product, slug=slug)
-    return render(request, 'shop/product_detail.html', {'product': product})
+    variants = list(product.active_variants) if product.has_variants else []
+    regions = list(product.active_regions) if product.has_regions else []
+    return render(request, 'shop/product_detail.html', {
+        'product': product,
+        'variants': variants,
+        'regions': regions,
+    })
 
 
 @require_POST
@@ -124,21 +263,81 @@ def cart_add(request):
     product_id = _safe_int(request.POST.get('product_id'), 0)
     quantity = _safe_int(request.POST.get('quantity'), 1)
     quantity = max(1, min(quantity, MAX_CART_QTY))
+    variant_id = _safe_int(request.POST.get('variant_id'), 0) or None
+    region_id = _safe_int(request.POST.get('region_id'), 0) or None
 
     product = get_object_or_404(Product, id=product_id)
+    if not product.is_available:
+        messages.error(request, f'«{product.title}» در حال حاضر ناموجود است.')
+        next_url = (request.POST.get('next') or '').strip()
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+            return redirect(next_url)
+        return redirect('shop:cart')
+
+    # Validate variant if product has variants
+    variant = None
+    if product.has_variants:
+        if variant_id:
+            variant = ProductVariant.objects.filter(id=variant_id, product=product, is_active=True).first()
+        if not variant:
+            messages.error(request, 'لطفاً یک تنوع را انتخاب کنید.')
+            return redirect(product.get_absolute_url())
+
+    # Validate region if product has regions
+    region = None
+    if product.has_regions:
+        if region_id:
+            region = ProductRegion.objects.filter(id=region_id, product=product, is_active=True).first()
+        if not region:
+            messages.error(request, 'لطفاً ریجن را انتخاب کنید.')
+            return redirect(product.get_absolute_url())
+
+    # If product doesn't allow quantity, force 1
+    if not product.allow_quantity:
+        quantity = 1
+
     cart = _get_cart(request)
     current_quantity = cart.get(str(product.id), 0)
     cart[str(product.id)] = min(current_quantity + quantity, MAX_CART_QTY)
     _save_cart(request, cart)
+
+    # Store variant/region selection
+    opts = request.session.get(CART_OPTIONS_KEY, {})
+    product_opts = {}
+    if variant:
+        product_opts['variant_id'] = variant.id
+    if region:
+        product_opts['region_id'] = region.id
+    if product_opts:
+        opts[str(product.id)] = product_opts
+    else:
+        opts.pop(str(product.id), None)
+    request.session[CART_OPTIONS_KEY] = opts
+    request.session.modified = True
+
+    # Store customer credentials if product requires them
+    cust_email = (request.POST.get('customer_email') or '').strip()
+    cust_password = (request.POST.get('customer_password') or '').strip()
+    if cust_email or cust_password:
+        creds = request.session.get(CART_CREDENTIALS_KEY, {})
+        creds[str(product.id)] = {
+            'email': cust_email,
+            'password': cust_password,
+        }
+        request.session[CART_CREDENTIALS_KEY] = creds
+        request.session.modified = True
+
+    _sync_cart_to_db(request)
     messages.success(request, f'«{product.title}» به سبد خرید اضافه شد.')
 
     next_url = (request.POST.get('next') or '').strip()
-    if next_url:
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return redirect(next_url)
     return redirect('shop:cart')
 
 
 def cart_detail(request):
+    _load_cart_from_db(request)
     lines, subtotal, total_quantity = _build_cart_lines(request)
     return render(
         request,
@@ -155,10 +354,14 @@ def cart_detail(request):
 @require_POST
 def cart_update(request):
     cart = _get_cart(request)
+    options = request.session.get(CART_OPTIONS_KEY, {})
     remove_id = _safe_int(request.POST.get('remove_id'), 0)
     if remove_id:
         cart.pop(str(remove_id), None)
+        options.pop(str(remove_id), None)
         _save_cart(request, cart)
+        request.session[CART_OPTIONS_KEY] = options
+        _sync_cart_to_db(request)
         messages.success(request, 'آیتم از سبد خرید حذف شد.')
         return redirect('shop:cart')
 
@@ -169,9 +372,12 @@ def cart_update(request):
         quantity = _safe_int(request.POST.get(field_name), 0)
         if quantity <= 0:
             cart.pop(product_id, None)
+            options.pop(product_id, None)
         else:
             cart[product_id] = min(quantity, MAX_CART_QTY)
     _save_cart(request, cart)
+    request.session[CART_OPTIONS_KEY] = options
+    _sync_cart_to_db(request)
     messages.success(request, 'سبد خرید به‌روزرسانی شد.')
     return redirect('shop:cart')
 
@@ -180,7 +386,11 @@ def cart_update(request):
 def cart_remove(request, product_id):
     cart = _get_cart(request)
     cart.pop(str(product_id), None)
+    options = request.session.get(CART_OPTIONS_KEY, {})
+    options.pop(str(product_id), None)
+    request.session[CART_OPTIONS_KEY] = options
     _save_cart(request, cart)
+    _sync_cart_to_db(request)
     messages.success(request, 'آیتم از سبد خرید حذف شد.')
     return redirect('shop:cart')
 
@@ -189,17 +399,46 @@ def cart_remove(request, product_id):
 def checkout(request):
     legacy_product = None
     legacy_quantity = _safe_int(request.POST.get('quantity'), 1) if request.method == 'POST' else 1
+    legacy_variant = None
+    legacy_region = None
     if request.method == 'POST' and request.POST.get('product_id'):
         legacy_product = get_object_or_404(Product, id=request.POST.get('product_id'))
         legacy_quantity = max(1, min(legacy_quantity, MAX_CART_QTY))
+        if not legacy_product.allow_quantity:
+            legacy_quantity = 1
+
+        # Handle variant/region for quick buy
+        qb_variant_id = _safe_int(request.POST.get('variant_id'), 0)
+        qb_region_id = _safe_int(request.POST.get('region_id'), 0)
+        if qb_variant_id:
+            legacy_variant = ProductVariant.objects.filter(
+                id=qb_variant_id, product=legacy_product, is_active=True
+            ).first()
+        if qb_region_id:
+            legacy_region = ProductRegion.objects.filter(
+                id=qb_region_id, product=legacy_product, is_active=True
+            ).first()
+
+        # Store quick-buy credentials in session for later
+        qb_email = (request.POST.get('customer_email') or '').strip()
+        qb_password = (request.POST.get('customer_password') or '').strip()
+        if qb_email or qb_password:
+            creds = request.session.get(CART_CREDENTIALS_KEY, {})
+            creds[str(legacy_product.id)] = {'email': qb_email, 'password': qb_password}
+            request.session[CART_CREDENTIALS_KEY] = creds
+            request.session.modified = True
 
     cart_lines, subtotal, total_quantity = _build_cart_lines(request)
     if legacy_product:
+        unit_price = legacy_variant.price if legacy_variant else legacy_product.price
         cart_lines = [
             {
                 'product': legacy_product,
+                'variant': legacy_variant,
+                'region': legacy_region,
+                'unit_price': unit_price,
                 'quantity': legacy_quantity,
-                'line_total': legacy_product.price * legacy_quantity,
+                'line_total': unit_price * legacy_quantity,
             }
         ]
         subtotal = cart_lines[0]['line_total']
@@ -295,9 +534,25 @@ def checkout(request):
         customer_email=checkout_data['email'],
         shipping_address=checkout_data['address_text'],
     )
+    creds = request.session.get(CART_CREDENTIALS_KEY, {})
     for line in cart_lines:
-        for _ in range(line['quantity']):
-            OrderItem.objects.create(order=order, product=line['product'], price=line['product'].price)
+        product_creds = creds.get(str(line['product'].id), {})
+        unit_price = line.get('unit_price', line['product'].price)
+        OrderItem.objects.create(
+            order=order,
+            product=line['product'],
+            price=unit_price,
+            quantity=line['quantity'],
+            variant_name=line['variant'].name if line.get('variant') else '',
+            region_name=line['region'].name if line.get('region') else '',
+            customer_email=product_creds.get('email', ''),
+            customer_password=product_creds.get('password', ''),
+        )
+
+    # Clear session data after creating order
+    request.session.pop(CART_CREDENTIALS_KEY, None)
+    request.session.pop(CART_OPTIONS_KEY, None)
+    request.session.modified = True
 
     gateway_name = checkout_data['gateway']
     merchant_id = getattr(settings, 'ZARINPAL_MERCHANT_ID', '')
@@ -332,6 +587,7 @@ def checkout(request):
         )
         if not legacy_product:
             _save_cart(request, {})
+            _sync_cart_to_db(request)
         payment_url = result.get('payment_url', '')
         return redirect(payment_url)
 
@@ -478,6 +734,13 @@ def payment_callback(request, provider):
                     logger.info('[Payment] Allocated account item %s to order %s', account_item.id, order.id)
 
             needs_follow_up = order.items.filter(account_item__isnull=True).exists()
+
+            # Send email invoice + SMS notification
+            try:
+                notify_order_success(order)
+            except Exception as notify_exc:
+                logger.exception('[Payment] Notification error for order %s: %s', order.order_number, notify_exc)
+
             return render(
                 request,
                 'shop/payment_success.html',
@@ -520,3 +783,21 @@ def payment_callback(request, provider):
             'reference': reference,
         },
     )
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import FileResponse, Http404
+
+
+@login_required
+def order_download(request, order_id, item_id):
+    """Allow user to download digital file for a paid order item."""
+    order = get_object_or_404(Order, id=order_id, user=request.user, paid=True)
+    item = get_object_or_404(OrderItem, id=item_id, order=order)
+    if not item.product or item.product.delivery_type != Product.DELIVERY_DIGITAL:
+        raise Http404
+    if not item.product.digital_file:
+        raise Http404
+    file_field = item.product.digital_file
+    response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_field.name.split('/')[-1])
+    return response

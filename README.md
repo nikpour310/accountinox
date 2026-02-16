@@ -46,6 +46,35 @@
 - **ZARINPAL_MERCHANT_ID**: Merchant ID از ZarinPal برای پرداخت
 - **ZIBAL_MERCHANT_ID**: Merchant ID از Zibal برای پرداخت
 
+## OTP / SMS (IPPanel)
+
+برای فعال‌سازی ارسال OTP با IPPanel:
+
+- تنظیمات اولیه در `.env` (نمونه در `.env.example`) : `IPPANEL_API_KEY`, `IPPANEL_SENDER` و `IPPANEL_API_URL` (در صورت نیاز). 
+- در ادمین به `Site Settings` → `OTP / SMS` بروید و `SMS provider` را انتخاب کنید (`IPPanel / Edge`).
+- آزمون با `python -m pytest tests/test_ippanel.py` انجام‌شده و نمونه تست‌های OTP در `tests/test_otp_flow.py` قرار دارد.
+
+مستندات کامل‌تر: `docs/OTP_IPPANEL.md`
+
+## E2E tests (Playwright)
+
+To run the end-to-end Playwright test (optional):
+
+1. Install Playwright:
+
+```bash
+python -m pip install playwright
+python -m playwright install chromium
+```
+
+2. Run the E2E test (will use Django's live server):
+
+```bash
+"F:\\Python Projects\\accountinox\\venv\\Scripts\\python.exe" -m pytest tests/e2e/test_otp_playwright.py -q
+```
+
+The test intercepts the OTP endpoints and does not send real SMS.
+
 ## درگاه‌های پرداخت
 
 برای راهنمای تنظیم ZarinPal و Zibal و تست محلی، فایل [docs/PAYMENT_GATEWAYS.md](docs/PAYMENT_GATEWAYS.md) را ببینید.

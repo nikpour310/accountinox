@@ -1,98 +1,263 @@
 {% load static %}
-<div class="h-20"></div><!-- Spacer -->
-<header x-data="{ mobileMenuOpen: false, searchOpen: false }" class="site-header">
+<div class="h-16 sm:h-[72px]"></div><!-- Spacer -->
+<header x-data="{
+    mobileMenuOpen: false,
+    megaOpen: false,
+    megaTimer: null,
+    searchOpen: false,
+    selectedService: '{{ services.0.slug|default:"" }}',
+    openMega() { clearTimeout(this.megaTimer); this.megaOpen = true; },
+    closeMega() { this.megaTimer = setTimeout(() => { this.megaOpen = false; }, 200); },
+    closeMegaNow() { clearTimeout(this.megaTimer); this.megaOpen = false; }
+}" @keydown.escape.window="megaOpen = false; mobileMenuOpen = false; searchOpen = false" class="site-header">
     <div class="container mx-auto px-4">
-        <div class="flex items-center justify-between h-20">
+        <div class="flex items-center justify-between h-16 sm:h-[72px]">
             <!-- Logo & Brand -->
-            <div class="flex items-center gap-8">
-                <a href="/" class="flex items-center gap-3 group">
+            <div class="flex items-center gap-10">
+                <a href="/" class="flex items-center gap-2.5 group">
                     {% if site_settings.logo %}
-                        <img src="{{ site_settings.logo.url }}" alt="{{ site_settings.site_name }}" class="h-10 w-auto group-hover:scale-105 transition-transform duration-300">
+                        {% load webp_tags %}
+                        {% prefer_webp site_settings.logo "h-8 w-auto" alt=site_settings.site_name %}
                     {% else %}
-                        <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary-500/20 group-hover:scale-105 transition-transform duration-300">
+                        <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-black text-lg">
                             A
                         </div>
                     {% endif %}
-                    <div class="flex flex-col">
-                        <span class="font-bold text-xl text-slate-800">{{ site_settings.brand_wordmark_fa|default:site_settings.site_name|default:"Accountinox" }}</span>
-                        <span class="text-xs text-primary-600 font-medium hidden sm:block">فروشگاه محصولات دیجیتال</span>
-                    </div>
+                    <span class="font-bold text-lg text-gray-900 tracking-tight">{{ site_settings.brand_wordmark_fa|default:site_settings.site_name|default:"Accountinox" }}</span>
                 </a>
 
                 <!-- Desktop Nav -->
-                <nav class="hidden lg:flex items-center gap-1">
-                    <a href="/" class="nav-item subtle-pop {% if request.path == '/' %}active{% endif %}">خانه</a>
-                    <a href="{% url 'shop:product_list' %}" class="nav-item subtle-pop {% if '/shop/' in request.path %}active{% endif %}">محصولات</a>
-                    <a href="{% url 'blog:post_list' %}" class="nav-item subtle-pop {% if '/blog/' in request.path %}active{% endif %}">بلاگ</a>
-                    <a href="{% url 'support:start_chat' %}" class="nav-item subtle-pop {% if '/support/' in request.path %}active{% endif %}">پشتیبانی</a>
+                <nav class="hidden lg:flex items-center gap-1" role="navigation" aria-label="منوی اصلی">
+                    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">خانه</a>
+
+                    {% if services %}
+                    <button @mouseenter="openMega()"
+                            @mouseleave="closeMega()"
+                            @focus="openMega()"
+                            @keydown.arrow-down.prevent="openMega()"
+                            :aria-expanded="megaOpen.toString()"
+                            aria-haspopup="true"
+                            aria-controls="mega-menu-panel"
+                            class="nav-link {% if '/services/' in request.path %}active{% endif %} flex items-center gap-1">
+                        خدمات
+                        <svg class="w-3 h-3 text-gray-400 transition-transform duration-200" :class="megaOpen && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    {% endif %}
+
+                    <a href="{% url 'blog:post_list' %}" class="nav-link {% if '/blog/' in request.path %}active{% endif %}">بلاگ</a>
+                    <a href="{% url 'support:chat' %}" class="nav-link {% if '/support/' in request.path %}active{% endif %}">پشتیبانی</a>
                 </nav>
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center gap-3">
-                <!-- Search Toggle -->
-                <button @click="searchOpen = !searchOpen" class="btn-icon">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <div class="flex items-center gap-2">
+                <!-- Search Button -->
+                <button @click="searchOpen = true"
+                        class="btn-icon w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-primary-600 hover:bg-gray-100 transition-colors"
+                        aria-label="جستجو">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </button>
 
-                <!-- Auth Buttons -->
+                <!-- Cart Button -->
+                <a href="{% url 'shop:cart' %}" class="relative btn-icon w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-primary-600 hover:bg-gray-100 transition-colors" aria-label="سبد خرید">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+                  {% if cart_count %}
+                  <span class="absolute -top-1 -end-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">{{ cart_count }}</span>
+                  {% endif %}
+                </a>
+
                 {% if user.is_authenticated %}
                 <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" @click.away="open = false" class="flex items-center gap-2 py-1.5 px-3 rounded-full hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200">
-                        <div class="w-8 h-8 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-bold text-sm">
+                    <button @click="open = !open" @click.away="open = false" class="flex items-center gap-2 py-1.5 px-3 rounded-xl hover:bg-gray-100/70 transition-colors">
+                        <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
                             {{ user.username|make_list|first|upper }}
                         </div>
-                        <span class="hidden md:block text-sm font-medium text-slate-700">{{ user.username }}</span>
-                        <svg class="w-4 h-4 text-slate-400" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <span class="hidden md:block text-sm font-medium text-gray-700">{{ user.username }}</span>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <!-- Dropdown -->
-                    <div x-show="open" 
+                    <div x-show="open" x-cloak
                         x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-y-2"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        class="absolute top-full end-0 mt-2 w-auto sm:w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-scale-in origin-top-right">
-                        <div class="px-4 py-3 border-b border-slate-50 mb-2">
-                            <p class="text-sm font-medium text-slate-900 truncate">{{ user.username }}</p>
-                            <p class="text-xs text-slate-500 truncate">{{ user.email }}</p>
+                        x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
+                        class="absolute top-full end-0 mt-2 w-56 bg-white rounded-2xl shadow-soft-lg border border-gray-100 py-2 z-50 origin-top-right">
+                        <div class="px-4 py-3 border-b border-gray-50 mb-1">
+                            <p class="text-sm font-semibold text-gray-900 truncate">{{ user.username }}</p>
+                            <p class="text-xs text-gray-500 truncate mt-0.5">{{ user.email }}</p>
                         </div>
-                        <a href="{% url 'accounts:dashboard' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary-600">پنل کاربری</a>
-                        <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary-600">سفارش‌های من</a>
-                        <div class="h-px bg-slate-100 my-2"></div>
+                        <a href="{% url 'accounts:dashboard' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            پنل کاربری
+                        </a>
+                        <a href="{% url 'accounts:orders' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                            سفارش‌های من
+                        </a>
+                        <div class="h-px bg-gray-100 my-1"></div>
                         <form method="post" action="{% url 'account_logout' %}">
                             {% csrf_token %}
-                            <button type="submit" class="w-full text-start px-4 py-2 text-sm text-red-600 hover:bg-red-50">خروج از حساب</button>
+                            <button type="submit" class="flex items-center gap-3 w-full text-start px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                خروج از حساب
+                            </button>
                         </form>
                     </div>
                 </div>
                 {% else %}
-                <div class="hidden md:flex items-center gap-3">
-                    <a href="{% url 'account_login' %}" class="text-sm font-medium text-slate-600 hover:text-primary-600 px-3 py-2 transition-colors">ورود</a>
-                    <a href="{% url 'account_signup' %}" class="btn-primary text-sm px-5 py-2 smooth-hover subtle-pop">ثبت نام</a>
+                <div class="hidden md:flex items-center gap-2">
+                    <a href="{% url 'account_login' %}" class="btn-ghost text-sm">ورود</a>
+                    <a href="{% url 'account_signup' %}" class="btn-primary btn-sm">ثبت نام</a>
                 </div>
                 {% endif %}
 
                 <!-- Mobile Menu Button -->
-                <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden btn-icon">
-                    <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                    <svg x-show="mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden btn-icon" aria-label="منو">
+                    <svg x-show="!mobileMenuOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <svg x-show="mobileMenuOpen" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
         </div>
     </div>
-    
+
+    {# ── Desktop Mega Menu Panel (full-width, below navbar) ── #}
+    {% if services %}
+    <div x-show="megaOpen" x-cloak
+         @mouseenter="openMega()" @mouseleave="closeMega()"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         id="mega-menu-panel"
+         role="menu"
+         aria-label="منوی خدمات"
+         class="hidden lg:block absolute inset-x-0 top-full z-50">
+        <div class="mx-auto mega-menu">
+            {% include "partials/mega_menu.html" %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Mobile Menu -->
-    <div x-show="mobileMenuOpen" x-cloak x-transition class="lg:hidden border-t border-slate-100 bg-white">
-        <div class="container mx-auto px-4 py-4 space-y-2">
-            <a href="/" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">خانه</a>
-            <a href="{% url 'shop:product_list' %}" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">محصولات</a>
-            <a href="{% url 'blog:post_list' %}" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">بلاگ آموزشی</a>
-            <a href="{% url 'support:start_chat' %}" class="block px-4 py-3 rounded-lg hover:bg-slate-50 font-medium text-slate-700">پشتیبانی</a>
+    <div x-show="mobileMenuOpen" x-cloak
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 -translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="lg:hidden border-t border-gray-100 bg-white/95 backdrop-blur-xl">
+        <div class="container mx-auto px-4 py-3 space-y-1">
+            <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">خانه</a>
+
+            {% if services %}
+            <div x-data="{ openServicesMobile: false, mobileSelected: '' }">
+                <button @click="openServicesMobile = !openServicesMobile" class="mobile-service-toggle flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors w-full justify-between">
+                    <span>خدمات</span>
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div x-show="openServicesMobile" x-cloak class="space-y-1 pl-3 mt-2">
+                    <a href="{% url 'shop:service_list' %}" class="block px-4 py-2 text-sm text-gray-600">همه خدمات</a>
+                    <div class="divide-y divide-gray-100 mt-2">
+                        {% for svc in services %}
+                        <div class="py-2">
+                            <button @click="mobileSelected === '{{ svc.slug }}' ? mobileSelected = '' : mobileSelected = '{{ svc.slug }}'" class="mobile-service-item w-full flex items-center justify-between text-sm py-2">
+                                <span class="text-right">{{ svc.name }}</span>
+                                <svg :class="mobileSelected=='{{ svc.slug }}' ? 'rotate-180' : ''" class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+
+                            <div x-show="mobileSelected=='{{ svc.slug }}'" x-cloak class="pt-2 grid grid-cols-1 gap-2">
+                                {% for product in svc.products.all|slice:":6" %}
+                                <a href="{% if product.slug %}{% url 'shop:product_detail' product.slug %}{% else %}#{% endif %}" class="mobile-product-link flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                                    {% if product.featured_image %}
+                                        {% include 'partials/image.html' with image=product.featured_image alt=product.title class="w-12 h-8 object-cover rounded-md" %}
+                                    {% else %}
+                                        <img src="{% static 'img/og-fallback.svg' %}" alt="{{ product.title }}" class="w-12 h-8 object-cover rounded-md">
+                                    {% endif %}
+                                    <div class="text-sm text-gray-800">{{ product.title }}</div>
+                                </a>
+                                {% empty %}
+                                <div class="text-sm text-gray-500">محصولی موجود نیست.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <a href="{% url 'blog:post_list' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">بلاگ</a>
+            <a href="{% url 'support:chat' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">پشتیبانی</a>
+            <a href="{% url 'shop:cart' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+              سبد خرید{% if cart_count %} <span class="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white">{{ cart_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'core:search' %}" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              جستجو
+            </a>
             {% if not user.is_authenticated %}
-            <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
-                <a href="{% url 'account_login' %}" class="btn-secondary justify-center smooth-hover subtle-pop">ورود</a>
-                <a href="{% url 'account_signup' %}" class="btn-primary justify-center smooth-hover subtle-pop">ثبت نام</a>
+            <div class="flex gap-3 pt-3 border-t border-gray-100 mt-2">
+                <a href="{% url 'account_login' %}" class="btn-secondary flex-1 justify-center text-sm">ورود</a>
+                <a href="{% url 'account_signup' %}" class="btn-primary flex-1 justify-center text-sm">ثبت نام</a>
             </div>
             {% endif %}
         </div>
+    </div>
+
+    <!-- Search Overlay -->
+    <div x-show="searchOpen" x-cloak
+         class="fixed inset-0 z-[100]"
+         @keydown.escape.window="searchOpen = false">
+      <!-- Backdrop -->
+      <div x-show="searchOpen"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0"
+           x-transition:enter-end="opacity-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100"
+           x-transition:leave-end="opacity-0"
+           @click="searchOpen = false"
+           class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+
+      <!-- Search Panel -->
+      <div x-show="searchOpen"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 -translate-y-4 scale-95"
+           x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+           x-transition:leave-end="opacity-0 -translate-y-4 scale-95"
+           class="relative max-w-2xl mx-auto mt-20 px-4">
+        <form method="get" action="{% url 'core:search' %}" class="relative">
+          <div class="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div class="flex items-center gap-3 px-5 py-4">
+              <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="search"
+                name="q"
+                placeholder="جستجوی محصول، مقاله، سرویس..."
+                autocomplete="off"
+                x-ref="searchInput"
+                x-init="$watch('searchOpen', v => { if(v) $nextTick(() => $refs.searchInput.focus()) })"
+                class="flex-1 bg-transparent text-gray-800 text-base placeholder:text-gray-400 focus:outline-none"
+              >
+              <button @click.prevent="searchOpen = false" type="button"
+                      class="flex-shrink-0 text-xs text-gray-400 bg-gray-100 rounded-lg px-2 py-1 hover:bg-gray-200 transition-colors">
+                ESC
+              </button>
+            </div>
+            <div class="border-t border-gray-100 px-5 py-3 flex items-center justify-between text-xs text-gray-400">
+              <span>برای جستجو <kbd class="bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> بزنید</span>
+              <a href="{% url 'core:search' %}" class="text-primary-600 hover:text-primary-700 font-medium transition-colors">صفحه جستجو →</a>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
 </header>

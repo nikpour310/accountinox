@@ -31,7 +31,8 @@ class BlogSitemap(Sitemap):
         return Post.objects.filter(published=True).order_by('-created_at')
 
     def lastmod(self, obj):
-        return obj.created_at
+        # prefer `updated_at` if model provides it, otherwise fall back to created_at
+        return getattr(obj, 'updated_at', obj.created_at)
 
 
 class ProductSitemap(Sitemap):
@@ -39,7 +40,8 @@ class ProductSitemap(Sitemap):
     priority = 0.7
 
     def items(self):
-        return Product.objects.all().order_by('-id')
+        # Only include products that are active and available for sale
+        return Product.objects.filter(is_active=True, is_available=True).order_by('-id')
 
     def location(self, item):
         return reverse('shop:product_detail', args=[item.slug])

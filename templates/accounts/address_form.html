@@ -1,27 +1,81 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block meta_title %}ویرایش آدرس | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_robots %}noindex,nofollow{% endblock %}
+{% block title %}ویرایش آدرس | {{ block.super }}{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-3xl">
-    <h1 class="mb-4 text-2xl font-bold text-slate-900 sm:text-3xl">ویرایش آدرس</h1>
-    {% include 'accounts/_nav.html' %}
+<div class="page-wrapper">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-    <form method="post" class="card p-4 sm:p-6 space-y-3">
-      {% csrf_token %}
-      {% for field in form %}
-        <div>
-          <label for="{{ field.id_for_label }}" class="mb-1 block text-sm text-slate-700">{{ field.label }}</label>
-          {{ field.as_widget|safe }}
-          {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors|striptags }}</p>{% endif %}
+    {% include "accounts/_panel_layout.html" with active_page='addresses' %}
+
+    <div class="lg:col-span-9 xl:col-span-9 min-w-0 space-y-6">
+
+      {# ── Breadcrumb ── #}
+      <div>
+        <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <a href="{% url 'accounts:addresses' %}" class="hover:text-primary-600 transition-colors">آدرس‌ها</a>
+          <svg class="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <span class="text-gray-900 font-medium">ویرایش آدرس</span>
         </div>
-      {% endfor %}
-      <div class="flex flex-col gap-2 sm:flex-row">
-        <button type="submit" class="btn btn-primary w-full sm:w-auto smooth-hover">ذخیره</button>
-        <a href="{% url 'accounts:addresses' %}" class="btn btn-ghost w-full sm:w-auto">بازگشت</a>
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">ویرایش آدرس</h1>
       </div>
-    </form>
-  </section>
+
+      <div class="card overflow-hidden reveal">
+        <div class="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-900">{{ address.full_name }}</h2>
+            <p class="text-xs text-gray-500">{% if address.label %}{{ address.label }} — {% endif %}{{ address.province }}، {{ address.city }}</p>
+          </div>
+        </div>
+        <form method="post" class="p-6">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {% for field in form %}
+              {% if field.name == 'is_default' %}
+                <div class="sm:col-span-2">
+                  <label class="flex items-center gap-2 cursor-pointer bg-gray-50 rounded-xl p-4">
+                    {{ field }}
+                    <div>
+                      <span class="text-sm font-medium text-gray-900">{{ field.label }}</span>
+                      <p class="text-xs text-gray-500">این آدرس به‌عنوان آدرس پیش‌فرض تنظیم شود</p>
+                    </div>
+                  </label>
+                </div>
+              {% elif field.name == 'street_address' %}
+                <div class="sm:col-span-2">
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.errors %}<p class="mt-1.5 text-xs text-red-600">{{ field.errors|striptags }}</p>{% endif %}
+                </div>
+              {% else %}
+                <div>
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.errors %}<p class="mt-1.5 text-xs text-red-600">{{ field.errors|striptags }}</p>{% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <div class="flex gap-3 mt-6 pt-6 border-t border-gray-100">
+            <button type="submit" class="btn btn-primary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              ذخیره تغییرات
+            </button>
+            <a href="{% url 'accounts:addresses' %}" class="btn btn-ghost">انصراف</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
 {% endblock %}
 

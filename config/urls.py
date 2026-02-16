@@ -58,3 +58,18 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # Serve static/media locally when running runserver with DEBUG=False (testing 404 etc.)
+    # In production (cPanel/nginx), the web server handles these paths.
+    import sys
+    if 'runserver' in sys.argv:
+        from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+        urlpatterns += staticfiles_urlpatterns()
+        from django.views.static import serve as static_serve
+        from django.urls import re_path
+        urlpatterns += [
+            re_path(r'^media/(?P<path>.*)$', static_serve, {'document_root': settings.MEDIA_ROOT}),
+        ]
+
+handler404 = 'apps.core.views.custom_404'

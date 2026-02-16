@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static seo_tags %}
+
+{% block title %}جستجو{% if query %}: {{ query }}{% endif %}{% endblock %}
+{% block meta_description %}نتایج جستجوی «{{ query }}» در {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block meta_robots %}
+<meta name="robots" content="noindex,follow">
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <!-- Search Header -->
+  <div class="page-header reveal">
+    <h1 class="section-title">جستجو در سایت</h1>
+    <p class="section-subtitle">محصولات، مقالات و خدمات مورد نظرتان را پیدا کنید.</p>
+  </div>
+
+  <!-- Search Box -->
+  <div class="max-w-2xl mx-auto mb-10 reveal">
+    <form method="get" action="{% url 'core:search' %}" class="relative">
+      <input
+        type="search"
+        name="q"
+        value="{{ query }}"
+        placeholder="جستجوی محصول، مقاله، سرویس..."
+        autocomplete="off"
+        autofocus
+        class="w-full h-14 pl-14 pr-5 rounded-2xl border border-gray-200 bg-white text-gray-800 text-base
+               placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400/40
+               focus:border-primary-400 shadow-sm transition-all"
+      >
+      <button type="submit"
+              class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center
+                     rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              aria-label="جستجو">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  {% if query %}
+
+    {% if total == 0 %}
+    <!-- No Results -->
+    <div class="text-center py-16 reveal">
+      <div class="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-5">
+        <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-gray-700 mb-2">نتیجه‌ای یافت نشد</h2>
+      <p class="text-gray-500 text-sm max-w-md mx-auto">
+        عبارت «<strong class="text-gray-700">{{ query }}</strong>» نتیجه‌ای نداشت. عبارت دیگری جستجو کنید یا از منوی بالا استفاده نمایید.
+      </p>
+      <div class="mt-6 flex justify-center gap-3">
+        <a href="{% url 'shop:product_list' %}" class="btn-primary btn-sm">مشاهده محصولات</a>
+        <a href="{% url 'blog:post_list' %}" class="btn-ghost text-sm">بلاگ</a>
+      </div>
+    </div>
+
+    {% else %}
+
+    <!-- Results Summary -->
+    <div class="text-center mb-8 reveal">
+      <p class="text-sm text-gray-500">
+        <span class="font-bold text-gray-800">{{ total }}</span> نتیجه برای «<strong class="text-primary-600">{{ query }}</strong>»
+      </p>
+    </div>
+
+    <!-- Products -->
+    {% if products %}
+    <section class="mb-14 reveal">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">محصولات</h2>
+          <p class="text-xs text-gray-500">{{ products|length }} مورد</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+        {% for p in products %}
+        <article class="card-hover flex flex-col h-full overflow-hidden group">
+          <a href="{{ p.get_absolute_url }}" class="block aspect-square overflow-hidden rounded-xl bg-gray-50 mb-4" aria-label="مشاهده {{ p.title }}">
+            {% if p.featured_image %}
+              {% include 'partials/image.html' with image=p.featured_image alt=p.title class="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-500" loading="lazy" %}
+            {% else %}
+              <div class="flex h-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200 group-hover:from-primary-50 group-hover:to-primary-100 transition-colors duration-300">
+                <span class="text-6xl drop-shadow-sm">{% if p.service and p.service.icon %}{{ p.service.icon }}{% else %}📦{% endif %}</span>
+              </div>
+            {% endif %}
+          </a>
+          <div class="flex flex-1 flex-col">
+            <h3 class="text-base font-bold text-gray-900 group-hover:text-primary-700 transition-colors">
+              <a href="{{ p.get_absolute_url }}">{{ p.title }}</a>
+            </h3>
+            {% if p.category %}
+            <span class="inline-block mt-1.5 text-xs text-gray-500 bg-gray-100 rounded-lg px-2 py-0.5 w-fit">{{ p.category.name }}</span>
+            {% endif %}
+            <div class="mt-auto pt-4 flex items-center justify-between">
+              <div class="flex items-baseline gap-1">
+                <span class="text-lg font-black text-gray-900">{{ p.price|price_format }}</span>
+                <span class="text-xs text-gray-400">تومان</span>
+              </div>
+              <a href="{{ p.get_absolute_url }}" class="btn-primary btn-sm text-xs">مشاهده</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Services -->
+    {% if services %}
+    <section class="mb-14 reveal">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">خدمات</h2>
+          <p class="text-xs text-gray-500">{{ services|length }} مورد</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+        {% for svc in services %}
+        <a href="{% url 'shop:product_list' %}?service={{ svc.slug }}" class="card-hover flex items-center gap-4 p-4">
+          <div class="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+            {% if svc.icon %}
+              <i class="{{ svc.icon }} text-blue-600"></i>
+            {% else %}
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            {% endif %}
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-900">{{ svc.name }}</h3>
+            {% if svc.description %}
+            <p class="text-xs text-gray-500 line-clamp-1 mt-0.5">{{ svc.description|truncatechars:80 }}</p>
+            {% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Blog Posts -->
+    {% if posts %}
+    <section class="mb-14 reveal">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">مقالات بلاگ</h2>
+          <p class="text-xs text-gray-500">{{ posts|length }} مورد</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+        {% for post in posts %}
+        <article class="card-hover flex flex-col h-full overflow-hidden group">
+          <a href="{{ post.get_absolute_url }}" class="block aspect-[16/9] overflow-hidden rounded-xl bg-gray-100 mb-4" aria-label="مطالعه {{ post.title }}">
+            {% if post.featured_image %}
+              {% include 'partials/image.html' with image=post.featured_image alt=post.title class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" %}
+            {% else %}
+              <div class="flex h-full items-center justify-center text-4xl text-gray-300">✍️</div>
+            {% endif %}
+          </a>
+          <div class="flex flex-1 flex-col">
+            <h3 class="text-base font-bold text-gray-900 group-hover:text-primary-700 transition-colors">
+              <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+            </h3>
+            <p class="mt-1.5 text-sm text-gray-500 leading-7 line-clamp-2">{{ post.content|truncatechars:120 }}</p>
+            <div class="mt-auto pt-4 flex items-center justify-between text-xs text-gray-400">
+              <span>{{ post.created_at|date:"j F Y" }}</span>
+              <a href="{{ post.get_absolute_url }}" class="text-primary-600 font-medium hover:text-primary-700 transition-colors">ادامه مطلب →</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% endif %}{# end total > 0 #}
+
+  {% else %}
+  <!-- Empty State: No query yet -->
+  <div class="text-center py-14 reveal">
+    <div class="w-20 h-20 bg-primary-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
+      <svg class="w-10 h-10 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-gray-700 mb-2">عبارت مورد نظرتان را جستجو کنید</h2>
+    <p class="text-gray-500 text-sm max-w-md mx-auto">
+      نام محصول، عنوان مقاله یا سرویس خود را بنویسید تا نتایج نمایش داده شود.
+    </p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

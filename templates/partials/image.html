@@ -1,0 +1,13 @@
+{% load webp_tags seo_tags %}
+{% comment %}
+Reusable image include.
+Usage: include 'partials/image.html' with image=object.image alt=object.title class="..." loading="lazy"
+{% endcomment %}
+{% if image %}
+    {% with safe_alt=image|image_alt:alt %}
+        {% prefer_webp image class alt=safe_alt loading=loading %}
+    {% endwith %}
+{% else %}
+    {# fallback: render a harmless empty placeholder to avoid empty-src requests #}
+    <div class="{{ class }} bg-gray-100" aria-hidden="true"></div>
+{% endif %}

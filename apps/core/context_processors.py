@@ -8,8 +8,38 @@ def site_settings(request):
     except Exception:
         setting_obj = None
 
+    # Provide active services for the navbar (safe fallback if shop app not available)
+    try:
+        from apps.shop.models import Service
+        # Prefetch related products to avoid N+1 queries when rendering the megamenu
+        services = list(Service.objects.filter(active=True).order_by('order', 'name').prefetch_related('products'))
+    except Exception:
+        services = []
+
+    # Footer links (grouped as quick / legal)
+    try:
+        from apps.core.models import FooterLink
+        footer_links_quick = FooterLink.objects.filter(is_active=True, column='quick')
+        footer_links_legal = FooterLink.objects.filter(is_active=True, column='legal')
+    except Exception:
+        footer_links_quick = []
+        footer_links_legal = []
+
+    # Cart item count for navbar badge
+    cart_count = 0
+    try:
+        raw_cart = request.session.get('cart', {})
+        if isinstance(raw_cart, dict):
+            cart_count = sum(int(v) for v in raw_cart.values() if str(v).isdigit() and int(v) > 0)
+    except Exception:
+        cart_count = 0
+
     return {
         'site_settings': setting_obj,
         'debug': settings.DEBUG,
         'site_base_url': settings.SITE_BASE_URL if hasattr(settings, 'SITE_BASE_URL') else f"{request.scheme}://{request.get_host()}",
+        'services': services,
+        'footer_links_quick': footer_links_quick,
+        'footer_links_legal': footer_links_legal,
+        'cart_count': cart_count,
     }

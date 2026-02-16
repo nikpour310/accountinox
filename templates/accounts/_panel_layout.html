@@ -1,0 +1,97 @@
+{% load static %}
+{# ── Sidebar partial for the unified panel layout ── #}
+{# Include this inside your grid: {% include 'accounts/_panel_layout.html' with active_page='dashboard' %} #}
+
+<aside class="lg:col-span-3 xl:col-span-3">
+  <div class="lg:sticky lg:top-24 space-y-5">
+
+    {# ── User Card ── #}
+    <div class="card p-6 text-center relative overflow-hidden">
+      {# Decorative gradient bar #}
+      <div class="absolute inset-x-0 top-0 h-20 bg-gradient-to-bl from-primary-500 via-teal-400 to-emerald-400 opacity-90"></div>
+
+      <div class="relative">
+        {# Avatar #}
+        <div class="w-20 h-20 rounded-2xl bg-white shadow-lg mx-auto flex items-center justify-center text-2xl font-bold text-primary-600 border-4 border-white mt-6">
+          {% if user.first_name %}
+            {{ user.first_name|make_list|first|upper }}{{ user.last_name|make_list|first|upper }}
+          {% else %}
+            {{ user.username|make_list|first|upper }}
+          {% endif %}
+        </div>
+
+        <h2 class="text-lg font-bold text-gray-900 mt-3">
+          {{ user.get_full_name|default:user.username }}
+        </h2>
+        <p class="text-sm text-gray-500 mt-0.5">{{ user.email|default:"ایمیل ثبت نشده" }}</p>
+
+        {# Member since badge #}
+        <div class="mt-3 inline-flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-1.5 text-xs text-gray-500">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          عضویت از {{ user.date_joined|date:"Y/m" }}
+        </div>
+      </div>
+
+      {# Quick stats #}
+      <div class="grid grid-cols-2 gap-4 mt-5 pt-5 border-t border-gray-100">
+        <div>
+          <span class="block text-xl font-bold text-gray-900">{{ sidebar_orders_count|default:"0" }}</span>
+          <span class="text-xs text-gray-500">سفارش</span>
+        </div>
+        <div>
+          <span class="block text-xl font-bold text-gray-900">{{ sidebar_addresses_count|default:"0" }}</span>
+          <span class="text-xs text-gray-500">آدرس</span>
+        </div>
+      </div>
+    </div>
+
+    {# ── Navigation ── #}
+    <nav class="card overflow-hidden" aria-label="منوی پنل کاربری">
+      <a href="{% url 'accounts:dashboard' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200
+                {% if active_page == 'dashboard' %}bg-primary-50 text-primary-700 border-e-[3px] border-primary-500{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10-2a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z"/></svg>
+        داشبورد
+      </a>
+      <a href="{% url 'accounts:orders' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200
+                {% if active_page == 'orders' %}bg-primary-50 text-primary-700 border-e-[3px] border-primary-500{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        سفارش‌ها
+        {% if sidebar_pending_count %}<span class="ms-auto chip bg-amber-100 text-amber-700 text-xs">{{ sidebar_pending_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'accounts:profile' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200
+                {% if active_page == 'profile' %}bg-primary-50 text-primary-700 border-e-[3px] border-primary-500{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        ویرایش پروفایل
+      </a>
+      <a href="{% url 'accounts:addresses' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200
+                {% if active_page == 'addresses' %}bg-primary-50 text-primary-700 border-e-[3px] border-primary-500{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        آدرس‌ها
+      </a>
+      <a href="{% url 'support:chat' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200
+                {% if active_page == 'support' %}bg-primary-50 text-primary-700 border-e-[3px] border-primary-500{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        پشتیبانی
+      </a>
+
+      <div class="border-t border-gray-100"></div>
+
+      <a href="{% url 'account_change_password' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        تغییر رمز عبور
+      </a>
+      <a href="{% url 'account_logout' %}"
+         class="flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        خروج از حساب
+      </a>
+    </nav>
+
+  </div>
+</aside>
