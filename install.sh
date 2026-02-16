@@ -358,7 +358,7 @@ phase_django() {
     if [[ -z "$vapid_priv_val" || "$vapid_priv_val" == *.pem || "$vapid_priv_val" == *.key ]]; then
       step "Fixing VAPID keys (was file path, generating proper keys)"
       local vapid_out=""
-      cat > /tmp/_ax_vapid_gen.py << 'VAPIDEOF'
+      cat > "${APP_DIR}/_ax_vapid_gen.py" << 'VAPIDEOF'
 import sys
 try:
     from py_vapid import Vapid
@@ -374,8 +374,8 @@ except Exception as e:
     print(f'ERROR:{e}', file=sys.stderr)
     sys.exit(1)
 VAPIDEOF
-      vapid_out=$( "$VENV_DIR/bin/python" /tmp/_ax_vapid_gen.py 2>&1 ) || true
-      rm -f /tmp/_ax_vapid_gen.py
+      vapid_out=$( "$VENV_DIR/bin/python" "${APP_DIR}/_ax_vapid_gen.py" 2>&1 ) || true
+      rm -f "${APP_DIR}/_ax_vapid_gen.py"
       if [[ -n "$vapid_out" && "$vapid_out" == *"||"* ]]; then
         local new_vpub="${vapid_out%%||*}"
         local new_vpriv="${vapid_out##*||}"
@@ -406,7 +406,7 @@ VAPIDEOF
 
     # Generate VAPID keys for push notifications
     step "Generating VAPID keys for push notifications"
-    cat > /tmp/_ax_vapid_fresh.py << 'VAPIDEOF'
+    cat > "${APP_DIR}/_ax_vapid_fresh.py" << 'VAPIDEOF'
 from py_vapid import Vapid
 v = Vapid()
 v.generate_keys()
@@ -415,8 +415,8 @@ priv_pem = v.private_pem().decode() if isinstance(v.private_pem(), bytes) else v
 priv_inline = priv_pem.strip().replace(chr(10), r'\n')
 print(f'{pub}||{priv_inline}')
 VAPIDEOF
-    VAPID_KEYS=$( "$VENV_DIR/bin/python" /tmp/_ax_vapid_fresh.py 2>&1 ) || true
-    rm -f /tmp/_ax_vapid_fresh.py
+    VAPID_KEYS=$( "$VENV_DIR/bin/python" "${APP_DIR}/_ax_vapid_fresh.py" 2>&1 ) || true
+    rm -f "${APP_DIR}/_ax_vapid_fresh.py"
     if [[ -n "$VAPID_KEYS" ]]; then
       VAPID_PUB="${VAPID_KEYS%%||*}"
       VAPID_PRIV="${VAPID_KEYS##*||}"
@@ -507,7 +507,7 @@ ENVEOF
   # Use a Python helper to load .env and run Django commands
   # (avoids all shell-escaping issues with special chars in DJANGO_SECRET_KEY etc.)
   # NOTE: heredoc is QUOTED ('PYEOF') so bash does NOT expand $vars inside
-  cat > /tmp/_ax_django_cmd.py << 'PYEOF'
+  cat > "${APP_DIR}/_ax_django_cmd.py" << 'PYEOF'
 import os, sys
 
 def load_env(path):
@@ -543,16 +543,16 @@ elif cmd == 'collectstatic':
 PYEOF
 
   # Inject the real APP_DIR path (avoids heredoc expansion issues)
-  sed -i "s|__APP_DIR_PLACEHOLDER__|${APP_DIR}|g" /tmp/_ax_django_cmd.py
-  chmod 644 /tmp/_ax_django_cmd.py
-  chown "$SERVICE_USER":"$SERVICE_USER" /tmp/_ax_django_cmd.py
+  sed -i "s|__APP_DIR_PLACEHOLDER__|${APP_DIR}|g" "${APP_DIR}/_ax_django_cmd.py"
+  chmod 644 "${APP_DIR}/_ax_django_cmd.py"
+  chown "$SERVICE_USER":"$SERVICE_USER" "${APP_DIR}/_ax_django_cmd.py"
 
-  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" /tmp/_ax_django_cmd.py "$ENVFILE" migrate 2>&1 | tail -20
+  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" "${APP_DIR}/_ax_django_cmd.py" "$ENVFILE" migrate 2>&1 | tail -20
   success "Migrations complete"
 
   step "Collecting static files"
-  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" /tmp/_ax_django_cmd.py "$ENVFILE" collectstatic 2>&1 | tail -3
-  rm -f /tmp/_ax_django_cmd.py
+  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" "${APP_DIR}/_ax_django_cmd.py" "$ENVFILE" collectstatic 2>&1 | tail -3
+  rm -f "${APP_DIR}/_ax_django_cmd.py"
   success "Static files collected"
 
   set +u; deactivate 2>/dev/null || true; set -u
