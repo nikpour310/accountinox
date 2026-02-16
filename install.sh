@@ -31,7 +31,7 @@ echo "Installing Accountinox -> $APP_DIR (DB: $DB_CHOICE)"
 apt_update_install() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
-  apt-get install -y git curl "$PYTHON_BIN" "${PYTHON_BIN}-venv" "${PYTHON_BIN}-dev" build-essential nginx openssl
+  apt-get install -y git curl "$PYTHON_BIN" "${PYTHON_BIN}-venv" "${PYTHON_BIN}-dev" build-essential nginx openssl pkg-config libssl-dev libffi-dev libmariadb-dev default-libmysqlclient-dev
   if [ "$DB_CHOICE" = "postgres" ]; then
     apt-get install -y postgresql libpq-dev
   elif [ "$DB_CHOICE" = "mysql" ]; then
@@ -80,9 +80,9 @@ clone_repo_and_venv() {
   fi
 
   source "$VENV_DIR/bin/activate"
-  pip install --upgrade pip
+  pip install --upgrade pip setuptools wheel
   if [ -f "$APP_DIR/requirements.txt" ]; then
-    pip install -r "$APP_DIR/requirements.txt"
+    pip install --no-cache-dir -r "$APP_DIR/requirements.txt"
   fi
   pip install --upgrade "gunicorn" "uvicorn[standard]" "django-environ"
   deactivate
