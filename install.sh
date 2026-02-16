@@ -68,6 +68,15 @@ WORKERS="${WORKERS:-0}"                 # 0 = auto-detect
 ENABLE_FIREWALL="${ENABLE_FIREWALL:-1}"
 SWAP_SIZE_MB="${SWAP_SIZE_MB:-0}"       # 0 = auto (1G if RAM ≤ 2G)
 
+# ─── Detect fresh install vs update ──────────────────────────────────────────
+ENVFILE="$APP_DIR/.env"
+IS_UPDATE=0
+if [[ -d "$APP_DIR/.git" && -f "$ENVFILE" ]]; then
+  IS_UPDATE=1
+  info "Detected existing installation — running in ${BOLD}UPDATE${NC} mode"
+  info "Database and .env will be preserved"
+fi
+
 # ─── Auto-tune workers ──────────────────────────────────────────────────────
 if [[ "$WORKERS" -eq 0 ]]; then
   CPU_COUNT=$(nproc 2>/dev/null || echo 1)
@@ -224,7 +233,22 @@ phase_database() {
 
   DB_URL=""
 
-  # Generate DB password if not provided
+  # ── On UPDATE: read existing DB_PASS from .env so we don't break the connection ──
+  if [[ $IS_UPDATE -eq 1 && -z "$DB_PASS" && "$DB_CHOICE" != "sqlite" ]]; then
+    local existing_url
+    existing_url=$(grep -E '^DATABASE_URL=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+    if [[ -n "$existing_url" ]]; then
+      # Extract password from URL: scheme://user:PASS@host:port/db
+      DB_PASS=$(echo "$existing_url" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
+      DB_USER=$(echo "$existing_url" | sed -n 's|.*://\([^:]*\):.*|\1|p')
+      DB_NAME=$(echo "$existing_url" | sed -n 's|.*/\([^?]*\).*|\1|p')
+      if [[ -n "$DB_PASS" ]]; then
+        info "Using existing database credentials from .env"
+      fi
+    fi
+  fi
+
+  # Generate DB password ONLY for fresh installs
   if [[ -z "$DB_PASS" ]] && [[ "$DB_CHOICE" != "sqlite" ]]; then
     DB_PASS=$("$VENV_DIR/bin/python" -c "import secrets; print(secrets.token_urlsafe(32))")
     info "Generated secure database password"
@@ -238,24 +262,28 @@ phase_database() {
 
       mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null
       mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null || true
-      mysql -e "ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null || true
+      if [[ $IS_UPDATE -eq 0 ]]; then
+        mysql -e "ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null || true
+      fi
       mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>/dev/null
       mysql -e "FLUSH PRIVILEGES;" 2>/dev/null
 
       DB_PORT="${DB_PORT:-3306}"
       DB_URL="mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-      success "${DB_CHOICE} database provisioned"
+      success "${DB_CHOICE} database $([[ $IS_UPDATE -eq 1 ]] && echo 'verified' || echo 'provisioned')"
       ;;
 
     postgres)
       systemctl enable --now postgresql >/dev/null 2>&1
-      sudo -u postgres psql -v ON_ERROR_STOP=1 -c \
-        "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_user WHERE usename='${DB_USER}') THEN CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}'; END IF; END \$\$;" 2>/dev/null
-      sudo -u postgres createdb -O "$DB_USER" "$DB_NAME" 2>/dev/null || true
+      if [[ $IS_UPDATE -eq 0 ]]; then
+        sudo -u postgres psql -v ON_ERROR_STOP=1 -c \
+          "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_user WHERE usename='${DB_USER}') THEN CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}'; END IF; END \$\$;" 2>/dev/null
+        sudo -u postgres createdb -O "$DB_USER" "$DB_NAME" 2>/dev/null || true
+      fi
 
       DB_PORT="${DB_PORT:-5432}"
       DB_URL="postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-      success "PostgreSQL database provisioned"
+      success "PostgreSQL database $([[ $IS_UPDATE -eq 1 ]] && echo 'verified' || echo 'provisioned')"
       ;;
 
     sqlite)
@@ -270,22 +298,48 @@ phase_database() {
 phase_django() {
   banner "Phase 5 / 7 — Environment & Django Setup"
 
-  step "Generating cryptographic keys"
   source "$VENV_DIR/bin/activate"
 
-  DJANGO_SECRET_KEY=$("$VENV_DIR/bin/python" -c \
-    "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
-  FERNET_KEY=$("$VENV_DIR/bin/python" -c \
-    "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-  OTP_HMAC_KEY=$("$VENV_DIR/bin/python" -c \
-    "import secrets; print(secrets.token_hex(32))")
+  # ── UPDATE MODE: preserve existing .env, only update DATABASE_URL & domain ──
+  if [[ $IS_UPDATE -eq 1 && -f "$ENVFILE" ]]; then
+    step "Updating existing .env (preserving all settings)"
+    cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
+    info "Backed up existing .env"
 
-  ENVFILE="$APP_DIR/.env"
+    # Update DATABASE_URL if it changed
+    if [[ -n "${DB_URL:-}" ]]; then
+      if grep -qE '^DATABASE_URL=' "$ENVFILE"; then
+        sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" "$ENVFILE"
+      else
+        echo "" >> "$ENVFILE"
+        echo "DATABASE_URL=${DB_URL}" >> "$ENVFILE"
+      fi
+    fi
 
-  # Backup existing .env
-  [[ -f "$ENVFILE" ]] && cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)" && info "Backed up existing .env"
+    # Update domain if explicitly provided
+    if [[ -n "$DOMAIN" ]]; then
+      sed -i "s|^ALLOWED_HOSTS=.*|ALLOWED_HOSTS=${DOMAIN},www.${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
+      sed -i "s|^SITE_URL=.*|SITE_URL=https://${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
+      sed -i "s|^SITE_BASE_URL=.*|SITE_BASE_URL=https://${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
+      sed -i "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
+    fi
 
-  cat > "$ENVFILE" <<ENVEOF
+    chmod 600 "$ENVFILE"
+    chown "$SERVICE_USER":"$SERVICE_USER" "$ENVFILE"
+    success ".env preserved & updated"
+
+  # ── FRESH INSTALL: generate new .env ──
+  else
+    step "Generating cryptographic keys"
+
+    DJANGO_SECRET_KEY=$("$VENV_DIR/bin/python" -c \
+      "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
+    FERNET_KEY=$("$VENV_DIR/bin/python" -c \
+      "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    OTP_HMAC_KEY=$("$VENV_DIR/bin/python" -c \
+      "import secrets; print(secrets.token_hex(32))")
+
+    cat > "$ENVFILE" <<ENVEOF
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  Accountinox — Production Environment
 #  Generated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
@@ -302,23 +356,23 @@ FERNET_KEY=${FERNET_KEY}
 OTP_HMAC_KEY=${OTP_HMAC_KEY}
 ENVEOF
 
-  # Database URL
-  if [[ -n "${DB_URL:-}" ]]; then
-    echo "" >> "$ENVFILE"
-    echo "# ─── Database ───" >> "$ENVFILE"
-    echo "DATABASE_URL=${DB_URL}" >> "$ENVFILE"
-  fi
+    # Database URL
+    if [[ -n "${DB_URL:-}" ]]; then
+      echo "" >> "$ENVFILE"
+      echo "# ─── Database ───" >> "$ENVFILE"
+      echo "DATABASE_URL=${DB_URL}" >> "$ENVFILE"
+    fi
 
-  # Redis
-  if [[ "$USE_REDIS" == "1" ]]; then
-    cat >> "$ENVFILE" <<ENVEOF
+    # Redis
+    if [[ "$USE_REDIS" == "1" ]]; then
+      cat >> "$ENVFILE" <<ENVEOF
 
 # ─── Cache ───
 REDIS_URL=redis://127.0.0.1:6379/0
 ENVEOF
-  fi
+    fi
 
-  cat >> "$ENVFILE" <<ENVEOF
+    cat >> "$ENVFILE" <<ENVEOF
 
 # ─── SSL / Security ───
 SESSION_COOKIE_SECURE=True
@@ -348,9 +402,10 @@ CSRF_TRUSTED_ORIGINS=https://${DOMAIN:-localhost},https://www.${DOMAIN:-localhos
 # IPPANEL_PATTERN_CODE=
 ENVEOF
 
-  chmod 600 "$ENVFILE"
-  chown "$SERVICE_USER":"$SERVICE_USER" "$ENVFILE"
-  success ".env written"
+    chmod 600 "$ENVFILE"
+    chown "$SERVICE_USER":"$SERVICE_USER" "$ENVFILE"
+    success ".env written"
+  fi
 
   step "Running migrations"
   cd "$APP_DIR"
@@ -382,7 +437,7 @@ phase_services() {
   banner "Phase 6 / 7 — Services (systemd + Nginx + SSL)"
 
   # ── Gunicorn systemd service ──
-  step "Creating systemd service"
+  step "$([[ $IS_UPDATE -eq 1 ]] && echo 'Updating' || echo 'Creating') systemd service"
   cat > /etc/systemd/system/${APP_NAME}.service <<SVCEOF
 [Unit]
 Description=Accountinox ASGI Server
@@ -579,10 +634,15 @@ NGXEOF
 
   # ── SSL ──
   if [[ -n "$DOMAIN" ]]; then
-    step "Obtaining SSL certificate"
-    certbot --nginx -d "$DOMAIN" -d "www.${DOMAIN}" \
-      --non-interactive --agree-tos -m "admin@${DOMAIN}" \
-      --redirect 2>&1 | tail -3 || warn "Certbot failed — configure SSL manually"
+    if [[ -d "/etc/letsencrypt/live/${DOMAIN}" ]]; then
+      info "SSL certificate already exists for ${DOMAIN}"
+      certbot renew --dry-run 2>/dev/null && success "SSL certificate valid" || warn "SSL renewal check failed"
+    else
+      step "Obtaining SSL certificate"
+      certbot --nginx -d "$DOMAIN" -d "www.${DOMAIN}" \
+        --non-interactive --agree-tos -m "admin@${DOMAIN}" \
+        --redirect 2>&1 | tail -3 || warn "Certbot failed — configure SSL manually"
+    fi
     systemctl enable --now certbot.timer 2>/dev/null || true
     success "SSL configured with auto-renewal"
   fi
@@ -737,7 +797,11 @@ print_summary() {
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║                                                                  ║${NC}"
+  if [[ $IS_UPDATE -eq 1 ]]; then
+  echo -e "${GREEN}║${NC}     ${BOLD}✔  ACCOUNTINOX — UPDATE COMPLETE${NC}                            ${GREEN}║${NC}"
+  else
   echo -e "${GREEN}║${NC}     ${BOLD}✔  ACCOUNTINOX — DEPLOYMENT COMPLETE${NC}                        ${GREEN}║${NC}"
+  fi
   echo -e "${GREEN}║                                                                  ║${NC}"
   echo -e "${GREEN}╠══════════════════════════════════════════════════════════════════╣${NC}"
   echo -e "${GREEN}║${NC}                                                                  ${GREEN}║${NC}"
@@ -775,8 +839,8 @@ print_summary() {
   echo -e "${GREEN}║${NC}                                                                  ${GREEN}║${NC}"
   echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════╝${NC}"
 
-  # DB credentials (show once, not stored in logs)
-  if [[ "$DB_CHOICE" != "sqlite" ]]; then
+  # DB credentials (show only on fresh install)
+  if [[ "$DB_CHOICE" != "sqlite" && $IS_UPDATE -eq 0 ]]; then
     echo ""
     echo -e "${RED}┌─── DATABASE CREDENTIALS (save these!) ───────────────────────┐${NC}"
     echo -e "${RED}│${NC}  Database : ${BOLD}${DB_NAME}${NC}"
@@ -802,6 +866,11 @@ colorize_status() {
 main() {
   banner "Accountinox Deployment — Ubuntu $(lsb_release -rs 2>/dev/null || echo '22.04')"
   echo ""
+  if [[ $IS_UPDATE -eq 1 ]]; then
+    echo -e "  ${YELLOW}MODE     : UPDATE (data & .env preserved)${NC}"
+  else
+    echo -e "  ${GREEN}MODE     : FRESH INSTALL${NC}"
+  fi
   info "App      : ${APP_DIR}"
   info "Database : ${DB_CHOICE}"
   info "Redis    : $([[ "$USE_REDIS" == "1" ]] && echo "yes" || echo "no")"
