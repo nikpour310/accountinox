@@ -809,10 +809,27 @@ SYSEOF
 
   # ── Cron: daily DB backup ──
   step "Setting up automated daily backup"
+
+  # Extract DB_PASS from .env DATABASE_URL if not already set (update mode)
+  if [[ -z "${DB_PASS:-}" && -f "$ENVFILE" ]]; then
+    local db_url_line
+    db_url_line=$(grep -E '^DATABASE_URL=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+    if [[ -n "$db_url_line" ]]; then
+      # DATABASE_URL format: mysql://user:pass@host:port/dbname
+      DB_PASS=$(echo "$db_url_line" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
+      DB_USER=$(echo "$db_url_line" | sed -n 's|.*://\([^:]*\):.*|\1|p')
+      DB_NAME=$(echo "$db_url_line" | sed -n 's|.*/\([^?]*\).*|\1|p')
+    fi
+  fi
+
   CRON_CMD=""
   case "$DB_CHOICE" in
     mariadb|mysql)
-      CRON_CMD="0 3 * * * mysqldump --single-transaction -u ${DB_USER} -p'${DB_PASS}' ${DB_NAME} | gzip > ${APP_DIR}/backups/db_\$(date +\%Y\%m\%d_\%H\%M).sql.gz && find ${APP_DIR}/backups -name 'db_*.sql.gz' -mtime +7 -delete"
+      if [[ -n "${DB_PASS:-}" ]]; then
+        CRON_CMD="0 3 * * * mysqldump --single-transaction -u ${DB_USER} -p'${DB_PASS}' ${DB_NAME} | gzip > ${APP_DIR}/backups/db_\$(date +\%Y\%m\%d_\%H\%M).sql.gz && find ${APP_DIR}/backups -name 'db_*.sql.gz' -mtime +7 -delete"
+      else
+        warn "DB_PASS not found — skipping cron backup (configure manually)"
+      fi
       ;;
     postgres)
       CRON_CMD="0 3 * * * PGPASSWORD='${DB_PASS}' pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} | gzip > ${APP_DIR}/backups/db_\$(date +\%Y\%m\%d_\%H\%M).sql.gz && find ${APP_DIR}/backups -name 'db_*.sql.gz' -mtime +7 -delete"
