@@ -221,22 +221,22 @@ phase_code() {
     "$PYTHON_BIN" -m venv "$VENV_DIR"
   fi
 
-  source "$VENV_DIR/bin/activate"
-  pip install -q --upgrade pip setuptools wheel 2>/dev/null
+  set +u; source "$VENV_DIR/bin/activate"; set -u
+  pip install -q --upgrade pip setuptools wheel
 
   if [[ -f "$APP_DIR/requirements.txt" ]]; then
-    pip install -q --no-cache-dir -r "$APP_DIR/requirements.txt" 2>/dev/null
+    pip install -q --no-cache-dir -r "$APP_DIR/requirements.txt" 2>&1 | tail -5
   fi
 
   # Runtime essentials
   pip install -q --no-cache-dir \
-    gunicorn 'uvicorn[standard]' PyJWT Pillow django-environ 2>/dev/null
+    gunicorn 'uvicorn[standard]' PyJWT Pillow django-environ 2>&1 | tail -3
 
   if [[ "$USE_REDIS" == "1" ]]; then
-    pip install -q --no-cache-dir django-redis 2>/dev/null
+    pip install -q --no-cache-dir django-redis 2>&1 | tail -3
   fi
 
-  deactivate
+  set +u; deactivate 2>/dev/null || true; set -u
   chown -R "$SERVICE_USER":"$SERVICE_USER" "$VENV_DIR"
   success "Virtual environment ready ($(${VENV_DIR}/bin/python --version 2>&1))"
 }
@@ -358,7 +358,7 @@ phase_django() {
     if [[ -z "$vapid_priv_val" || "$vapid_priv_val" == *.pem || "$vapid_priv_val" == *.key ]]; then
       step "Fixing VAPID keys (was file path, generating proper keys)"
       local vapid_out=""
-      vapid_out=$( "$VENV_DIR/bin/python" -c "
+      cat > /tmp/_ax_vapid_gen.py << 'VAPIDEOF'
 import sys
 try:
     from py_vapid import Vapid
@@ -368,12 +368,14 @@ try:
     if isinstance(pub, bytes): pub = pub.decode()
     priv = v.private_pem()
     if isinstance(priv, bytes): priv = priv.decode()
-    priv_inline = priv.strip().replace(chr(10), r'\\n')
+    priv_inline = priv.strip().replace(chr(10), r'\n')
     print(f'{pub}||{priv_inline}')
 except Exception as e:
     print(f'ERROR:{e}', file=sys.stderr)
     sys.exit(1)
-" 2>/dev/null ) || true
+VAPIDEOF
+      vapid_out=$( "$VENV_DIR/bin/python" /tmp/_ax_vapid_gen.py 2>&1 ) || true
+      rm -f /tmp/_ax_vapid_gen.py
       if [[ -n "$vapid_out" && "$vapid_out" == *"||"* ]]; then
         local new_vpub="${vapid_out%%||*}"
         local new_vpriv="${vapid_out##*||}"
@@ -404,15 +406,17 @@ except Exception as e:
 
     # Generate VAPID keys for push notifications
     step "Generating VAPID keys for push notifications"
-    VAPID_KEYS=$( "$VENV_DIR/bin/python" -c "
+    cat > /tmp/_ax_vapid_fresh.py << 'VAPIDEOF'
 from py_vapid import Vapid
 v = Vapid()
 v.generate_keys()
 pub = v.public_key_urlsafe().decode() if isinstance(v.public_key_urlsafe(), bytes) else v.public_key_urlsafe()
 priv_pem = v.private_pem().decode() if isinstance(v.private_pem(), bytes) else v.private_pem()
-priv_inline = priv_pem.strip().replace(chr(10), r'\\n')
+priv_inline = priv_pem.strip().replace(chr(10), r'\n')
 print(f'{pub}||{priv_inline}')
-" 2>/dev/null ) || true
+VAPIDEOF
+    VAPID_KEYS=$( "$VENV_DIR/bin/python" /tmp/_ax_vapid_fresh.py 2>&1 ) || true
+    rm -f /tmp/_ax_vapid_fresh.py
     if [[ -n "$VAPID_KEYS" ]]; then
       VAPID_PUB="${VAPID_KEYS%%||*}"
       VAPID_PRIV="${VAPID_KEYS##*||}"
@@ -502,14 +506,9 @@ ENVEOF
 
   # Use a Python helper to load .env and run Django commands
   # (avoids all shell-escaping issues with special chars in DJANGO_SECRET_KEY etc.)
-  cat > /tmp/_ax_django_cmd.py << PYEOF
+  # NOTE: heredoc is QUOTED ('PYEOF') so bash does NOT expand $vars inside
+  cat > /tmp/_ax_django_cmd.py << 'PYEOF'
 import os, sys
-
-# Ensure Django project is on sys.path
-APP_DIR = '${APP_DIR}'
-os.chdir(APP_DIR)
-if APP_DIR not in sys.path:
-    sys.path.insert(0, APP_DIR)
 
 def load_env(path):
     with open(path) as f:
@@ -525,6 +524,12 @@ def load_env(path):
 load_env(sys.argv[1])
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
+# APP_DIR is injected by sed after file creation
+APP_DIR = '__APP_DIR_PLACEHOLDER__'
+os.chdir(APP_DIR)
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+
 import django
 django.setup()
 from django.core.management import call_command
@@ -537,7 +542,11 @@ elif cmd == 'collectstatic':
     print('Static files collected')
 PYEOF
 
+  # Inject the real APP_DIR path (avoids heredoc expansion issues)
+  sed -i "s|__APP_DIR_PLACEHOLDER__|${APP_DIR}|g" /tmp/_ax_django_cmd.py
+  chmod 644 /tmp/_ax_django_cmd.py
   chown "$SERVICE_USER":"$SERVICE_USER" /tmp/_ax_django_cmd.py
+
   sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" /tmp/_ax_django_cmd.py "$ENVFILE" migrate 2>&1 | tail -20
   success "Migrations complete"
 
