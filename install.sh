@@ -178,11 +178,14 @@ phase_code() {
   banner "Phase 3 / 7 — Source Code & Python Environment"
 
   step "Fetching source code"
+  # Fix git "dubious ownership" when root operates on a repo owned by service user
+  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
   if [[ -d "$APP_DIR/.git" ]]; then
     info "Existing repo detected — pulling latest"
     cd "$APP_DIR"
-    git fetch --all --quiet 2>/dev/null
-    git reset --hard origin/HEAD --quiet 2>/dev/null || git reset --hard origin/main --quiet 2>/dev/null
+    git fetch --all --prune 2>&1 | tail -3 || warn "git fetch had warnings"
+    git reset --hard origin/main 2>&1 | tail -1 || git reset --hard origin/HEAD 2>&1 | tail -1 || fail "git reset failed"
   else
     TMPDIR=$(mktemp -d)
     git clone --depth 1 "$REPO_URL" "$TMPDIR" 2>/dev/null
