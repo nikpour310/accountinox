@@ -894,7 +894,12 @@ SYSEOF
       ;;
   esac
   if [[ -n "$CRON_CMD" ]]; then
-    (crontab -l 2>/dev/null | grep -v "${APP_NAME}_backup"; echo "# ${APP_NAME}_backup"; echo "$CRON_CMD") | crontab -
+    # crontab -l returns exit 1 when no crontab exists — must handle gracefully
+    local existing_cron=""
+    existing_cron=$(crontab -l 2>/dev/null || true)
+    local new_cron
+    new_cron=$(echo "$existing_cron" | grep -v "${APP_NAME}_backup" || true)
+    printf '%s\n# %s_backup\n%s\n' "$new_cron" "$APP_NAME" "$CRON_CMD" | crontab -
     success "Daily backup at 03:00 (7-day retention)"
   fi
 
