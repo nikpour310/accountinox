@@ -150,11 +150,11 @@ provision_database() {
   elif [ "$DB_CHOICE" = "mysql" ]; then
     systemctl enable --now mysql || true
     mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
-    mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+    mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; FLUSH PRIVILEGES;" || true
   elif [ "$DB_CHOICE" = "mariadb" ]; then
     systemctl enable --now mariadb || systemctl enable --now mysql || true
     mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
-    mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+    mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; FLUSH PRIVILEGES;" || true
   else
     echo "DB_CHOICE=none — skipping DB provisioning"
   fi
