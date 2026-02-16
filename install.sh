@@ -502,8 +502,14 @@ ENVEOF
 
   # Use a Python helper to load .env and run Django commands
   # (avoids all shell-escaping issues with special chars in DJANGO_SECRET_KEY etc.)
-  cat > /tmp/_ax_django_cmd.py << 'PYEOF'
+  cat > /tmp/_ax_django_cmd.py << PYEOF
 import os, sys
+
+# Ensure Django project is on sys.path
+APP_DIR = '${APP_DIR}'
+os.chdir(APP_DIR)
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
 
 def load_env(path):
     with open(path) as f:
