@@ -64,6 +64,8 @@ DB_PASS="${DB_PASS:-}"                  # auto-generated if empty
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-}"
 USE_REDIS="${USE_REDIS:-1}"
+# Normalize boolean-ish values to 1/0
+[[ "$USE_REDIS" =~ ^(yes|YES|true|TRUE|1)$ ]] && USE_REDIS="1" || USE_REDIS="0"
 WORKERS="${WORKERS:-0}"                 # 0 = auto-detect
 ENABLE_FIREWALL="${ENABLE_FIREWALL:-1}"
 SWAP_SIZE_MB="${SWAP_SIZE_MB:-0}"       # 0 = auto (1G if RAM ≤ 2G)
@@ -75,6 +77,17 @@ if [[ -d "$APP_DIR/.git" && -f "$ENVFILE" ]]; then
   IS_UPDATE=1
   info "Detected existing installation — running in ${BOLD}UPDATE${NC} mode"
   info "Database and .env will be preserved"
+
+  # Read existing DB credentials from .env so phase_database doesn't overwrite them
+  if [[ -z "$DB_PASS" ]]; then
+    _existing_db_url=$(grep -E '^DATABASE_URL=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2- || true)
+    if [[ -n "$_existing_db_url" ]]; then
+      DB_PASS=$(echo "$_existing_db_url" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p' || true)
+      DB_USER=$(echo "$_existing_db_url" | sed -n 's|.*://\([^:]*\):.*|\1|p' || true)
+      DB_NAME=$(echo "$_existing_db_url" | sed -n 's|.*/\([^?]*\).*|\1|p' || true)
+      [[ -n "$DB_PASS" ]] && info "Read DB credentials from existing .env"
+    fi
+  fi
 fi
 
 # ─── Auto-tune workers ──────────────────────────────────────────────────────
@@ -309,61 +322,61 @@ phase_django() {
     cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
     info "Backed up existing .env"
 
+    # Helper: set key=value in .env (upsert)
+    _env_set() {
+      local k="$1" v="$2"
+      if grep -qE "^${k}=" "$ENVFILE" 2>/dev/null; then
+        sed -i "s|^${k}=.*|${k}=${v}|" "$ENVFILE"
+      else
+        echo "${k}=${v}" >> "$ENVFILE"
+      fi
+    }
+
     # Update DATABASE_URL if it changed
     if [[ -n "${DB_URL:-}" ]]; then
-      if grep -qE '^DATABASE_URL=' "$ENVFILE"; then
-        sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" "$ENVFILE"
-      else
-        echo "" >> "$ENVFILE"
-        echo "DATABASE_URL=${DB_URL}" >> "$ENVFILE"
-      fi
+      _env_set "DATABASE_URL" "$DB_URL"
     fi
 
     # Update domain if explicitly provided
     if [[ -n "$DOMAIN" ]]; then
-      sed -i "s|^ALLOWED_HOSTS=.*|ALLOWED_HOSTS=${DOMAIN},www.${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
-      sed -i "s|^SITE_URL=.*|SITE_URL=https://${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
-      sed -i "s|^SITE_BASE_URL=.*|SITE_BASE_URL=https://${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
-      sed -i "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
+      _env_set "ALLOWED_HOSTS" "${DOMAIN},www.${DOMAIN}"
+      _env_set "SITE_URL" "https://${DOMAIN}"
+      _env_set "SITE_BASE_URL" "https://${DOMAIN}"
+      _env_set "CSRF_TRUSTED_ORIGINS" "https://${DOMAIN},https://www.${DOMAIN}"
     fi
 
     # ── Fix broken VAPID keys (e.g. VAPID_PRIVATE_KEY=private_key.pem) ──
-    local vapid_priv_val
-    vapid_priv_val=$(grep -E '^VAPID_PRIVATE_KEY=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+    local vapid_priv_val=""
+    vapid_priv_val=$(grep -E '^VAPID_PRIVATE_KEY=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2- || true)
     if [[ -z "$vapid_priv_val" || "$vapid_priv_val" == *.pem || "$vapid_priv_val" == *.key ]]; then
       step "Fixing VAPID keys (was file path, generating proper keys)"
-      VAPID_KEYS=$( "$VENV_DIR/bin/python" -c "
-from py_vapid import Vapid
-v = Vapid()
-v.generate_keys()
-pub = v.public_key_urlsafe().decode() if isinstance(v.public_key_urlsafe(), bytes) else v.public_key_urlsafe()
-priv_pem = v.private_pem().decode() if isinstance(v.private_pem(), bytes) else v.private_pem()
-priv_inline = priv_pem.strip().replace(chr(10), r'\\n')
-print(f'{pub}||{priv_inline}')
+      local vapid_out=""
+      vapid_out=$( "$VENV_DIR/bin/python" -c "
+import sys
+try:
+    from py_vapid import Vapid
+    v = Vapid()
+    v.generate_keys()
+    pub = v.public_key_urlsafe()
+    if isinstance(pub, bytes): pub = pub.decode()
+    priv = v.private_pem()
+    if isinstance(priv, bytes): priv = priv.decode()
+    priv_inline = priv.strip().replace(chr(10), r'\\n')
+    print(f'{pub}||{priv_inline}')
+except Exception as e:
+    print(f'ERROR:{e}', file=sys.stderr)
+    sys.exit(1)
 " 2>/dev/null ) || true
-      if [[ -n "$VAPID_KEYS" ]]; then
-        local new_pub="${VAPID_KEYS%%||*}"
-        local new_priv="${VAPID_KEYS##*||}"
-        if grep -qE '^VAPID_PUBLIC_KEY=' "$ENVFILE"; then
-          sed -i "s|^VAPID_PUBLIC_KEY=.*|VAPID_PUBLIC_KEY=${new_pub}|" "$ENVFILE"
-        else
-          echo "VAPID_PUBLIC_KEY=${new_pub}" >> "$ENVFILE"
-        fi
-        if grep -qE '^VAPID_PRIVATE_KEY=' "$ENVFILE"; then
-          sed -i "s|^VAPID_PRIVATE_KEY=.*|VAPID_PRIVATE_KEY=${new_priv}|" "$ENVFILE"
-        else
-          echo "VAPID_PRIVATE_KEY=${new_priv}" >> "$ENVFILE"
-        fi
-        # Set subject if missing
-        if ! grep -qE '^VAPID_SUBJECT=' "$ENVFILE"; then
-          echo "VAPID_SUBJECT=mailto:admin@${DOMAIN:-localhost}" >> "$ENVFILE"
-        fi
-        if ! grep -qE '^SUPPORT_PUSH_ENABLED=' "$ENVFILE"; then
-          echo "SUPPORT_PUSH_ENABLED=1" >> "$ENVFILE"
-        fi
+      if [[ -n "$vapid_out" && "$vapid_out" == *"||"* ]]; then
+        local new_vpub="${vapid_out%%||*}"
+        local new_vpriv="${vapid_out##*||}"
+        _env_set "VAPID_PUBLIC_KEY" "$new_vpub"
+        _env_set "VAPID_PRIVATE_KEY" "$new_vpriv"
+        _env_set "VAPID_SUBJECT" "mailto:admin@${DOMAIN:-localhost}"
+        _env_set "SUPPORT_PUSH_ENABLED" "1"
         success "VAPID keys regenerated"
       else
-        warn "py_vapid not available — cannot fix VAPID keys"
+        warn "py_vapid not available — VAPID keys unchanged (install pywebpush to enable)"
       fi
     fi
 
