@@ -32,6 +32,8 @@ apt_update_install() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
   apt-get install -y git curl "$PYTHON_BIN" "${PYTHON_BIN}-venv" "${PYTHON_BIN}-dev" build-essential nginx openssl pkg-config libssl-dev libffi-dev
+  # System libs for Pillow (image support)
+  apt-get install -y libjpeg-dev zlib1g-dev libtiff5-dev libfreetype6-dev libwebp-dev libharfbuzz-dev libfribidi-dev || true
   if [ "$DB_CHOICE" = "postgres" ]; then
     apt-get install -y postgresql libpq-dev
   elif [ "$DB_CHOICE" = "mysql" ]; then
@@ -84,8 +86,8 @@ clone_repo_and_venv() {
   if [ -f "$APP_DIR/requirements.txt" ]; then
     pip install --no-cache-dir -r "$APP_DIR/requirements.txt"
   fi
-  # Ensure PyJWT is available for packages that import `jwt` during app startup
-  pip install --no-cache-dir PyJWT
+  # Ensure PyJWT and Pillow are available for packages that import `jwt` and ImageField during app startup
+  pip install --no-cache-dir PyJWT Pillow
   pip install --upgrade "gunicorn" "uvicorn[standard]" "django-environ"
   deactivate
 }
