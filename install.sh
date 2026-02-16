@@ -15,7 +15,7 @@ VENV_DIR="$APP_DIR/.venv"
 DB_CHOICE="${DB_CHOICE:-mariadb}"   # mariadb | postgres | mysql | none
 DB_NAME="${DB_NAME:-accountinoxdb}"
 DB_USER="${DB_USER:-accountinox}"
-DB_PASS="${DB_PASS:-$(openssl rand -base64 24)}"
+DB_PASS="${DB_PASS:-}"
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-}"
 USE_REDIS="${USE_REDIS:-0}"
@@ -90,6 +90,15 @@ import secrets
 print(secrets.token_hex(32))
 PY
 )"
+  # If DB_PASS was not provided by the caller, generate a strong, URL-safe password
+  if [ -z "${DB_PASS:-}" ]; then
+    DB_PASS="$("$VENV_DIR/bin/python" - <<'PY'
+import secrets
+print(secrets.token_urlsafe(32))
+PY
+ )"
+    echo "Generated secure DB password"
+  fi
   deactivate
 
   ENVFILE="$APP_DIR/.env"
@@ -119,17 +128,8 @@ EOF
 provision_database() {
   if [ "$DB_CHOICE" = "postgres" ]; then
     systemctl enable --now postgresql || true
-    sudo -u postgres psql -v ON_ERROR_STOP=1 <<-SQL || true
-      DO
-      \$do\$
-      BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '$DB_USER') THEN
-          CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';
-        END IF;
-      END
-      \$do\$;
-      CREATE DATABASE $DB_NAME OWNER $DB_USER;
-    SQL
+    sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO \$do\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '$DB_USER') THEN CREATE USER $DB_USER WITH PASSWORD '$DB_PASS'; END IF; END \$do\$;" || true
+    sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" || true
   elif [ "$DB_CHOICE" = "mysql" ]; then
     systemctl enable --now mysql || true
     mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
