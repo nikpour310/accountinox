@@ -327,6 +327,46 @@ phase_django() {
       sed -i "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}|" "$ENVFILE" 2>/dev/null || true
     fi
 
+    # ── Fix broken VAPID keys (e.g. VAPID_PRIVATE_KEY=private_key.pem) ──
+    local vapid_priv_val
+    vapid_priv_val=$(grep -E '^VAPID_PRIVATE_KEY=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+    if [[ -z "$vapid_priv_val" || "$vapid_priv_val" == *.pem || "$vapid_priv_val" == *.key ]]; then
+      step "Fixing VAPID keys (was file path, generating proper keys)"
+      VAPID_KEYS=$( "$VENV_DIR/bin/python" -c "
+from py_vapid import Vapid
+v = Vapid()
+v.generate_keys()
+pub = v.public_key_urlsafe().decode() if isinstance(v.public_key_urlsafe(), bytes) else v.public_key_urlsafe()
+priv_pem = v.private_pem().decode() if isinstance(v.private_pem(), bytes) else v.private_pem()
+priv_inline = priv_pem.strip().replace(chr(10), r'\\n')
+print(f'{pub}||{priv_inline}')
+" 2>/dev/null ) || true
+      if [[ -n "$VAPID_KEYS" ]]; then
+        local new_pub="${VAPID_KEYS%%||*}"
+        local new_priv="${VAPID_KEYS##*||}"
+        if grep -qE '^VAPID_PUBLIC_KEY=' "$ENVFILE"; then
+          sed -i "s|^VAPID_PUBLIC_KEY=.*|VAPID_PUBLIC_KEY=${new_pub}|" "$ENVFILE"
+        else
+          echo "VAPID_PUBLIC_KEY=${new_pub}" >> "$ENVFILE"
+        fi
+        if grep -qE '^VAPID_PRIVATE_KEY=' "$ENVFILE"; then
+          sed -i "s|^VAPID_PRIVATE_KEY=.*|VAPID_PRIVATE_KEY=${new_priv}|" "$ENVFILE"
+        else
+          echo "VAPID_PRIVATE_KEY=${new_priv}" >> "$ENVFILE"
+        fi
+        # Set subject if missing
+        if ! grep -qE '^VAPID_SUBJECT=' "$ENVFILE"; then
+          echo "VAPID_SUBJECT=mailto:admin@${DOMAIN:-localhost}" >> "$ENVFILE"
+        fi
+        if ! grep -qE '^SUPPORT_PUSH_ENABLED=' "$ENVFILE"; then
+          echo "SUPPORT_PUSH_ENABLED=1" >> "$ENVFILE"
+        fi
+        success "VAPID keys regenerated"
+      else
+        warn "py_vapid not available — cannot fix VAPID keys"
+      fi
+    fi
+
     chmod 600 "$ENVFILE"
     chown "$SERVICE_USER":"$SERVICE_USER" "$ENVFILE"
     success ".env preserved & updated"
@@ -341,6 +381,27 @@ phase_django() {
       "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     OTP_HMAC_KEY=$("$VENV_DIR/bin/python" -c \
       "import secrets; print(secrets.token_hex(32))")
+
+    # Generate VAPID keys for push notifications
+    step "Generating VAPID keys for push notifications"
+    VAPID_KEYS=$( "$VENV_DIR/bin/python" -c "
+from py_vapid import Vapid
+v = Vapid()
+v.generate_keys()
+pub = v.public_key_urlsafe().decode() if isinstance(v.public_key_urlsafe(), bytes) else v.public_key_urlsafe()
+priv_pem = v.private_pem().decode() if isinstance(v.private_pem(), bytes) else v.private_pem()
+priv_inline = priv_pem.strip().replace(chr(10), r'\\n')
+print(f'{pub}||{priv_inline}')
+" 2>/dev/null ) || true
+    if [[ -n "$VAPID_KEYS" ]]; then
+      VAPID_PUB="${VAPID_KEYS%%||*}"
+      VAPID_PRIV="${VAPID_KEYS##*||}"
+      success "VAPID keys generated"
+    else
+      warn "py_vapid not available — VAPID keys not generated (install py_vapid to enable push)"
+      VAPID_PUB=""
+      VAPID_PRIV=""
+    fi
 
     cat > "$ENVFILE" <<ENVEOF
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -394,6 +455,12 @@ CSRF_TRUSTED_ORIGINS=https://${DOMAIN:-localhost},https://www.${DOMAIN:-localhos
 # EMAIL_HOST_USER=
 # EMAIL_HOST_PASSWORD=
 # DEFAULT_FROM_EMAIL=noreply@${DOMAIN:-localhost}
+
+# ─── Push Notifications (VAPID) ───
+SUPPORT_PUSH_ENABLED=$([[ -n "$VAPID_PUB" ]] && echo '1' || echo '0')
+VAPID_PUBLIC_KEY=${VAPID_PUB}
+VAPID_PRIVATE_KEY=${VAPID_PRIV}
+VAPID_SUBJECT=mailto:admin@${DOMAIN:-localhost}
 
 # ─── Optional ───
 # SENTRY_DSN=
