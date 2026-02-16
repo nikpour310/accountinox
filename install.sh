@@ -175,8 +175,9 @@ django_migrate_collectstatic() {
       esac
       key="${line%%=*}"
       value="${line#*=}"
-      # Trim possible surrounding quotes from value
-      value="${value%"}"; value="${value#"}"
+      # Trim possible surrounding double or single quotes from value
+      value="${value%\"}"; value="${value#\"}"
+      value="${value%\'}"; value="${value#\'}"
       export "$key"="$value"
     done < "$ENVFILE"
   fi
