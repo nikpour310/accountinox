@@ -1,13 +1,20 @@
-# Byte-compiled / optimized / DLL files
+# ── Python ──────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
+*.pyo
+*.pyd
 .Python
+
+# ── Virtual environments ───────────────────────
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+
+# ── Distribution / packaging ──────────────────
 build/
 develop-eggs/
 dist/
@@ -21,32 +28,58 @@ sdist/
 var/
 *.egg-info/
 *.egg
+*.whl
 
-# Virtualenv
-.venv/
-venv/
-env/
-ENV/
-env.bak/
-
-# Django
+# ── Django ─────────────────────────────────────
 db.sqlite3
-/media/
-/staticfiles/
+db.sqlite3-journal
+*.sqlite3.bak
+media/
+staticfiles/
 logs/
 *.log
+django_cache/
+cache/
 
-# Env
+# ── Environment / Secrets ─────────────────────
 .env
 *.env
+!.env.example
+*.pem
+*.key
 
-# Editor
+# ── Node ───────────────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Editor / IDE ───────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sln
+*.suo
 .DS_Store
+Thumbs.db
 
-# Python tooling
+# ── Python tooling ─────────────────────────────
 .pytest_cache/
 .mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Test & debug output ───────────────────────
+pytest_*.txt
+full_pytest*.txt
+final_run.txt
+tmp_*.html
+
+# ── Screenshots / dev artifacts ───────────────
+screenshots/
+seo_*.json
+
+# ── Misc dev files ────────────────────────────
+debug_site.py
+*.bak
+3.1.2
