@@ -54,10 +54,25 @@ create_dirs_and_user() {
 }
 
 clone_repo_and_venv() {
-  if [ ! -d "$APP_DIR/.git" ]; then
-    git clone "$REPO_URL" "$APP_DIR"
-  else
+  # If the target is already a git clone, update it.
+  if [ -d "$APP_DIR/.git" ]; then
     (cd "$APP_DIR" && git fetch --all && git reset --hard origin/HEAD) || true
+  else
+    # Clone into a temporary dir first to avoid git error when APP_DIR exists.
+    TMPDIR=$(mktemp -d /tmp/accountinox.XXXX)
+    git clone "$REPO_URL" "$TMPDIR"
+
+    # If APP_DIR exists and is non-empty, move it to a backup before replacing.
+    if [ -d "$APP_DIR" ] && [ "$(ls -A "$APP_DIR")" ]; then
+      BACKUP="$APP_DIR.bak_$(date +%s)"
+      echo "Backing up existing $APP_DIR -> $BACKUP"
+      mv "$APP_DIR" "$BACKUP"
+    else
+      # Ensure parent exists for move
+      mkdir -p "$(dirname "$APP_DIR")"
+    fi
+
+    mv "$TMPDIR" "$APP_DIR"
   fi
 
   if [ ! -d "$VENV_DIR" ]; then
