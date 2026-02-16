@@ -314,7 +314,7 @@ phase_database() {
 phase_django() {
   banner "Phase 5 / 7 — Environment & Django Setup"
 
-  source "$VENV_DIR/bin/activate"
+  set +u; source "$VENV_DIR/bin/activate"; set -u
 
   # ── UPDATE MODE: preserve existing .env, only update DATABASE_URL & domain ──
   if [[ $IS_UPDATE -eq 1 && -f "$ENVFILE" ]]; then
@@ -322,13 +322,20 @@ phase_django() {
     cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
     info "Backed up existing .env"
 
-    # Helper: set key=value in .env (upsert)
+    # Helper: set key=value in .env (upsert) — pure bash, no sed special-char issues
     _env_set() {
       local k="$1" v="$2"
       if grep -qE "^${k}=" "$ENVFILE" 2>/dev/null; then
-        sed -i "s|^${k}=.*|${k}=${v}|" "$ENVFILE"
+        local tmpf="${ENVFILE}.tmp.$$"
+        while IFS= read -r _line || [[ -n "${_line:-}" ]]; do
+          if [[ "$_line" == "${k}="* ]]; then
+            printf '%s=%s\n' "$k" "$v"
+          else
+            printf '%s\n' "$_line"
+          fi
+        done < "$ENVFILE" > "$tmpf" && mv "$tmpf" "$ENVFILE"
       else
-        echo "${k}=${v}" >> "$ENVFILE"
+        printf '%s=%s\n' "$k" "$v" >> "$ENVFILE"
       fi
     }
 
@@ -492,25 +499,48 @@ ENVEOF
 
   step "Running migrations"
   cd "$APP_DIR"
-  export DJANGO_SETTINGS_MODULE=config.settings
-  # Source .env safely
-  set -a
-  while IFS='=' read -r key value; do
-    [[ -z "$key" || "$key" =~ ^# ]] && continue
-    value="${value%\"}"; value="${value#\"}"
-    value="${value%\'}"; value="${value#\'}"
-    export "$key"="$value"
-  done < "$ENVFILE"
-  set +a
 
-  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" manage.py migrate --noinput 2>&1 | tail -5
+  # Use a Python helper to load .env and run Django commands
+  # (avoids all shell-escaping issues with special chars in DJANGO_SECRET_KEY etc.)
+  cat > /tmp/_ax_django_cmd.py << 'PYEOF'
+import os, sys
+
+def load_env(path):
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                k, v = line.split('=', 1)
+                v = v.strip('"').strip("'")
+                os.environ[k] = v
+
+load_env(sys.argv[1])
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+import django
+django.setup()
+from django.core.management import call_command
+
+cmd = sys.argv[2] if len(sys.argv) > 2 else 'migrate'
+if cmd == 'migrate':
+    call_command('migrate', '--noinput', verbosity=1)
+elif cmd == 'collectstatic':
+    call_command('collectstatic', '--noinput', '--clear', verbosity=0)
+    print('Static files collected')
+PYEOF
+
+  chown "$SERVICE_USER":"$SERVICE_USER" /tmp/_ax_django_cmd.py
+  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" /tmp/_ax_django_cmd.py "$ENVFILE" migrate 2>&1 | tail -20
   success "Migrations complete"
 
   step "Collecting static files"
-  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" manage.py collectstatic --noinput --clear 2>&1 | tail -1
+  sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" /tmp/_ax_django_cmd.py "$ENVFILE" collectstatic 2>&1 | tail -3
+  rm -f /tmp/_ax_django_cmd.py
   success "Static files collected"
 
-  deactivate
+  set +u; deactivate 2>/dev/null || true; set -u
 }
 
 ###############################################################################
@@ -557,11 +587,8 @@ KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=30
 
-# ── Hardening ──
+# ── Hardening (VPS-safe: no namespace options) ──
 NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
 ReadWritePaths=${APP_DIR}/logs ${APP_DIR}/media ${APP_DIR}/db.sqlite3
 LimitNOFILE=65536
 LimitNPROC=512
