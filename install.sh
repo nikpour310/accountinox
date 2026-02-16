@@ -165,6 +165,14 @@ provision_database() {
 django_migrate_collectstatic() {
   source "$VENV_DIR/bin/activate"
   cd "$APP_DIR"
+  # Load environment variables from .env so Django sees DJANGO_SECRET_KEY, DATABASE_URL, etc.
+  ENVFILE="$APP_DIR/.env"
+  if [ -f "$ENVFILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENVFILE"
+    set +a
+  fi
   export DJANGO_SETTINGS_MODULE=config.settings
   "$VENV_DIR/bin/python" manage.py migrate --noinput
   "$VENV_DIR/bin/python" manage.py collectstatic --noinput
