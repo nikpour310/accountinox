@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('question', models.CharField(max_length=255)),
                 ('answer', models.TextField()),
-                ('post', models.ForeignKey(on_delete=models.deletion.CASCADE, related_name='faqs', to='apps.blog.post')),
+                ('post', models.ForeignKey(on_delete=models.deletion.CASCADE, related_name='faqs', to='blog.Post')),
             ],
         ),
     ]
