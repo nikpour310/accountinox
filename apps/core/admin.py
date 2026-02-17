@@ -136,6 +136,10 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             'fields': ('terms_html', 'privacy_html'),
             'description': 'متن کامل صفحات «شرایط استفاده» و «حریم خصوصی». می‌توانید HTML ساده وارد کنید.',
         }),
+        ('🕒 تاریخ‌های ویرایش', {
+            'fields': ('terms_updated', 'privacy_updated'),
+            'classes': ('collapse',),
+        }),
     )
 
     def has_add_permission(self, request):
@@ -148,6 +152,8 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
         obj = SiteSettings.load()
         url = reverse('admin:%s_%s_change' % (obj._meta.app_label, obj._meta.model_name), args=(obj.pk,))
         return HttpResponseRedirect(url)
+
+    readonly_fields = ('terms_updated', 'privacy_updated')
 
 
 # ── سوالات متداول ───────────────────────────────────

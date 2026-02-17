@@ -101,12 +101,37 @@ class SiteSettings(models.Model):
                                   help_text='متن شرایط و قوانین سایت — HTML مجاز است')
     privacy_html = models.TextField('متن سیاست حریم خصوصی (HTML)', blank=True, default='',
                                     help_text='متن سیاست حریم خصوصی — HTML مجاز است')
+    # Timestamps for tracking when these pages were last edited in admin
+    terms_updated = models.DateTimeField('تاریخ به‌روزرسانی شرایط', null=True, blank=True)
+    privacy_updated = models.DateTimeField('تاریخ به‌روزرسانی حریم خصوصی', null=True, blank=True)
 
     def __str__(self):
         return f"تنظیمات سایت ({self.site_name})"
 
     def save(self, *args, **kwargs):
+        # Ensure singleton PK
         self.pk = 1
+
+        # If object exists, detect changes to terms_html / privacy_html and update timestamps
+        try:
+            old = SiteSettings.objects.get(pk=1)
+        except SiteSettings.DoesNotExist:
+            old = None
+
+        from django.utils import timezone
+        now = timezone.now()
+        if old is None:
+            # fresh create — set timestamps if content present
+            if self.terms_html:
+                self.terms_updated = now
+            if self.privacy_html:
+                self.privacy_updated = now
+        else:
+            if self.terms_html and (old.terms_html != self.terms_html):
+                self.terms_updated = now
+            if self.privacy_html and (old.privacy_html != self.privacy_html):
+                self.privacy_updated = now
+
         super().save(*args, **kwargs)
 
     @classmethod

@@ -4,7 +4,7 @@
 <div class="page-wrapper max-w-2xl">
   <div class="text-center mb-8 reveal">
     <h1 class="section-title">حریم خصوصی</h1>
-    <p class="section-subtitle mt-2">آخرین به‌روزرسانی: {% if site_settings %}به‌روز شده{% else %}—{% endif %}</p>
+    <p class="section-subtitle mt-2">آخرین به‌روزرسانی: {% if site_settings and site_settings.privacy_updated %}{{ site_settings.privacy_updated|date:"Y/m/d H:i" }}{% else %}—{% endif %}</p>
   </div>
 
   <div class="card p-6 sm:p-8 reveal">
