@@ -135,14 +135,15 @@
 
         <ul class="stagger-children mt-5 divide-y divide-gray-100 text-sm">
           {% for line in cart_lines %}
-          <li class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-            <div class="min-w-0">
-              <span class="truncate text-gray-700 block">{{ line.product.title }} <span class="text-gray-400">×</span> {{ line.quantity }}</span>
-              {% if line.variant %}<span class="text-xs text-primary-600">{{ line.variant.name }}</span>{% endif %}
-              {% if line.region %}<span class="text-xs text-blue-600 mr-1">{{ line.region.name }}</span>{% endif %}
-            </div>
-            <strong class="shrink-0 font-medium text-gray-900">{{ line.line_total|price_format }}</strong>
-          </li>
+            <li class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div class="min-w-0">
+                <span class="truncate text-gray-700 block">{{ line.product.title }} <span class="text-gray-400">×</span> {{ line.quantity }}</span>
+                {% if line.variant %}<span class="text-xs text-primary-600">{{ line.variant.name }}</span>{% endif %}
+                {% if line.region %}<span class="text-xs text-blue-600 mr-1">{{ line.region.name }}</span>{% endif %}
+                {% if line.has_discount %}<span class="text-[11px] text-gray-400 line-through block">{{ line.base_unit_price|price_format }} تومان</span>{% endif %}
+              </div>
+              <strong class="shrink-0 font-medium text-gray-900">{{ line.line_total|price_format }}</strong>
+            </li>
           {% endfor %}
         </ul>
 

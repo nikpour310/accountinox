@@ -64,8 +64,8 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="mega-menu-product-title line-clamp-2 group-hover/card:text-primary-700 transition-colors">{{ product.title }}</div>
-                        {% if product.price %}
-                        <div class="mega-menu-product-price">{{ product.price|price_format }} <span class="text-xs text-gray-400">تومان</span></div>
+                        {% if product.get_price %}
+                        <div class="mega-menu-product-price">{{ product.get_price|price_format }} <span class="text-xs text-gray-400">تومان</span></div>
                         {% endif %}
                     </div>
                 </a>

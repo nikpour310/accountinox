@@ -124,13 +124,16 @@
         {% endif %}
 
         <!-- Price + CTA -->
-        <div class="mt-auto pt-4 flex items-center justify-between border-t border-gray-50">
-          <div>
-            <span class="text-lg font-black text-gray-900">{{ product.price|price_format }}</span>
-            <span class="text-[11px] text-gray-400 mr-0.5">تومان</span>
+          <div class="mt-auto pt-4 flex items-center justify-between border-t border-gray-50">
+            <div>
+              <span class="text-lg font-black text-gray-900">{{ product.get_price|price_format }}</span>
+              <span class="text-[11px] text-gray-400 mr-0.5">تومان</span>
+              {% if product.is_discount_active %}
+              <p class="text-[11px] text-gray-400 line-through mt-0.5">{{ product.get_base_price|price_format }} تومان</p>
+              {% endif %}
+            </div>
+            <a href="{{ product.get_absolute_url }}" class="btn-primary btn-sm text-xs">مشاهده و خرید</a>
           </div>
-          <a href="{{ product.get_absolute_url }}" class="btn-primary btn-sm text-xs">مشاهده و خرید</a>
-        </div>
       </div>
     </article>
     {% endfor %}

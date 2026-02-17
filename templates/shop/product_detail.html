@@ -31,7 +31,7 @@
     "offers": {
       "@type": "Offer",
       "priceCurrency": "IRR",
-      "price": "{{ product.price|floatformat:0 }}",
+      "price": "{{ product.get_price|floatformat:0 }}",
       "availability": "{% if product.is_available %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
       "url": "{{ site_base_url }}{% url 'shop:product_detail' product.slug %}"
     }
@@ -162,41 +162,97 @@
       </div>
 
       {# ─ Price + Buy CTA ─ #}
-      <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" id="buySection"
-           x-data="{
-             selectedRegion: {% if regions %}{{ regions.0.id }}{% else %}null{% endif %},
-             selectedVariant: null,
-             allVariants: [{% for v in variants %}{ id: {{ v.id }}, name: '{{ v.name|escapejs }}', price: {{ v.price }}, regionId: {{ v.region_id|default:'null' }} }{% if not forloop.last %},{% endif %}{% endfor %}],
-             regions: [{% for r in regions %}{ id: {{ r.id }}, name: '{{ r.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
-             quantity: 1,
-             allowQty: {{ product.allow_quantity|yesno:'true,false' }},
-             basePrice: {{ product.price }},
-             get hasRegions() { return this.regions.length > 0 },
-             get filteredVariants() {
-               if (!this.hasRegions) return this.allVariants;
-               return this.allVariants.filter(v => v.regionId === this.selectedRegion);
-             },
-             get unitPrice() { return this.selectedVariant ? this.allVariants.find(v => v.id == this.selectedVariant)?.price || this.basePrice : this.basePrice },
-             get totalPrice() { return this.unitPrice * this.quantity },
-             formatPrice(n) { return new Intl.NumberFormat('fa-IR').format(Math.round(n)) },
-             selectRegion(id) {
-               this.selectedRegion = id;
-               this.selectedVariant = null;
-             }
-           }">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <p class="text-xs font-medium text-gray-400 mb-1">قیمت محصول</p>
-            <div class="flex items-baseline gap-1.5">
-              {% if variants %}
-                <strong class="text-3xl font-extrabold text-gray-900" x-text="formatPrice(unitPrice)">{{ product.price|price_format }}</strong>
-              {% else %}
-                <strong class="text-3xl font-extrabold text-gray-900">{{ product.price|price_format }}</strong>
-              {% endif %}
-              <span class="text-sm font-medium text-gray-400">تومان</span>
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" id="buySection"
+             x-data="{
+               selectedRegion: {% if regions %}{{ regions.0.id }}{% else %}null{% endif %},
+               selectedVariant: null,
+               allVariants: [{% for v in variants %}{ id: {{ v.id }}, name: '{{ v.name|escapejs }}', price: {{ v.price }}, regionId: {{ v.region_id|default:'null' }} }{% if not forloop.last %},{% endif %}{% endfor %}],
+               regions: [{% for r in regions %}{ id: {{ r.id }}, name: '{{ r.name|escapejs }}' }{% if not forloop.last %},{% endif %}{% endfor %}],
+               quantity: 1,
+               allowQty: {{ product.allow_quantity|yesno:'true,false' }},
+               basePrice: {{ product.price }},
+               discountActive: {{ product.is_discount_active|yesno:'true,false' }},
+               discountPercent: {{ product.discount_percent|default:0 }},
+               remainingSeconds: {{ product.discount_remaining_seconds }},
+               timerLabel: '',
+               get hasDiscount() { return this.discountActive && this.discountPercent > 0 },
+               get hasDiscountTimer() { return this.hasDiscount && this.remainingSeconds > 0 },
+               get hasRegions() { return this.regions.length > 0 },
+               get filteredVariants() {
+                 if (!this.hasRegions) return this.allVariants;
+                 return this.allVariants.filter(v => v.regionId === this.selectedRegion);
+               },
+               get originalUnitPrice() {
+                 return this.selectedVariant ? this.allVariants.find(v => v.id == this.selectedVariant)?.price || this.basePrice : this.basePrice;
+               },
+               get unitPrice() {
+                 return this.hasDiscount ? this.applyDiscount(this.originalUnitPrice) : this.originalUnitPrice;
+               },
+               get totalPrice() { return this.unitPrice * this.quantity },
+               get totalBasePrice() { return this.originalUnitPrice * this.quantity },
+               applyDiscount(amount) {
+                 return Math.round((Number(amount) * (100 - this.discountPercent)) / 100);
+               },
+               formatPrice(n) { return new Intl.NumberFormat('fa-IR').format(Math.round(n)) },
+               updateTimerLabel() {
+                 if (!this.hasDiscountTimer) {
+                   this.timerLabel = '';
+                   return;
+                 }
+                 const total = Math.max(0, this.remainingSeconds);
+                 const days = Math.floor(total / 86400);
+                 const hours = Math.floor((total % 86400) / 3600);
+                 const minutes = Math.floor((total % 3600) / 60);
+                 const seconds = total % 60;
+                 const hhmmss = [hours, minutes, seconds].map(v => String(v).padStart(2, '0')).join(':');
+                 this.timerLabel = days > 0 ? `${days} روز ${hhmmss}` : hhmmss;
+               },
+               tickTimer() {
+                 if (!this.hasDiscountTimer) return;
+                 if (this.remainingSeconds <= 0) {
+                   this.remainingSeconds = 0;
+                   this.discountActive = false;
+                   this.updateTimerLabel();
+                   return;
+                 }
+                 this.remainingSeconds -= 1;
+                 this.updateTimerLabel();
+               },
+               selectRegion(id) {
+                 this.selectedRegion = id;
+                 this.selectedVariant = null;
+               },
+               init() {
+                 this.updateTimerLabel();
+                 if (this.hasDiscountTimer) {
+                   setInterval(() => this.tickTimer(), 1000);
+                 }
+               }
+             }">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <p class="text-xs font-medium text-gray-400 mb-1">قیمت محصول</p>
+              <div class="flex items-baseline gap-2">
+                <strong class="text-3xl font-extrabold text-gray-900" x-text="formatPrice(unitPrice)">{{ product.get_price|price_format }}</strong>
+                <span class="text-sm font-medium text-gray-400">تومان</span>
+                <template x-if="hasDiscount">
+                  <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-600" x-text="'-' + discountPercent + '%'"></span>
+                </template>
+              </div>
+              <template x-if="hasDiscount">
+                <div class="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+                  <span class="line-through" x-text="formatPrice(originalUnitPrice)"></span>
+                  <span>تومان</span>
+                </div>
+              </template>
+              <template x-if="hasDiscountTimer">
+                <div class="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs text-red-700">
+                  <span class="font-medium">پایان تخفیف:</span>
+                  <strong class="font-bold tracking-wide" x-text="timerLabel"></strong>
+                </div>
+              </template>
             </div>
-          </div>
-          {% if product.is_available %}
+            {% if product.is_available %}
           <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             موجود
@@ -237,14 +293,17 @@
               <template x-for="v in filteredVariants" :key="v.id">
                 <label class="relative cursor-pointer">
                   <input type="radio" name="variant_preview" :value="v.id" x-model.number="selectedVariant" class="peer sr-only">
-                  <div class="rounded-xl border-2 border-gray-200 p-3 text-center transition-all
-                              peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500
-                              hover:border-gray-300">
-                    <p class="text-sm font-semibold text-gray-900" x-text="v.name"></p>
-                    <p class="text-xs text-gray-500 mt-0.5" x-text="formatPrice(v.price) + ' تومان'"></p>
-                  </div>
-                </label>
-              </template>
+                    <div class="rounded-xl border-2 border-gray-200 p-3 text-center transition-all
+                                peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:ring-1 peer-checked:ring-primary-500
+                                hover:border-gray-300">
+                      <p class="text-sm font-semibold text-gray-900" x-text="v.name"></p>
+                      <p class="text-xs text-gray-500 mt-0.5" x-text="formatPrice(hasDiscount ? applyDiscount(v.price) : v.price) + ' تومان'"></p>
+                      <template x-if="hasDiscount">
+                        <p class="text-[11px] text-gray-400 line-through mt-0.5" x-text="formatPrice(v.price) + ' تومان'"></p>
+                      </template>
+                    </div>
+                  </label>
+                </template>
             </div>
           </div>
           {% endif %}
@@ -264,12 +323,17 @@
           {% endif %}
 
           {# ── Total when quantity > 1 or variant selected ── #}
-          <template x-if="(allowQty && quantity > 1) || selectedVariant">
-            <div class="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 mb-4 flex items-center justify-between">
-              <span class="text-sm text-gray-600">مبلغ کل</span>
-              <strong class="text-lg font-extrabold text-gray-900" x-text="formatPrice(totalPrice) + ' تومان'"></strong>
-            </div>
-          </template>
+            <template x-if="(allowQty && quantity > 1) || selectedVariant">
+              <div class="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 mb-4 flex items-center justify-between">
+                <div>
+                  <span class="text-sm text-gray-600">مبلغ کل</span>
+                  <template x-if="hasDiscount">
+                    <p class="text-xs text-gray-400 line-through mt-0.5" x-text="formatPrice(totalBasePrice) + ' تومان'"></p>
+                  </template>
+                </div>
+                <strong class="text-lg font-extrabold text-gray-900" x-text="formatPrice(totalPrice) + ' تومان'"></strong>
+              </div>
+            </template>
 
           {% if product.credential_type != 'none' %}
           <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-3 mb-4">
@@ -459,11 +523,14 @@
      x-transition:leave-start="translate-y-0 opacity-100"
      x-transition:leave-end="translate-y-full opacity-0"
      x-cloak>
-  <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
-    <div class="min-w-0">
-      <p class="text-xs text-gray-500 truncate">{{ product.title }}</p>
-      <p class="text-lg font-extrabold text-gray-900">{{ product.price|price_format }} <span class="text-xs font-medium text-gray-400">تومان</span></p>
-    </div>
+    <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
+      <div class="min-w-0">
+        <p class="text-xs text-gray-500 truncate">{{ product.title }}</p>
+        <p class="text-lg font-extrabold text-gray-900">{{ product.get_price|price_format }} <span class="text-xs font-medium text-gray-400">تومان</span></p>
+        {% if product.is_discount_active %}
+        <p class="text-xs text-gray-400 line-through">{{ product.get_base_price|price_format }} تومان</p>
+        {% endif %}
+      </div>
     <a href="#buySection"
        class="btn btn-primary btn-lg shrink-0 px-6"
        onclick="document.getElementById('buySection').scrollIntoView({behavior:'smooth',block:'center'}); return false;">

@@ -106,7 +106,7 @@
             {% endif %}
             <div class="mt-auto pt-4 flex items-center justify-between">
               <div class="flex items-baseline gap-1">
-                <span class="text-lg font-black text-gray-900">{{ p.price|price_format }}</span>
+                <span class="text-lg font-black text-gray-900">{{ p.get_price|price_format }}</span>
                 <span class="text-xs text-gray-400">تومان</span>
               </div>
               <a href="{{ p.get_absolute_url }}" class="btn-primary btn-sm text-xs">مشاهده</a>

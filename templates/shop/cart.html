@@ -78,10 +78,13 @@
                     {% if line.product.category %}
                       <p class="mt-1 text-xs text-gray-400">{{ line.product.category.name }}</p>
                     {% endif %}
-                    <p class="mt-1 text-sm text-gray-500">
-                      واحد: <span class="font-medium text-gray-700">{{ line.unit_price|price_format }}</span> تومان
-                    </p>
-                  </div>
+                      <p class="mt-1 text-sm text-gray-500">
+                        واحد: <span class="font-medium text-gray-700">{{ line.unit_price|price_format }}</span> تومان
+                      </p>
+                      {% if line.has_discount %}
+                        <p class="mt-0.5 text-xs text-gray-400 line-through">قیمت قبل: {{ line.base_unit_price|price_format }} تومان</p>
+                      {% endif %}
+                    </div>
 
                   {# Quantity + Remove #}
                   <div class="flex items-center justify-between gap-3 mt-3">

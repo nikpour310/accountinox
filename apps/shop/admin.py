@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.db.models import Exists, OuterRef, Count
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import AccountItem, Category, Order, OrderItem, Product, ProductVariant, ProductRegion, TransactionLog, Service
@@ -53,12 +54,13 @@ class ProductVariantInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     list_display = (
         'title', 'service', 'category', 'price_display',
+        'discount_badge',
         'delivery_badge', 'credential_type_badge',
         'stock_count', 'is_active', 'is_available', 'thumbnail_preview',
     )
     prepopulated_fields = {'slug': ('title',)}
-    readonly_fields = ('thumbnail_preview_large', 'created_at')
-    list_filter = ('service', 'category', 'delivery_type', 'credential_type', 'is_active', 'is_available')
+    readonly_fields = ('thumbnail_preview_large', 'created_at', 'discount_status')
+    list_filter = ('service', 'category', 'delivery_type', 'credential_type', 'discount_enabled', 'is_active', 'is_available')
     search_fields = ('title', 'slug', 'description', 'short_description', 'seo_title')
     list_select_related = ('category', 'service')
     list_editable = ('is_active', 'is_available')
@@ -75,10 +77,14 @@ class ProductAdmin(admin.ModelAdmin):
             ),
         }),
         ('قیمت و موجودی', {
-            'fields': ('price', 'allow_quantity', 'is_active', 'is_available'),
+            'fields': (
+                'price', 'allow_quantity', 'is_active', 'is_available',
+                'discount_enabled', 'discount_percent', 'discount_start_at', 'discount_end_at', 'discount_status',
+            ),
             'description': (
                 '«قیمت پایه» فقط وقتی استفاده می‌شود که تنوع قیمتی (پایین صفحه) تعریف <b>نشده</b> باشد. '
-                'اگر تنوع دارد، قیمت هر تنوع جداگانه تنظیم می‌شود.'
+                'اگر تنوع دارد، قیمت هر تنوع جداگانه تنظیم می‌شود. '
+                'برای تخفیف زمان‌دار، گزینه تخفیف را فعال کنید و درصد/زمان شروع/زمان پایان را وارد کنید.'
             ),
         }),
         ('نحوه تحویل', {
@@ -121,6 +127,35 @@ class ProductAdmin(admin.ModelAdmin):
     @admin.display(description='قیمت', ordering='price')
     def price_display(self, obj):
         return format_html('<span style="font-weight:600;">{} <small>تومان</small></span>', f'{obj.price:,.0f}')
+
+    @admin.display(description='تخفیف')
+    def discount_badge(self, obj):
+        if obj.is_discount_active:
+            return format_html(
+                '<span class="status-badge status-badge--danger">{}% فعال</span>',
+                obj.discount_percent,
+            )
+        if obj.is_discount_configured:
+            return format_html('<span class="status-badge status-badge--warning">زمان‌بندی شده</span>')
+        return format_html('<span class="status-badge status-badge--muted">ندارد</span>')
+
+    @admin.display(description='وضعیت تخفیف')
+    def discount_status(self, obj):
+        if obj is None:
+            return 'ابتدا محصول را ذخیره کنید'
+        if not obj.is_discount_configured:
+            return 'تخفیفی تنظیم نشده است'
+        if obj.is_discount_active:
+            if obj.discount_end_at:
+                end_at = timezone.localtime(obj.discount_end_at).strftime('%Y-%m-%d %H:%M')
+                return f'فعال تا {end_at}'
+            return 'فعال (بدون زمان پایان)'
+        if obj.discount_start_at and timezone.now() < obj.discount_start_at:
+            start_at = timezone.localtime(obj.discount_start_at).strftime('%Y-%m-%d %H:%M')
+            return f'زمان‌بندی شده از {start_at}'
+        if obj.discount_end_at and timezone.now() >= obj.discount_end_at:
+            return 'پایان یافته'
+        return 'غیرفعال'
 
     @admin.display(description='موجودی')
     def stock_count(self, obj):
@@ -371,4 +406,3 @@ class TransactionLogAdmin(admin.ModelAdmin):
             return '–'
         url = reverse('admin:shop_order_change', args=[obj.order_id])
         return format_html('<a href="{}">سفارش #{}</a>', url, obj.order_id)
-

@@ -156,8 +156,14 @@ def _build_cart_lines(request):
         variant = variant_map.get(_safe_int(product_opts.get('variant_id'), 0))
         region = region_map.get(_safe_int(product_opts.get('region_id'), 0))
 
-        # Use variant price if available, else base price
-        unit_price = variant.price if variant else product.price
+        # Keep session selections safe if variants/regions changed in admin.
+        if variant and variant.product_id != product.id:
+            variant = None
+        if region and region.product_id != product.id:
+            region = None
+
+        unit_price = product.get_price(variant=variant)
+        base_unit_price = product.get_price(variant=variant, apply_discount=False)
         line_total = unit_price * quantity
         subtotal += line_total
         total_quantity += quantity
@@ -168,6 +174,8 @@ def _build_cart_lines(request):
                 'variant': variant,
                 'region': region,
                 'unit_price': unit_price,
+                'base_unit_price': base_unit_price,
+                'has_discount': base_unit_price > unit_price,
                 'quantity': quantity,
                 'line_total': line_total,
             }
@@ -234,7 +242,7 @@ def service_detail(request, slug):
     ).order_by('order', 'name')[:6]
 
     # Price range for hero badges
-    prices = [p.price for p in products]
+    prices = [p.get_price() for p in products]
     min_price = min(prices) if prices else 0
     max_price = max(prices) if prices else 0
 
@@ -436,13 +444,18 @@ def checkout(request):
 
     cart_lines, subtotal, total_quantity = _build_cart_lines(request)
     if legacy_product:
-        unit_price = legacy_variant.price if legacy_variant else legacy_product.price
+        if legacy_variant and legacy_variant.product_id != legacy_product.id:
+            legacy_variant = None
+        unit_price = legacy_product.get_price(variant=legacy_variant)
+        base_unit_price = legacy_product.get_price(variant=legacy_variant, apply_discount=False)
         cart_lines = [
             {
                 'product': legacy_product,
                 'variant': legacy_variant,
                 'region': legacy_region,
                 'unit_price': unit_price,
+                'base_unit_price': base_unit_price,
+                'has_discount': base_unit_price > unit_price,
                 'quantity': legacy_quantity,
                 'line_total': unit_price * legacy_quantity,
             }

@@ -1,3 +1,4 @@
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 import secrets
 import string
@@ -22,6 +23,7 @@ Fernet = _fernet_lib  # type: ignore
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -68,6 +70,15 @@ class Product(models.Model):
         (DELIVERY_DIGITAL, 'فایل دانلودی (خودکار پس از پرداخت)'),
     )
 
+    discount_enabled = models.BooleanField('تخفیف فعال', default=False)
+    discount_percent = models.PositiveSmallIntegerField(
+        'درصد تخفیف',
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='درصد تخفیف بین ۰ تا ۱۰۰.',
+    )
+    discount_start_at = models.DateTimeField('شروع تخفیف', blank=True, null=True)
+    discount_end_at = models.DateTimeField('پایان تخفیف', blank=True, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='دسته‌بندی')
     service = models.ForeignKey('Service', on_delete=models.SET_NULL, null=True, blank=True,
@@ -133,22 +144,76 @@ class Product(models.Model):
         """Return lowest variant price or base price."""
         variants = self.variants.filter(is_active=True)
         if variants.exists():
-            return variants.order_by('price').first().price
-        return self.price
+            return self._discounted_amount(variants.order_by('price').first().price)
+        return self._discounted_amount(self.price)
 
     @property
     def max_price(self):
         """Return highest variant price or base price."""
         variants = self.variants.filter(is_active=True)
         if variants.exists():
-            return variants.order_by('-price').first().price
-        return self.price
+            return self._discounted_amount(variants.order_by('-price').first().price)
+        return self._discounted_amount(self.price)
 
-    def get_price(self, variant=None):
-        """Return the effective price for a given variant or base price."""
+    def clean(self):
+        super().clean()
+        if self.discount_enabled and self.discount_percent <= 0:
+            raise ValidationError({'discount_percent': 'برای فعال بودن تخفیف، درصد تخفیف باید بیشتر از صفر باشد.'})
+        if self.discount_start_at and self.discount_end_at and self.discount_end_at <= self.discount_start_at:
+            raise ValidationError({'discount_end_at': 'زمان پایان تخفیف باید بعد از زمان شروع باشد.'})
+
+    @property
+    def is_discount_configured(self):
+        return bool(self.discount_enabled and self.discount_percent > 0)
+
+    @property
+    def is_discount_active(self):
+        if not self.is_discount_configured:
+            return False
+        now = timezone.now()
+        if self.discount_start_at and now < self.discount_start_at:
+            return False
+        if self.discount_end_at and now >= self.discount_end_at:
+            return False
+        return True
+
+    @property
+    def has_discount_timer(self):
+        return bool(self.is_discount_active and self.discount_end_at)
+
+    @property
+    def discount_remaining_seconds(self):
+        if not self.has_discount_timer:
+            return 0
+        remaining = int((self.discount_end_at - timezone.now()).total_seconds())
+        return max(0, remaining)
+
+    def get_base_price(self, variant=None):
         if variant:
             return variant.price
         return self.price
+
+    def _discounted_amount(self, amount):
+        base_amount = Decimal(amount)
+        if not self.is_discount_active:
+            return base_amount
+        factor = (Decimal('100') - Decimal(self.discount_percent)) / Decimal('100')
+        return (base_amount * factor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    def get_price(self, variant=None, apply_discount=True):
+        """Return effective price for a given variant (or base product price)."""
+        base_price = self.get_base_price(variant=variant)
+        if not apply_discount:
+            return base_price
+        return self._discounted_amount(base_price)
+
+    def get_discount_amount(self, variant=None):
+        base_price = self.get_base_price(variant=variant)
+        discounted = self.get_price(variant=variant, apply_discount=True)
+        diff = Decimal(base_price) - Decimal(discounted)
+        if diff <= 0:
+            return Decimal('0')
+        return diff.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     def __str__(self):
         return self.title

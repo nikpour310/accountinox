@@ -65,12 +65,17 @@
           </span>
           {% endif %}
 
-          <div class="mt-auto pt-5 flex items-center justify-between">
-            <div class="flex items-baseline gap-1.5">
-              <span class="text-xl font-black text-gray-900">{{ p.price|price_format }}</span>
-              <span class="text-xs text-gray-400">تومان</span>
-            </div>
-            <form method="post" action="{% url 'shop:cart_add' %}">
+            <div class="mt-auto pt-5 flex items-center justify-between">
+              <div>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-xl font-black text-gray-900">{{ p.get_price|price_format }}</span>
+                  <span class="text-xs text-gray-400">تومان</span>
+                </div>
+                {% if p.is_discount_active %}
+                  <p class="mt-0.5 text-[11px] text-gray-400 line-through">{{ p.get_base_price|price_format }} تومان</p>
+                {% endif %}
+              </div>
+              <form method="post" action="{% url 'shop:cart_add' %}">
               {% csrf_token %}
               <input type="hidden" name="product_id" value="{{ p.id }}">
               <input type="hidden" name="next" value="{{ request.path }}">
