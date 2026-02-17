@@ -140,6 +140,8 @@ AUTHENTICATION_BACKENDS = (
 )
 
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
+# Use custom adapter to avoid sending email confirmation on login
+ACCOUNT_ADAPTER = 'apps.accounts.adapters.NoConfirmationOnLoginAdapter'
 # Note: ACCOUNT_LOGIN_METHODS specifies auth method; ACCOUNT_SIGNUP_FIELDS specifies form fields
 # The warning about conflict can be safely ignored (allauth legacy vs new config style)
 ACCOUNT_LOGIN_METHODS = {'email'}
