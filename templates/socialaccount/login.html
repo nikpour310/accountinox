@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block title %}
+{% if process == "connect" %}
+اتصال حساب {{ provider.name }} | {{ block.super }}
+{% else %}
+ورود با {{ provider.name }} | {{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center py-16 px-4">
+  <div class="max-w-md w-full">
+    <div class="text-center mb-8">
+      {% if process == "connect" %}
+      <h1 class="section-title">اتصال حساب {{ provider.name }}</h1>
+      <p class="section-subtitle">در حال اتصال حساب جدید شخص ثالث برای استفاده در سایت هستید.</p>
+      {% else %}
+      <h1 class="section-title">ورود با {{ provider.name }}</h1>
+      <p class="section-subtitle">برای ادامه ورود، اتصال امن به {{ provider.name }} را تایید کنید.</p>
+      {% endif %}
+    </div>
+
+    <div class="card-elevated p-8">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-lg w-full justify-center">ادامه</button>
+        <a href="{% url 'account_login' %}" class="btn btn-lg w-full justify-center border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-semibold rounded-xl">
+          بازگشت به ورود
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
