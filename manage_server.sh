@@ -77,6 +77,76 @@ parse_db_url() {
   _DB_NAME=$(echo "$host_part" | cut -d/ -f2)
 }
 
+# ─── Critical production checks (keep minimal) ────────────────────────────────
+require_database_url() {
+  load_env
+  local dbu="${DATABASE_URL:-}"
+  if [[ -z "$dbu" ]]; then
+    fail "DATABASE_URL is not set (check $ENVFILE). Aborting."
+    exit 1
+  fi
+}
+
+ensure_migrations_init() {
+  find "$APP_DIR/apps" -maxdepth 3 -type d -name migrations 2>/dev/null | while read -r d; do
+    [[ -f "$d/__init__.py" ]] || sudo -u "$SERVICE_USER" touch "$d/__init__.py"
+  done
+}
+
+fix_blog_fk_migration() {
+  local f="$APP_DIR/apps/blog/migrations/0001_initial.py"
+  if [[ -f "$f" ]] && grep -q "to='apps\.blog\.post'" "$f" 2>/dev/null; then
+    sed -i "s/to='apps\.blog\.post'/to='blog.Post'/" "$f"
+    success "Patched blog migration FK (apps.blog.post → blog.Post)"
+  fi
+}
+
+mysql_tz_count() {
+  mysql -u root -N -B -e "SELECT COUNT(*) FROM mysql.time_zone;" 2>/dev/null || echo "0"
+}
+
+ensure_mysql_timezones() {
+  local db_type
+  db_type=$(detect_db)
+  [[ "$db_type" != "mysql" ]] && return 0
+
+  local c
+  c=$(mysql_tz_count | tr -d '\r' | awk '{print $1}')
+  [[ -z "$c" ]] && c="0"
+
+  if [[ "$c" -le 0 ]]; then
+    warn "MySQL/MariaDB timezone tables are empty — loading..."
+    mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql
+    c=$(mysql_tz_count | tr -d '\r' | awk '{print $1}')
+    if [[ -z "$c" || "$c" -le 0 ]]; then
+      fail "Failed to load MySQL timezone tables (mysql.time_zone still empty)."
+      exit 1
+    fi
+    success "Loaded MySQL timezone tables (rows: $c)"
+  else
+    success "MySQL timezone tables OK (rows: $c)"
+  fi
+}
+
+ensure_static_permissions_and_checks() {
+  local static_css="${APP_DIR}/staticfiles/admin/css/base.css"
+
+  [[ -d "${APP_DIR}/staticfiles" ]] && chmod -R o+rx "${APP_DIR}/staticfiles"
+
+  if [[ ! -f "$static_css" ]]; then
+    fail "Static admin CSS missing: $static_css (collectstatic likely failed)."
+    exit 1
+  fi
+
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" "https://accountinox.ir/static/admin/css/base.css" 2>/dev/null || echo "000")
+  if [[ "$code" != "200" ]]; then
+    fail "Nginx static check failed (expected 200, got $code) for /static/admin/css/base.css"
+    exit 1
+  fi
+  success "Nginx static OK (200)"
+}
+
 ###############################################################################
 #                              COMMANDS                                       #
 ###############################################################################
@@ -186,11 +256,17 @@ cmd_deploy() {
 
   # 4. Migrate & collect static
   load_env
+  require_database_url
+  ensure_mysql_timezones
+  ensure_migrations_init
+  fix_blog_fk_migration
   info "Running migrations..."
   sudo -u "$SERVICE_USER" $MANAGE migrate --noinput 2>&1 | tail -5
 
   info "Collecting static files..."
   sudo -u "$SERVICE_USER" $MANAGE collectstatic --noinput --clear 2>&1 | tail -1
+
+  ensure_static_permissions_and_checks
 
   # 5. Restart
   info "Restarting services..."
@@ -1117,6 +1193,10 @@ EMAILEOF
 cmd_migrate() {
   header "Running Migrations"
   load_env
+  require_database_url
+  ensure_mysql_timezones
+  ensure_migrations_init
+  fix_blog_fk_migration
   cd "$APP_DIR"
   sudo -u "$SERVICE_USER" $MANAGE migrate --noinput
   success "Migrations complete"
@@ -1127,6 +1207,7 @@ cmd_collectstatic() {
   load_env
   cd "$APP_DIR"
   sudo -u "$SERVICE_USER" $MANAGE collectstatic --noinput --clear 2>&1 | tail -1
+  ensure_static_permissions_and_checks
   success "Static files collected"
 }
 
@@ -1405,6 +1486,7 @@ cmd_help() {
   printf "  ${CYAN}%-20s${NC} %s\n" "restart"         "Restart the application"
   printf "  ${CYAN}%-20s${NC} %s\n" "reload"          "Graceful reload"
   printf "  ${CYAN}%-20s${NC} %s\n" "deploy"          "Full deploy (pull + migrate + restart)"
+  printf \"  ${CYAN}%-20s${NC} %s\n\" \"update-all\"      \"Deploy update with critical checks\"\n
   printf "  ${CYAN}%-20s${NC} %s\n" "rollback"        "Restore database from latest backup"
   printf "  ${CYAN}%-20s${NC} %s\n" "backup"          "Backup database now"
   printf "  ${CYAN}%-20s${NC} %s\n" "logs [type]"     "View logs (app|access|error|nginx|django|follow)"
@@ -1476,6 +1558,7 @@ main() {
     restart)         cmd_restart ;;
     reload)          cmd_reload ;;
     deploy|update)   cmd_deploy ;;
+    update-all)      cmd_deploy ;;
     rollback)        cmd_rollback ;;
     backup|backup-db) cmd_backup_db ;;
     logs|log)        cmd_logs "$@" ;;
