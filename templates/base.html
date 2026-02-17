@@ -64,7 +64,7 @@
 
     <main class="flex-grow w-full">
         {% if messages %}
-        <div class="fixed top-20 start-1/2 transform -translate-x-1/2 z-[60] w-full max-w-md px-4 pointer-events-none"{% if site_settings and site_settings.site_notice_enabled and site_settings.site_notice_text %} style="top: 7.5rem;"{% endif %} role="alert">
+        <div class="fixed top-20 start-1/2 transform -translate-x-1/2 z-[60] w-full max-w-md px-4 pointer-events-none" role="alert">
             {% for message in messages %}
             <div class="pointer-events-auto mb-3 flex items-center w-full p-4 rounded-xl shadow-soft-lg text-sm font-medium backdrop-blur-sm
                 {% if message.tags == 'debug' %}bg-gray-600 text-white{% elif message.tags == 'info' %}bg-sky-500 text-white{% elif message.tags == 'success' %}bg-emerald-500 text-white{% elif message.tags == 'warning' %}bg-amber-500 text-white{% elif message.tags == 'error' %}bg-red-500 text-white{% endif %}"
