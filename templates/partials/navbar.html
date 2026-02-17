@@ -1,12 +1,21 @@
 {% load static %}
 {% if site_settings and site_settings.site_notice_enabled and site_settings.site_notice_text %}
+<style>
+@keyframes siteNoticeTickerSmooth {
+    0% { transform: translate3d(-50%, 0, 0); }
+    100% { transform: translate3d(0, 0, 0); }
+}
+</style>
 <div class="fixed inset-x-0 top-0 bg-red-500 text-white" style="z-index: 60;" role="status" aria-live="polite">
     <div class="container mx-auto px-4 h-8 flex items-center">
         <p class="hidden sm:block text-xs font-semibold text-center w-full truncate">{{ site_settings.site_notice_text }}</p>
-        <marquee class="sm:hidden w-full text-xs font-semibold leading-8 whitespace-nowrap"
-                 direction="right" behavior="scroll" scrollamount="3">
-            {{ site_settings.site_notice_text }}
-        </marquee>
+        <div class="sm:hidden w-full overflow-hidden whitespace-nowrap" style="direction: ltr;">
+            <div class="inline-flex items-center"
+                 style="width: max-content; animation: siteNoticeTickerSmooth 16s linear infinite; will-change: transform;">
+                <span class="px-5 text-xs font-semibold">{{ site_settings.site_notice_text }}</span>
+                <span class="px-5 text-xs font-semibold">{{ site_settings.site_notice_text }}</span>
+            </div>
+        </div>
     </div>
 </div>
 <div class="h-8"></div>
