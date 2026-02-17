@@ -142,6 +142,7 @@ AUTHENTICATION_BACKENDS = (
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 # Use custom adapter to avoid sending email confirmation on login
 ACCOUNT_ADAPTER = 'apps.accounts.adapters.NoConfirmationOnLoginAdapter'
+SOCIALACCOUNT_ADAPTER = 'apps.accounts.social_adapters.AccountinoxSocialAccountAdapter'
 # Note: ACCOUNT_LOGIN_METHODS specifies auth method; ACCOUNT_SIGNUP_FIELDS specifies form fields
 # The warning about conflict can be safely ignored (allauth legacy vs new config style)
 ACCOUNT_LOGIN_METHODS = {'email'}
@@ -169,9 +170,12 @@ else:
 # If env vars are missing, we do NOT inject APP here so DB-backed SocialApp can be used.
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='').strip()
 GOOGLE_SECRET = env('GOOGLE_SECRET', default='').strip()
+SOCIALACCOUNT_QUERY_EMAIL = True
 
 SOCIALACCOUNT_PROVIDERS = {
-    'google': {}
+    'google': {
+        'SCOPE': ['profile', 'email'],
+    }
 }
 if GOOGLE_CLIENT_ID and GOOGLE_SECRET:
     SOCIALACCOUNT_PROVIDERS['google']['APP'] = {
