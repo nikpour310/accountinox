@@ -285,6 +285,59 @@ cmd_deploy() {
   fi
 }
 
+cmd_pull_update() {
+  header "Pull + Update Project"
+  local started=$SECONDS
+
+  cd "$APP_DIR"
+
+  # Pull latest commit without force-reset (safer for local server patches)
+  info "Pulling latest code (fast-forward only)..."
+  if ! sudo -u "$SERVICE_USER" git -C "$APP_DIR" pull --ff-only; then
+    fail "git pull failed (non-fast-forward or conflict)."
+    warn "Tip: use 'sudo bash $0 deploy' for force deploy from origin."
+    return 1
+  fi
+  success "Code updated ($(sudo -u "$SERVICE_USER" git -C "$APP_DIR" log -1 --format='%h %s' 2>/dev/null))"
+
+  # Install dependencies
+  info "Installing dependencies..."
+  source "$VENV_DIR/bin/activate"
+  pip install -q --no-cache-dir -r requirements.txt 2>/dev/null
+  deactivate
+
+  # Migrate & collect static
+  load_env
+  require_database_url
+  ensure_mysql_timezones
+  ensure_migrations_init
+  fix_blog_fk_migration
+
+  info "Running migrations..."
+  sudo -u "$SERVICE_USER" $MANAGE migrate --noinput 2>&1 | tail -5
+
+  info "Collecting static files..."
+  sudo -u "$SERVICE_USER" $MANAGE collectstatic --noinput --clear 2>&1 | tail -1
+
+  ensure_static_permissions_and_checks
+
+  # Restart
+  info "Restarting services..."
+  systemctl restart ${APP_NAME}
+  systemctl reload nginx
+  sleep 2
+
+  # Health check
+  local health
+  health=$(curl -sf --max-time 10 http://127.0.0.1:8000/healthz/ 2>/dev/null || echo "")
+  if [[ -n "$health" ]]; then
+    success "Pull update complete in $((SECONDS - started))s - app healthy"
+  else
+    fail "Update finished but health check failed!"
+    warn "Consider rollback: sudo bash $0 rollback"
+  fi
+}
+
 # ──────────── Rollback ────────────
 cmd_rollback() {
   header "Rollback"
@@ -1427,6 +1480,7 @@ show_menu() {
 interactive_menu() {
   while true; do
     show_menu
+    echo -e "  ${CYAN}23${NC}) Pull + update project"
     read -rp "$(echo -e "${CYAN}▸${NC} Enter choice: ")" choice
     case "$choice" in
       1)  cmd_status ;;
@@ -1462,6 +1516,7 @@ interactive_menu() {
         read -rp "  Django command (e.g. showmigrations): " dcmd
         [[ -n "$dcmd" ]] && cmd_django $dcmd
         ;;
+      23) cmd_pull_update ;;
       0|q|exit) echo ""; success "Goodbye!"; exit 0 ;;
       *) warn "Invalid choice" ;;
     esac
@@ -1486,7 +1541,8 @@ cmd_help() {
   printf "  ${CYAN}%-20s${NC} %s\n" "restart"         "Restart the application"
   printf "  ${CYAN}%-20s${NC} %s\n" "reload"          "Graceful reload"
   printf "  ${CYAN}%-20s${NC} %s\n" "deploy"          "Full deploy (pull + migrate + restart)"
-  printf \"  ${CYAN}%-20s${NC} %s\n\" \"update-all\"      \"Deploy update with critical checks\"\n
+  printf "  ${CYAN}%-20s${NC} %s\n" "update-all"      "Deploy update with critical checks"
+  printf "  ${CYAN}%-20s${NC} %s\n" "pull-update"     "Fast-forward pull + app update (safe)"
   printf "  ${CYAN}%-20s${NC} %s\n" "rollback"        "Restore database from latest backup"
   printf "  ${CYAN}%-20s${NC} %s\n" "backup"          "Backup database now"
   printf "  ${CYAN}%-20s${NC} %s\n" "logs [type]"     "View logs (app|access|error|nginx|django|follow)"
@@ -1559,6 +1615,7 @@ main() {
     reload)          cmd_reload ;;
     deploy|update)   cmd_deploy ;;
     update-all)      cmd_deploy ;;
+    pull-update|update-safe|pullup) cmd_pull_update ;;
     rollback)        cmd_rollback ;;
     backup|backup-db) cmd_backup_db ;;
     logs|log)        cmd_logs "$@" ;;
