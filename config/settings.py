@@ -166,15 +166,19 @@ else:
     DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@accountinox.com')
 
 # Allauth social provider settings loaded via env
+# If env vars are missing, we do NOT inject APP here so DB-backed SocialApp can be used.
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='').strip()
+GOOGLE_SECRET = env('GOOGLE_SECRET', default='').strip()
+
 SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': env('GOOGLE_CLIENT_ID', default=''),
-            'secret': env('GOOGLE_SECRET', default=''),
-            'key': ''
-        }
-    }
+    'google': {}
 }
+if GOOGLE_CLIENT_ID and GOOGLE_SECRET:
+    SOCIALACCOUNT_PROVIDERS['google']['APP'] = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'secret': GOOGLE_SECRET,
+        'key': '',
+    }
 
 # Security defaults
 #SESSION_COOKIE_SECURE = not DEBUG

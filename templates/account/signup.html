@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n static %}
+{% load i18n static socialaccount %}
 
 {% block title %}ثبت نام | {{ block.super }}{% endblock %}
 
@@ -34,6 +34,19 @@
         {% endfor %}
 
         <button type="submit" class="btn btn-primary btn-lg w-full justify-center">ثبت نام</button>
+
+        {% if site_settings and site_settings.google_oauth_enabled and google_oauth_ready %}
+        <div class="relative my-4">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">یا</span></div>
+        </div>
+        <a href="{% provider_login_url 'google' process='login' %}" class="btn btn-lg w-full justify-center border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-semibold rounded-xl">
+          <svg class="w-5 h-5 ml-2 inline-block" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6.1-2.8-6.1-6.2s2.8-6.2 6.1-6.2c1.9 0 3.2.8 3.9 1.5l2.7-2.6C17 2.9 14.7 2 12 2 6.8 2 2.6 6.4 2.6 11.8S6.8 21.6 12 21.6c6.9 0 9.1-4.9 9.1-7.4 0-.5-.1-.9-.1-1.3H12z"/>
+          </svg>
+          {{ site_settings.google_oauth_button_text|default:"ادامه با گوگل" }}
+        </a>
+        {% endif %}
 
         <!-- OTP Signup Option -->
         <div class="relative my-4">

@@ -1,4 +1,5 @@
-﻿from django.contrib import admin
+from django.conf import settings
+from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.http import FileResponse, Http404, HttpResponseRedirect
@@ -106,6 +107,10 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             'fields': ('site_notice_enabled', 'site_notice_text'),
             'description': 'در صورت فعال بودن، نوار قرمز اطلاعیه در بالای تمام صفحات سایت نمایش داده می‌شود.',
         }),
+        ('🔐 ورود با گوگل (Google OAuth)', {
+            'fields': ('google_oauth_enabled', 'google_oauth_button_text', 'google_oauth_status', 'google_oauth_help'),
+            'description': 'برای فعال‌سازی کامل، تنظیمات Google OAuth را طبق راهنما انجام دهید.',
+        }),
         ('📣 تلگرام', {
             'fields': ('telegram_admin_url', 'telegram_channel_url', 'telegram_support_label'),
         }),
@@ -162,7 +167,61 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
         url = reverse('admin:%s_%s_change' % (obj._meta.app_label, obj._meta.model_name), args=(obj.pk,))
         return HttpResponseRedirect(url)
 
-    readonly_fields = ('terms_updated', 'privacy_updated')
+    @admin.display(description='وضعیت اتصال گوگل')
+    def google_oauth_status(self, obj):
+        provider_cfg = getattr(settings, 'SOCIALACCOUNT_PROVIDERS', {}).get('google', {})
+        app_cfg = provider_cfg.get('APP') or {}
+        env_configured = bool(str(app_cfg.get('client_id', '')).strip() and str(app_cfg.get('secret', '')).strip())
+
+        db_configured = False
+        db_count = 0
+        try:
+            from allauth.socialaccount.models import SocialApp
+            from django.contrib.sites.models import Site
+
+            current_site = Site.objects.filter(id=settings.SITE_ID).first()
+            apps_qs = SocialApp.objects.filter(provider='google')
+            if current_site:
+                apps_qs = apps_qs.filter(sites=current_site)
+            db_count = apps_qs.count()
+            db_configured = db_count > 0
+        except Exception:
+            db_configured = False
+
+        if env_configured or db_configured:
+            return format_html(
+                '<span style="color:#0f766e;font-weight:600;">آماده</span> '
+                '<small style="opacity:.8;">(env: {} | social app: {})</small>',
+                'ok' if env_configured else 'off',
+                db_count,
+            )
+        return format_html(
+            '<span style="color:#b91c1c;font-weight:600;">ناقص</span> '
+            '<small style="opacity:.8;">(کلیدهای گوگل یا Social App تنظیم نشده)</small>'
+        )
+
+    @admin.display(description='راهنمای تنظیم')
+    def google_oauth_help(self, obj):
+        base_url = (getattr(settings, 'SITE_BASE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+        if not base_url:
+            base_url = 'https://your-domain.com'
+        callback_url = f'{base_url}/accounts/google/login/callback/'
+        login_url = f'{base_url}/accounts/google/login/'
+        return format_html(
+            '<ol style="margin:0;padding-right:1.2rem;">'
+            '<li>در Google Cloud یک OAuth Client از نوع <strong>Web application</strong> بسازید.</li>'
+            '<li>این Callback را در Authorized redirect URIs بگذارید: <code>{}</code></li>'
+            '<li>یکی از دو روش را کامل کنید: '
+            'الف) وارد کردن <code>GOOGLE_CLIENT_ID</code> و <code>GOOGLE_SECRET</code> در .env '
+            'یا ب) ساخت SocialApp برای provider=google در ادمین.</li>'
+            '<li>تست ورود: <a href="{}" target="_blank" rel="noopener">{}</a></li>'
+            '</ol>',
+            callback_url,
+            login_url,
+            login_url,
+        )
+
+    readonly_fields = ('terms_updated', 'privacy_updated', 'google_oauth_status', 'google_oauth_help')
 
 
 @admin.register(SiteBackup)

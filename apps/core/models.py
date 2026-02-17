@@ -122,6 +122,19 @@ class SiteSettings(models.Model):
         help_text='متنی که در نوار قرمز بالای سایت نمایش داده می‌شود.'
     )
 
+    # Google OAuth login
+    google_oauth_enabled = models.BooleanField(
+        'فعال‌سازی ورود با گوگل',
+        default=False,
+        help_text='در صورت فعال بودن و کامل بودن تنظیمات OAuth، دکمه گوگل در ورود/ثبت‌نام نمایش داده می‌شود.',
+    )
+    google_oauth_button_text = models.CharField(
+        'متن دکمه ورود با گوگل',
+        max_length=80,
+        blank=True,
+        default='ادامه با گوگل',
+    )
+
     def __str__(self):
         return f"تنظیمات سایت ({self.site_name})"
 

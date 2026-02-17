@@ -34,6 +34,27 @@ def site_settings(request):
     except Exception:
         cart_count = 0
 
+    # Google OAuth availability (either env-based APP config or DB SocialApp)
+    google_oauth_ready = False
+    try:
+        provider_cfg = getattr(settings, 'SOCIALACCOUNT_PROVIDERS', {}).get('google', {})
+        app_cfg = provider_cfg.get('APP') or {}
+        env_ready = bool(str(app_cfg.get('client_id', '')).strip() and str(app_cfg.get('secret', '')).strip())
+    except Exception:
+        env_ready = False
+
+    if env_ready:
+        google_oauth_ready = True
+    else:
+        try:
+            from allauth.socialaccount.models import SocialApp
+            from django.contrib.sites.models import Site
+
+            current_site = Site.objects.get_current(request)
+            google_oauth_ready = SocialApp.objects.filter(provider='google', sites=current_site).exists()
+        except Exception:
+            google_oauth_ready = False
+
     return {
         'site_settings': setting_obj,
         'debug': settings.DEBUG,
@@ -42,4 +63,5 @@ def site_settings(request):
         'footer_links_quick': footer_links_quick,
         'footer_links_legal': footer_links_legal,
         'cart_count': cart_count,
+        'google_oauth_ready': google_oauth_ready,
     }
