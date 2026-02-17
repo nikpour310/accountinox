@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.db.models import Q, Value, CharField
+from django.db.models import Q
 from .models import GlobalFAQ, HeroBanner, TrustStat, FeatureCard, FooterLink
 
 
@@ -74,7 +74,13 @@ def privacy(request):
 
 
 def contact(request):
-    return render(request, 'contact.html')
+    try:
+        contact_faqs = list(GlobalFAQ.objects.all()[:4])
+    except Exception:
+        contact_faqs = []
+    return render(request, 'contact.html', {
+        'contact_faqs': contact_faqs,
+    })
 
 
 def site_search(request):
