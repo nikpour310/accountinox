@@ -16,30 +16,3 @@
   </article>
 </section>
 {% endblock %}
-{% extends 'base.html' %}
-
-{% block title %}شرایط استفاده{% endblock %}
-{% block meta_title %}شرایط استفاده | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_description %}شرایط استفاده از خدمات {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
-
-{% block content %}
-<div class="page-wrapper max-w-2xl">
-  <div class="text-center mb-8 reveal">
-    <h1 class="section-title">شرایط استفاده</h1>
-  </div>
-
-  <div class="card p-6 sm:p-8 space-y-5 reveal">
-    <p class="text-sm text-gray-600 leading-7">
-      استفاده از خدمات این وب‌سایت به معنی پذیرش قوانین و شرایط جاری است.
-      لطفاً پیش از خرید، توضیحات محصول و شرایط تحویل را با دقت مطالعه کنید.
-    </p>
-    <p class="text-sm text-gray-600 leading-7">
-      در صورت نیاز به راهنمایی یا پیگیری سفارش، از طریق صفحه پشتیبانی با تیم ما در ارتباط باشید.
-    </p>
-    <div class="divider"></div>
-    <div>
-      <a href="{% url 'support:chat' %}" class="btn btn-primary">ارتباط با پشتیبانی</a>
-    </div>
-  </div>
-</div>
-{% endblock %}

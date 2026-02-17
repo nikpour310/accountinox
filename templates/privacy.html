@@ -16,30 +16,3 @@
   </article>
 </section>
 {% endblock %}
-{% extends 'base.html' %}
-
-{% block title %}حریم خصوصی{% endblock %}
-{% block meta_title %}حریم خصوصی | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
-{% block meta_description %}سیاست حریم خصوصی و نحوه نگهداری اطلاعات کاربران در {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
-
-{% block content %}
-<div class="page-wrapper max-w-2xl">
-  <div class="text-center mb-8 reveal">
-    <h1 class="section-title">حریم خصوصی</h1>
-  </div>
-
-  <div class="card p-6 sm:p-8 space-y-5 reveal">
-    <p class="text-sm text-gray-600 leading-7">
-      اطلاعات کاربران فقط برای ارائه خدمات، پشتیبانی و بهبود تجربه استفاده ذخیره و پردازش می‌شود.
-      اطلاعات حساس بدون رضایت کاربر به شخص ثالث واگذار نمی‌شود مگر در موارد قانونی.
-    </p>
-    <p class="text-sm text-gray-600 leading-7">
-      برای درخواست حذف یا اصلاح اطلاعات، از طریق صفحه تماس با ما یا چت پشتیبانی درخواست ثبت کنید.
-    </p>
-    <div class="divider"></div>
-    <div>
-      <a href="{% url 'core:contact' %}" class="btn btn-ghost">تماس با ما</a>
-    </div>
-  </div>
-</div>
-{% endblock %}
