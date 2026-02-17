@@ -105,6 +105,20 @@ class SiteSettings(models.Model):
     terms_updated = models.DateTimeField('تاریخ به‌روزرسانی شرایط', null=True, blank=True)
     privacy_updated = models.DateTimeField('تاریخ به‌روزرسانی حریم خصوصی', null=True, blank=True)
 
+    # Site-wide top notice banner
+    site_notice_enabled = models.BooleanField(
+        'فعال‌سازی اطلاعیه سراسری',
+        default=False,
+        help_text='در صورت فعال بودن، نوار اطلاعیه در تمام صفحات سایت نمایش داده می‌شود.'
+    )
+    site_notice_text = models.CharField(
+        'متن اطلاعیه سراسری',
+        max_length=300,
+        blank=True,
+        default='',
+        help_text='متنی که در نوار قرمز بالای سایت نمایش داده می‌شود.'
+    )
+
     def __str__(self):
         return f"تنظیمات سایت ({self.site_name})"
 

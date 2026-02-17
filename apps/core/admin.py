@@ -97,6 +97,10 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
         ('📱 اطلاعات تماس', {
             'fields': ('phone', 'email', 'instagram_url'),
         }),
+        ('🚨 اطلاعیه سراسری سایت', {
+            'fields': ('site_notice_enabled', 'site_notice_text'),
+            'description': 'در صورت فعال بودن، نوار قرمز اطلاعیه در بالای تمام صفحات سایت نمایش داده می‌شود.',
+        }),
         ('📣 تلگرام', {
             'fields': ('telegram_admin_url', 'telegram_channel_url', 'telegram_support_label'),
         }),
@@ -199,4 +203,3 @@ class FooterLinkAdmin(admin.ModelAdmin):
     list_editable = ('order', 'is_active', 'open_new_tab')
     list_filter = ('column', 'is_active')
     search_fields = ('label', 'url')
-
