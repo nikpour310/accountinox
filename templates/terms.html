@@ -1,3 +1,21 @@
+{% extends "base.html" %}
+{% block title %}شرایط و قوانین - {{ site_settings.site_name }}{% endblock %}
+{% block content %}
+<section id="terms" dir="rtl" lang="fa" class="prose dark:prose-invert max-w-none p-6">
+  <header>
+    <h1>شرایط و قوانین استفاده از خدمات {{ site_settings.brand_wordmark_fa|default:site_settings.site_name }}</h1>
+    <p><strong>آخرین به‌روزرسانی:</strong> {% if site_settings %}به‌روز شده{% else %}—{% endif %}</p>
+  </header>
+
+  <article>
+    {% if site_settings and site_settings.terms_html %}
+      {{ site_settings.terms_html|safe }}
+    {% else %}
+      <p>متن شرایط و قوانین هنوز توسط ادمین سایت وارد نشده است. لطفاً به پنل ادمین مراجعه کنید.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
 {% extends 'base.html' %}
 
 {% block title %}شرایط استفاده{% endblock %}

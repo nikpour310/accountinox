@@ -45,6 +45,8 @@ urlpatterns = [
     path('healthz/', healthcheck, name='healthcheck'),  # G-4: Monitoring endpoint
     path('sw.js', service_worker, name='service_worker'),
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots_txt'),
+    path('terms/', TemplateView.as_view(template_name='terms.html'), name='terms'),
+    path('privacy/', TemplateView.as_view(template_name='privacy.html'), name='privacy'),
     path('admin/', admin.site.urls),
     path('account/', include(('apps.accounts.urls', 'account_panel'), namespace='account_panel')),
     path('accounts/', include('apps.accounts.urls')),

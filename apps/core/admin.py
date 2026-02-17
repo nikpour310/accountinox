@@ -132,6 +132,10 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             'fields': ('enamad_html',),
             'classes': ('collapse',),
         }),
+        ('📜 قوانین و حریم خصوصی', {
+            'fields': ('terms_html', 'privacy_html'),
+            'description': 'متن کامل صفحات «شرایط استفاده» و «حریم خصوصی». می‌توانید HTML ساده وارد کنید.',
+        }),
     )
 
     def has_add_permission(self, request):

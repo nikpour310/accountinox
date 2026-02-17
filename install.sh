@@ -282,7 +282,21 @@ phase_database() {
         mysql -e "ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>/dev/null || true
       fi
       mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>/dev/null
-      mysql -e "FLUSH PRIVILEGES;" 2>/dev/null
+      mysql -e "FLUSH PRIVILEGES;"
+
+
+# ── MySQL/MariaDB timezone tables ──
+info "Validating MySQL/MariaDB timezone tables..."
+local tz_count
+tz_count="$(mysql -N -B -e "SELECT COUNT(*) FROM mysql.time_zone_name;" 2>/dev/null || echo 0)"
+if [[ "${tz_count:-0}" -eq 0 ]]; then
+  warn "Timezone tables empty; loading from /usr/share/zoneinfo ..."
+  mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql
+  tz_count="$(mysql -N -B -e "SELECT COUNT(*) FROM mysql.time_zone_name;" 2>/dev/null || echo 0)"
+fi
+if [[ "${tz_count:-0}" -eq 0 ]]; then
+  die "MySQL/MariaDB timezone tables are not loaded (count=0)."
+fi 2>/dev/null
 
       DB_PORT="${DB_PORT:-3306}"
       DB_URL="mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
@@ -522,6 +536,9 @@ def load_env(path):
                 os.environ[k] = v
 
 load_env(sys.argv[1])
+if os.getenv("DATABASE_URL") is None:
+    print("ERROR: DATABASE_URL is not loaded (None). Aborting.", file=sys.stderr)
+    sys.exit(1)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # APP_DIR is injected by sed after file creation
@@ -547,11 +564,38 @@ PYEOF
   chmod 644 "${APP_DIR}/_ax_django_cmd.py"
   chown "$SERVICE_USER":"$SERVICE_USER" "${APP_DIR}/_ax_django_cmd.py"
 
+  
+# ── Ensure migrations packages are valid (all apps) ──
+step "Validating migrations packages"
+if [[ -d "${APP_DIR}/apps" ]]; then
+  while IFS= read -r -d '' d; do
+    if [[ ! -f "${d}/__init__.py" ]]; then
+      touch "${d}/__init__.py"
+    fi
+  done < <(find "${APP_DIR}/apps" -type d -name migrations -print0)
+fi
+
+# ── Fix known broken ForeignKey reference in migrations ──
+if grep -R --line-number --fixed-strings "to='apps.blog.post'" "${APP_DIR}/apps" >/dev/null 2>&1; then
+  info "Patching broken ForeignKey target in migrations (apps.blog.post -> blog.Post)..."
+  grep -R --line-number --fixed-strings "to='apps.blog.post'" "${APP_DIR}/apps" | cut -d: -f1 | sort -u | \
+    xargs -r sed -i "s/to='apps\.blog\.post'/to='blog.Post'/g"
+fi
+
   sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" "${APP_DIR}/_ax_django_cmd.py" "$ENVFILE" migrate 2>&1 | tail -20
   success "Migrations complete"
 
   step "Collecting static files"
   sudo -u "$SERVICE_USER" "$VENV_DIR/bin/python" "${APP_DIR}/_ax_django_cmd.py" "$ENVFILE" collectstatic 2>&1 | tail -3
+
+
+# ── Validate Django admin static exists ──
+if [[ ! -f "${APP_DIR}/staticfiles/admin/css/base.css" ]]; then
+  die "Static validation failed: ${APP_DIR}/staticfiles/admin/css/base.css is missing (collectstatic did not populate staticfiles)."
+fi
+
+# ── Ensure world-read access for served staticfiles ──
+chmod -R o+rx "${APP_DIR}/staticfiles"
   rm -f "${APP_DIR}/_ax_django_cmd.py"
   success "Static files collected"
 
@@ -756,6 +800,14 @@ NGXEOF
   systemctl enable --now nginx >/dev/null 2>&1
   systemctl reload nginx
   success "Nginx configured & reloaded"
+
+
+# ── Validate nginx serves static over HTTP 200 ──
+local static_code
+static_code="$(curl -s -o /dev/null -w "%{http_code}" -H "Host: ${DOMAIN:-localhost}" http://127.0.0.1/static/admin/css/base.css || true)"
+if [[ "${static_code}" != "200" ]]; then
+  die "Nginx static validation failed: GET /static/admin/css/base.css returned HTTP ${static_code} (expected 200)."
+fi
 
   # ── SSL ──
   if [[ -n "$DOMAIN" ]]; then

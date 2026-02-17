@@ -96,6 +96,12 @@ class SiteSettings(models.Model):
     email = models.EmailField('ایمیل', blank=True, default='')
     instagram_url = models.CharField('لینک اینستاگرام', max_length=300, blank=True, default='')
 
+    # ── متن قوانین و حریم خصوصی (قابل ویرایش از پنل ادمین) ──────────────
+    terms_html = models.TextField('متن شرایط و قوانین (HTML)', blank=True, default='',
+                                  help_text='متن شرایط و قوانین سایت — HTML مجاز است')
+    privacy_html = models.TextField('متن سیاست حریم خصوصی (HTML)', blank=True, default='',
+                                    help_text='متن سیاست حریم خصوصی — HTML مجاز است')
+
     def __str__(self):
         return f"تنظیمات سایت ({self.site_name})"
 
