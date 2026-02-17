@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:core_sitebackup_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; تایید ریستور
+</div>
+{% endblock %}
+
+{% block content %}
+  <div class="module aligned">
+    <h1>تایید ریستور بکاپ</h1>
+    <p>
+      شما در حال ریستور بکاپ
+      <strong>{{ backup.file_name }}</strong>.
+    </p>
+    <p>
+      این عملیات دیتابیس و فایل‌های رسانه را با همین بکاپ جایگزین می‌کند و قابل بازگشت نیست.
+    </p>
+    <form method="post" style="margin-top: 1rem;">
+      {% csrf_token %}
+      <input type="submit" value="بله، ریستور انجام شود" class="default" style="background:#b91c1c;border-color:#b91c1c;">
+      <a href="{% url 'admin:core_sitebackup_changelist' %}" class="button cancel-link">انصراف</a>
+    </form>
+  </div>
+{% endblock %}

@@ -1,8 +1,13 @@
 ﻿from django.contrib import admin
-from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
-from .models import SiteSettings, GlobalFAQ, HeroBanner, TrustStat, FeatureCard, FooterLink
+
+from .backup_utils import create_site_backup, import_site_backup, restore_site_backup
+from .models import SiteSettings, SiteBackup, GlobalFAQ, HeroBanner, TrustStat, FeatureCard, FooterLink
 
 
 def _is_owner(user):
@@ -158,6 +163,206 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
         return HttpResponseRedirect(url)
 
     readonly_fields = ('terms_updated', 'privacy_updated')
+
+
+@admin.register(SiteBackup)
+class SiteBackupAdmin(admin.ModelAdmin):
+    list_display = (
+        'file_name',
+        'created_at',
+        'created_by',
+        'size_pretty',
+        'download_link',
+        'restore_link',
+        'archive_status',
+    )
+    search_fields = ('file_name', 'created_by__username', 'created_by__email')
+    ordering = ('-created_at',)
+    readonly_fields = ('file_name', 'size_bytes', 'created_at', 'created_by', 'size_pretty', 'archive_status')
+    actions = ('restore_selected',)
+
+    def has_module_permission(self, request):
+        return _is_owner(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return _is_owner(request.user)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_owner(request.user)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'create-backup/',
+                self.admin_site.admin_view(self.create_backup_view),
+                name='core_sitebackup_create',
+            ),
+            path(
+                'import-backup/',
+                self.admin_site.admin_view(self.import_backup_view),
+                name='core_sitebackup_import',
+            ),
+            path(
+                '<int:backup_id>/download/',
+                self.admin_site.admin_view(self.download_backup_view),
+                name='core_sitebackup_download',
+            ),
+            path(
+                '<int:backup_id>/restore/',
+                self.admin_site.admin_view(self.restore_backup_view),
+                name='core_sitebackup_restore',
+            ),
+        ]
+        return custom_urls + urls
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['can_create_backup'] = _is_owner(request.user)
+        extra_context['can_import_backup'] = _is_owner(request.user)
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @admin.display(description='حجم')
+    def size_pretty(self, obj):
+        size = int(obj.size_bytes or 0)
+        units = ('B', 'KB', 'MB', 'GB', 'TB')
+        index = 0
+        value = float(size)
+        while value >= 1024 and index < len(units) - 1:
+            value /= 1024
+            index += 1
+        if index == 0:
+            return f'{int(value)} {units[index]}'
+        return f'{value:.2f} {units[index]}'
+
+    @admin.display(description='وضعیت فایل')
+    def archive_status(self, obj):
+        if obj.file_exists:
+            return format_html('<span style="color:#0f766e;font-weight:600;">موجود</span>')
+        return format_html('<span style="color:#b91c1c;font-weight:600;">مفقود</span>')
+
+    @admin.display(description='دانلود')
+    def download_link(self, obj):
+        if not obj.file_exists:
+            return '-'
+        url = reverse('admin:core_sitebackup_download', args=(obj.pk,))
+        return format_html('<a class="button" href="{}">دانلود</a>', url)
+
+    @admin.display(description='ریستور')
+    def restore_link(self, obj):
+        if not obj.file_exists:
+            return '-'
+        url = reverse('admin:core_sitebackup_restore', args=(obj.pk,))
+        return format_html(
+            '<a class="button" style="background:#b91c1c;border-color:#b91c1c;color:#fff;" href="{}">ریستور</a>',
+            url,
+        )
+
+    @admin.action(description='ریستور بکاپ انتخاب‌شده')
+    def restore_selected(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, 'برای ریستور باید دقیقا یک بکاپ انتخاب شود.', level=messages.ERROR)
+            return
+        selected = queryset.first()
+        url = reverse('admin:core_sitebackup_restore', args=(selected.pk,))
+        return HttpResponseRedirect(url)
+
+    def delete_model(self, request, obj):
+        obj.delete()
+
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
+
+    def _get_backup_object(self, backup_id):
+        try:
+            return SiteBackup.objects.get(pk=backup_id)
+        except SiteBackup.DoesNotExist as exc:
+            raise Http404('بکاپ پیدا نشد') from exc
+
+    def create_backup_view(self, request):
+        if not _is_owner(request.user):
+            raise PermissionDenied
+        try:
+            backup = create_site_backup(user=request.user)
+            self.message_user(
+                request,
+                f'بکاپ با موفقیت ساخته شد: {backup.file_name}',
+                level=messages.SUCCESS,
+            )
+        except Exception as exc:
+            self.message_user(request, f'ساخت بکاپ ناموفق بود: {exc}', level=messages.ERROR)
+        return HttpResponseRedirect(reverse('admin:core_sitebackup_changelist'))
+
+    def import_backup_view(self, request):
+        if not _is_owner(request.user):
+            raise PermissionDenied
+
+        if request.method == 'POST':
+            upload = request.FILES.get('backup_file')
+            if upload is None:
+                self.message_user(request, 'هیچ فایلی انتخاب نشده است.', level=messages.ERROR)
+                return HttpResponseRedirect(reverse('admin:core_sitebackup_import'))
+            try:
+                backup = import_site_backup(upload, user=request.user)
+                self.message_user(request, f'بکاپ با موفقیت ایمپورت شد: {backup.file_name}', level=messages.SUCCESS)
+                return HttpResponseRedirect(reverse('admin:core_sitebackup_changelist'))
+            except Exception as exc:
+                self.message_user(request, f'ایمپورت بکاپ ناموفق بود: {exc}', level=messages.ERROR)
+                return HttpResponseRedirect(reverse('admin:core_sitebackup_import'))
+
+        context = {
+            **self.admin_site.each_context(request),
+            'opts': self.model._meta,
+            'title': 'ایمپورت بکاپ',
+        }
+        return TemplateResponse(request, 'admin/core/sitebackup/import_form.html', context)
+
+    def download_backup_view(self, request, backup_id):
+        if not _is_owner(request.user):
+            raise PermissionDenied
+        backup = self._get_backup_object(backup_id)
+        if not backup.file_exists:
+            raise Http404('فایل بکاپ پیدا نشد')
+        return FileResponse(
+            backup.file_path.open('rb'),
+            as_attachment=True,
+            filename=backup.file_name,
+        )
+
+    def restore_backup_view(self, request, backup_id):
+        if not _is_owner(request.user):
+            raise PermissionDenied
+        backup = self._get_backup_object(backup_id)
+        if not backup.file_exists:
+            self.message_user(request, 'فایل بکاپ موجود نیست.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:core_sitebackup_changelist'))
+
+        if request.method == 'POST':
+            try:
+                restore_site_backup(backup)
+                self.message_user(
+                    request,
+                    'ریستور بکاپ با موفقیت انجام شد. ممکن است لازم باشد دوباره وارد پنل شوید.',
+                    level=messages.SUCCESS,
+                )
+            except Exception as exc:
+                self.message_user(request, f'ریستور ناموفق بود: {exc}', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:core_sitebackup_changelist'))
+
+        context = {
+            **self.admin_site.each_context(request),
+            'opts': self.model._meta,
+            'backup': backup,
+            'title': f'تایید ریستور: {backup.file_name}',
+        }
+        return TemplateResponse(request, 'admin/core/sitebackup/restore_confirm.html', context)
 
 
 # ── سوالات متداول ───────────────────────────────────

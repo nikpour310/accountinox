@@ -37,6 +37,7 @@ db.sqlite3-journal
 media/
 staticfiles/
 logs/
+backups/
 *.log
 django_cache/
 cache/

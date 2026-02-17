@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.db import models
 
 
@@ -172,6 +175,48 @@ class SiteSettings(models.Model):
     class Meta:
         verbose_name = 'تنظیمات سایت'
         verbose_name_plural = 'تنظیمات سایت'
+
+
+class SiteBackup(models.Model):
+    file_name = models.CharField('نام فایل بکاپ', max_length=255, unique=True)
+    size_bytes = models.BigIntegerField('حجم بکاپ (بایت)', default=0)
+    created_at = models.DateTimeField('تاریخ ساخت', auto_now_add=True, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='ایجاد شده توسط',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='site_backups',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'بکاپ سایت'
+        verbose_name_plural = 'بکاپ‌های سایت'
+
+    def __str__(self):
+        return self.file_name
+
+    @staticmethod
+    def backup_directory() -> Path:
+        backup_dir = Path(settings.BASE_DIR) / 'backups' / 'site'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        return backup_dir
+
+    @property
+    def file_path(self) -> Path:
+        return self.backup_directory() / self.file_name
+
+    @property
+    def file_exists(self) -> bool:
+        return self.file_path.exists()
+
+    def delete(self, *args, **kwargs):
+        path = self.file_path
+        super().delete(*args, **kwargs)
+        if path.exists():
+            path.unlink()
 
 
 class HeroBanner(models.Model):
