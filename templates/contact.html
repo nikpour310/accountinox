@@ -5,7 +5,7 @@
 {% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'core:contact' %}">{% endblock %}
 
 {% block content %}
-<div class="page-wrapper max-w-4xl">
+<div class="page-wrapper max-w-3xl">
   <nav class="mb-8 reveal" aria-label="breadcrumb">
     <div class="flex items-center gap-2 text-sm text-gray-400">
       <a href="{% url 'core:landing' %}" class="hover:text-primary-600 transition-colors">خانه</a>
@@ -14,204 +14,88 @@
     </div>
   </nav>
 
-  <div class="card-elevated p-6 sm:p-8 reveal">
-    <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <span class="chip">ارتباط و پشتیبانی</span>
-        <h1 class="section-title mt-4">تماس با ما</h1>
-        <p class="section-subtitle mt-2 max-w-2xl">
-          برای پیگیری سفارش، مشاوره پیش از خرید یا گزارش مشکل، از مسیرهای زیر استفاده کنید تا سریع‌تر پاسخ بگیرید.
-        </p>
-      </div>
-      <div class="flex flex-col gap-2 sm:items-end">
-        <a href="{% url 'support:chat' %}" class="btn btn-primary btn-sm">شروع چت پشتیبانی</a>
-        {% if site_settings.telegram_admin_url %}
-        <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">تلگرام پشتیبانی</a>
-        {% endif %}
-      </div>
+  <div class="text-center mb-8 reveal">
+    <span class="chip">پشتیبانی</span>
+    <h1 class="section-title mt-4">تماس با ما</h1>
+    <p class="section-subtitle mt-2 mx-auto">
+      برای پیگیری سفارش یا مشاوره خرید، از مسیرهای زیر استفاده کنید.
+    </p>
+  </div>
+
+  <div class="card p-6 sm:p-8 reveal">
+    <div class="flex flex-col sm:flex-row gap-3">
+      <a href="{% url 'support:chat' %}" class="btn btn-primary">شروع چت پشتیبانی</a>
+      {% if site_settings.telegram_admin_url %}
+      <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">تلگرام پشتیبانی</a>
+      {% endif %}
     </div>
 
     <div class="divider my-5"></div>
 
-    <div class="grid gap-3 sm:grid-cols-3">
-      <div class="rounded-xl border border-gray-100 p-4 bg-white">
-        <p class="text-xs text-gray-400">مسیر پیشنهادی</p>
-        <p class="text-sm font-semibold text-gray-900 mt-1">چت آنلاین</p>
-      </div>
-      <div class="rounded-xl border border-gray-100 p-4 bg-white">
-        <p class="text-xs text-gray-400">اولویت پاسخ</p>
-        <p class="text-sm font-semibold text-gray-900 mt-1">تیکت‌های کامل</p>
-      </div>
-      <div class="rounded-xl border border-gray-100 p-4 bg-white">
-        <p class="text-xs text-gray-400">بهترین روش پیگیری</p>
-        <p class="text-sm font-semibold text-gray-900 mt-1">ثبت شماره سفارش</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid gap-6 lg:grid-cols-12 mt-6">
-    <div class="lg:col-span-8 space-y-6">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="card card-hover p-5 reveal">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-base font-semibold text-gray-900">چت آنلاین</h3>
-              <p class="text-sm text-gray-500 mt-1">ثبت تیکت و گفت‌وگوی مستقیم با پشتیبانی داخل سایت.</p>
-            </div>
-            <span class="chip">پیشنهادی</span>
-          </div>
-          <a href="{% url 'support:chat' %}" class="btn btn-primary btn-sm mt-4">ورود به چت</a>
+    <div class="space-y-3">
+      {% if site_settings.phone %}
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-4">
+        <div>
+          <p class="text-xs text-gray-400">تلفن</p>
+          <p class="text-sm font-semibold text-gray-900" dir="ltr">{{ site_settings.phone }}</p>
         </div>
-
-        {% if site_settings.telegram_admin_url %}
-        <div class="card card-hover p-5 reveal">
-          <h3 class="text-base font-semibold text-gray-900">تلگرام پشتیبانی</h3>
-          <p class="text-sm text-gray-500 mt-1">برای ارتباط سریع با ادمین از تلگرام استفاده کنید.</p>
-          <a href="{{ site_settings.telegram_admin_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm mt-4">ارتباط با ادمین</a>
-        </div>
-        {% endif %}
-
-        {% if site_settings.phone %}
-        <div class="card card-hover p-5 reveal">
-          <h3 class="text-base font-semibold text-gray-900">تماس تلفنی</h3>
-          <p class="text-sm text-gray-500 mt-1"><span class="font-medium text-gray-700" dir="ltr">{{ site_settings.phone }}</span></p>
-          <a href="tel:{{ site_settings.phone }}" class="btn btn-secondary btn-sm mt-4">تماس مستقیم</a>
-        </div>
-        {% endif %}
-
-        {% if site_settings.email %}
-        <div class="card card-hover p-5 reveal">
-          <h3 class="text-base font-semibold text-gray-900">ایمیل</h3>
-          <p class="text-sm text-gray-500 mt-1 break-all" dir="ltr">{{ site_settings.email }}</p>
-          <a href="mailto:{{ site_settings.email }}" class="btn btn-secondary btn-sm mt-4">ارسال ایمیل</a>
-        </div>
-        {% endif %}
-
-        {% if site_settings.telegram_channel_url %}
-        <div class="card card-hover p-5 reveal">
-          <h3 class="text-base font-semibold text-gray-900">کانال اطلاع‌رسانی</h3>
-          <p class="text-sm text-gray-500 mt-1">اخبار سرویس‌ها و اطلاعیه‌های مهم را دنبال کنید.</p>
-          <a href="{{ site_settings.telegram_channel_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm mt-4">مشاهده کانال</a>
-        </div>
-        {% endif %}
-
-        {% if site_settings.instagram_url %}
-        <div class="card card-hover p-5 reveal">
-          <h3 class="text-base font-semibold text-gray-900">اینستاگرام</h3>
-          <p class="text-sm text-gray-500 mt-1">برای اطلاع از محتوا و آپدیت‌ها ما را دنبال کنید.</p>
-          <a href="{{ site_settings.instagram_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm mt-4">مشاهده صفحه</a>
-        </div>
-        {% endif %}
-      </div>
-
-      {% if not site_settings.telegram_admin_url and not site_settings.telegram_channel_url and not site_settings.phone and not site_settings.email and not site_settings.instagram_url %}
-      <div class="card p-5 sm:p-6 reveal">
-        <div class="alert alert-info">
-          <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <p class="leading-7">در حال حاضر مسیر تماس دیگری تنظیم نشده است. لطفا از چت آنلاین برای ارتباط با پشتیبانی استفاده کنید.</p>
-        </div>
+        <a href="tel:{{ site_settings.phone }}" class="btn btn-secondary btn-sm">تماس</a>
       </div>
       {% endif %}
 
-      {% if contact_faqs %}
-      <div class="card p-5 sm:p-6 reveal" x-data="{ openFaq: 0 }">
-        <h2 class="text-sm font-bold text-gray-900">سوالات پرتکرار قبل از تماس</h2>
-        <p class="text-sm text-gray-500 mt-1">شاید پاسخ سوال شما همین‌جا باشد.</p>
-        <div class="divider my-4"></div>
-        <div class="space-y-3">
-          {% for faq in contact_faqs %}
-          <div class="rounded-xl border border-gray-100 overflow-hidden">
-            <button type="button"
-                    @click="openFaq = openFaq === {{ forloop.counter }} ? 0 : {{ forloop.counter }}"
-                    class="w-full flex items-center justify-between gap-3 px-4 py-3 text-right bg-white hover:bg-gray-50 transition-colors">
-              <span class="text-sm font-semibold text-gray-900">{{ faq.question }}</span>
-              <svg class="w-4 h-4 text-gray-400 transition-transform"
-                   :class="{ 'rotate-180': openFaq === {{ forloop.counter }} }"
-                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
-            </button>
-            <div x-show="openFaq === {{ forloop.counter }}"
-                 x-transition
-                 class="px-4 pb-4 pt-1 text-sm text-gray-600 leading-7">
-              {{ faq.answer|linebreaksbr }}
-            </div>
-          </div>
-          {% endfor %}
+      {% if site_settings.email %}
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-4">
+        <div>
+          <p class="text-xs text-gray-400">ایمیل</p>
+          <p class="text-sm font-semibold text-gray-900 break-all" dir="ltr">{{ site_settings.email }}</p>
         </div>
+        <a href="mailto:{{ site_settings.email }}" class="btn btn-secondary btn-sm">ارسال ایمیل</a>
+      </div>
+      {% endif %}
+
+      {% if site_settings.telegram_channel_url %}
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-4">
+        <div>
+          <p class="text-xs text-gray-400">کانال اطلاع‌رسانی</p>
+          <p class="text-sm font-semibold text-gray-900">اطلاعیه‌ها و اخبار سرویس</p>
+        </div>
+        <a href="{{ site_settings.telegram_channel_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">مشاهده</a>
+      </div>
+      {% endif %}
+
+      {% if site_settings.instagram_url %}
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-4">
+        <div>
+          <p class="text-xs text-gray-400">اینستاگرام</p>
+          <p class="text-sm font-semibold text-gray-900">صفحه رسمی</p>
+        </div>
+        <a href="{{ site_settings.instagram_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">مشاهده</a>
       </div>
       {% endif %}
     </div>
 
-    <aside class="lg:col-span-4 space-y-4 reveal">
-      <div class="card p-5">
-        <h2 class="text-sm font-bold text-gray-900">برای پاسخ سریع‌تر</h2>
-        <div class="divider my-4"></div>
-        <ol class="space-y-3 text-sm text-gray-600">
-          <li class="flex items-start gap-2">
-            <span class="chip mt-0.5">1</span>
-            <span>موضوع مشکل را کوتاه و واضح بنویسید.</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="chip mt-0.5">2</span>
-            <span>شماره سفارش را داخل پیام ارسال کنید.</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="chip mt-0.5">3</span>
-            <span>در صورت خطا، اسکرین‌شات بفرستید.</span>
-          </li>
-        </ol>
-      </div>
-
-      <div class="card p-5">
-        <h2 class="text-sm font-bold text-gray-900">اطلاعات مفید قبل از تماس</h2>
-        <div class="divider my-4"></div>
-        <ul class="space-y-2 text-sm text-gray-600 leading-7">
-          <li>ایمیل یا شماره موبایل حساب شما</li>
-          <li>زمان تقریبی رخ دادن مشکل</li>
-          <li>نام سرویس یا محصول مرتبط</li>
-          <li>توضیح مرحله‌به‌مرحله خطا</li>
-        </ul>
-      </div>
-
-      <div class="card p-5">
-        <h2 class="text-sm font-bold text-gray-900">لینک‌های سریع</h2>
-        <div class="divider my-4"></div>
-        <div class="flex flex-col gap-2">
-          <a href="{% url 'core:terms' %}" class="btn btn-ghost btn-sm justify-between">
-            شرایط استفاده
-            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-          </a>
-          <a href="{% url 'core:privacy' %}" class="btn btn-ghost btn-sm justify-between">
-            حریم خصوصی
-            <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-          </a>
-        </div>
-      </div>
-    </aside>
+    {% if not site_settings.telegram_admin_url and not site_settings.telegram_channel_url and not site_settings.phone and not site_settings.email and not site_settings.instagram_url %}
+    <div class="alert alert-info mt-5">
+      <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <p class="leading-7">در حال حاضر مسیر تماس دیگری تنظیم نشده است. لطفا از چت آنلاین استفاده کنید.</p>
+    </div>
+    {% endif %}
   </div>
 
   <div class="card p-5 sm:p-6 mt-6 reveal">
-    <h2 class="text-sm font-bold text-gray-900">قبل از ارتباط، این موارد را آماده کنید</h2>
+    <h2 class="text-sm font-bold text-gray-900">قبل از تماس</h2>
     <div class="divider my-4"></div>
-    <div class="grid gap-3 sm:grid-cols-2">
-      <div class="rounded-xl border border-gray-100 p-4">
-        <p class="text-xs text-gray-400">1) اطلاعات خرید</p>
-        <p class="text-sm text-gray-700 mt-1">شماره سفارش و سرویس مربوطه</p>
-      </div>
-      <div class="rounded-xl border border-gray-100 p-4">
-        <p class="text-xs text-gray-400">2) شرح مسئله</p>
-        <p class="text-sm text-gray-700 mt-1">توضیح کوتاه و دقیق مشکل</p>
-      </div>
-      <div class="rounded-xl border border-gray-100 p-4">
-        <p class="text-xs text-gray-400">3) مستندات</p>
-        <p class="text-sm text-gray-700 mt-1">اسکرین‌شات یا متن خطا</p>
-      </div>
-      <div class="rounded-xl border border-gray-100 p-4">
-        <p class="text-xs text-gray-400">4) اطلاعات تماس</p>
-        <p class="text-sm text-gray-700 mt-1">ایمیل یا شماره موبایل ثبت‌شده</p>
-      </div>
-    </div>
+    <ul class="space-y-2 text-sm text-gray-600 leading-7">
+      <li>شماره سفارش</li>
+      <li>شرح کوتاه مشکل</li>
+      <li>اسکرین‌شات خطا (در صورت نیاز)</li>
+      <li>ایمیل یا شماره موبایل حساب</li>
+    </ul>
+  </div>
+
+  <div class="mt-6 text-center reveal flex flex-wrap gap-2 justify-center">
+    <a href="{% url 'core:terms' %}" class="btn btn-ghost btn-sm">شرایط استفاده</a>
+    <a href="{% url 'core:privacy' %}" class="btn btn-ghost btn-sm">حریم خصوصی</a>
   </div>
 </div>
 {% endblock %}

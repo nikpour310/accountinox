@@ -74,13 +74,7 @@ def privacy(request):
 
 
 def contact(request):
-    try:
-        contact_faqs = list(GlobalFAQ.objects.all()[:4])
-    except Exception:
-        contact_faqs = []
-    return render(request, 'contact.html', {
-        'contact_faqs': contact_faqs,
-    })
+    return render(request, 'contact.html')
 
 
 def site_search(request):
