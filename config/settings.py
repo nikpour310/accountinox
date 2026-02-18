@@ -147,6 +147,9 @@ SOCIALACCOUNT_ADAPTER = 'apps.accounts.social_adapters.AccountinoxSocialAccountA
 # The warning about conflict can be safely ignored (allauth legacy vs new config style)
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email', 'username']
+ACCOUNT_FORMS = {
+    'change_password': 'apps.accounts.forms_allauth.CustomChangePasswordForm',
+}
 # Use custom signup form to capture phone and store in Profile
 # Temporarily disabled to avoid import-time circular import during test collection.
 # If you want to enable this in production, ensure allauth is importable
