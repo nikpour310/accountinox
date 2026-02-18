@@ -2,17 +2,24 @@ import logging
 import secrets
 import re
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
 from django.db.models import Sum
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils import timezone as dj_timezone
 from django.views.decorators.http import require_POST
 from django_ratelimit.decorators import ratelimit
 from django.contrib.auth import get_user_model, login
 
+from allauth.account import app_settings as allauth_account_settings
+from allauth.account.forms import ResetPasswordForm
 from apps.core.models import SiteSettings
 from apps.shop.models import Order, TransactionLog
 
@@ -22,6 +29,7 @@ from .sms_providers import get_sms_provider
 
 logger = logging.getLogger(__name__)
 PHONE_RE = re.compile(r'^09\d{9}$')
+GMAIL_DOMAINS = {'gmail.com', 'googlemail.com'}
 
 
 def _site_settings():
@@ -37,6 +45,249 @@ def _orders_for_user(user):
         .prefetch_related('items__product', 'items__account_item')
         .order_by('-created_at')
     )
+
+
+def _google_oauth_ready(request) -> bool:
+    try:
+        provider_cfg = getattr(settings, 'SOCIALACCOUNT_PROVIDERS', {}).get('google', {})
+        app_cfg = provider_cfg.get('APP') or {}
+        env_ready = bool(str(app_cfg.get('client_id', '')).strip() and str(app_cfg.get('secret', '')).strip())
+        if env_ready:
+            return True
+    except Exception:
+        pass
+
+    try:
+        from allauth.socialaccount.models import SocialApp
+        from django.contrib.sites.models import Site
+
+        current_site = Site.objects.get_current(request)
+        return SocialApp.objects.filter(provider='google', sites=current_site).exists()
+    except Exception:
+        return False
+
+
+def _find_user_by_phone(phone: str):
+    profile = Profile.objects.select_related('user').filter(phone=phone).first()
+    if profile:
+        return profile.user
+    User = get_user_model()
+    return User.objects.filter(username=phone).first()
+
+
+def _mask_phone(phone: str) -> str:
+    if not phone or len(phone) < 7:
+        return phone
+    return f'{phone[:4]}***{phone[-3:]}'
+
+
+def _password_reset_session_clear(request):
+    request.session.pop('pwd_reset_phone', None)
+    request.session.pop('pwd_reset_user_id', None)
+    request.session.modified = True
+
+
+@ratelimit(key='ip', rate='10/m', block=True)
+@ratelimit(key='ip', rate='40/d', block=True)
+def smart_password_reset(request):
+    """
+    Smart password reset entry:
+    - phone number -> OTP reset flow
+    - gmail -> redirect to Google OAuth login
+    - other email -> allauth email code reset flow
+    """
+    identifier = ''
+    if request.method == 'POST':
+        identifier = (request.POST.get('identifier') or request.POST.get('email') or '').strip()
+        if not identifier:
+            messages.error(request, 'شماره موبایل یا ایمیل را وارد کنید.')
+            return render(request, 'account/password_reset.html', {'identifier': identifier})
+
+        if PHONE_RE.match(identifier):
+            settings_obj = _site_settings()
+            if settings_obj and not settings_obj.otp_enabled:
+                messages.error(request, 'بازیابی با کد پیامکی موقتاً غیرفعال است.')
+                return render(request, 'account/password_reset.html', {'identifier': identifier})
+
+            user = _find_user_by_phone(identifier)
+            if not user:
+                messages.error(request, 'کاربری با این شماره موبایل پیدا نشد.')
+                return render(request, 'account/password_reset.html', {'identifier': identifier})
+
+            code = f'{secrets.randbelow(900000) + 100000}'
+            otp, created = PhoneOTP.objects.get_or_create(phone=identifier)
+            cooldown = settings_obj.otp_resend_cooldown if settings_obj else 120
+            if not created and not otp.can_resend(cooldown):
+                seconds_left = max(1, int(cooldown - (dj_timezone.now() - otp.last_sent_at).total_seconds()))
+                messages.warning(request, f'ارسال مجدد کد فعلاً ممکن نیست. {seconds_left} ثانیه دیگر تلاش کنید.')
+                request.session['pwd_reset_phone'] = identifier
+                request.session['pwd_reset_user_id'] = user.id
+                request.session.modified = True
+                return redirect('account_reset_password_phone_verify')
+
+            otp.set_code(code)
+            otp.mark_sent()
+            otp.save()
+            provider = get_sms_provider(provider_name=(settings_obj.sms_provider if settings_obj else None))
+            provider.send_otp(identifier, code)
+
+            request.session['pwd_reset_phone'] = identifier
+            request.session['pwd_reset_user_id'] = user.id
+            request.session.modified = True
+            messages.success(request, 'کد تایید به شماره شما ارسال شد.')
+            return redirect('account_reset_password_phone_verify')
+
+        email = identifier.lower()
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, 'فرمت ورودی معتبر نیست. ایمیل یا شماره موبایل درست وارد کنید.')
+            return render(request, 'account/password_reset.html', {'identifier': identifier})
+
+        domain = email.split('@', 1)[1].lower() if '@' in email else ''
+        if domain in GMAIL_DOMAINS:
+            settings_obj = _site_settings()
+            google_enabled = bool(settings_obj.google_oauth_enabled) if settings_obj else False
+            if not google_enabled:
+                messages.error(request, 'ورود با گوگل در حال حاضر فعال نیست.')
+                return render(request, 'account/password_reset.html', {'identifier': identifier})
+            if not _google_oauth_ready(request):
+                messages.error(request, 'تنظیمات ورود با گوگل کامل نیست. با پشتیبانی تماس بگیرید.')
+                return render(request, 'account/password_reset.html', {'identifier': identifier})
+            messages.info(request, 'برای حساب‌های Gmail از ورود با گوگل استفاده کنید.')
+            return redirect(f"{reverse('google_login')}?process=login")
+
+        reset_form = ResetPasswordForm(data={'email': email})
+        if reset_form.is_valid():
+            reset_form.save(request)
+            if allauth_account_settings.PASSWORD_RESET_BY_CODE_ENABLED:
+                messages.success(request, 'کد تایید به ایمیل شما ارسال شد.')
+                return redirect('account_confirm_password_reset_code')
+            messages.success(request, 'لینک بازیابی رمز عبور به ایمیل شما ارسال شد.')
+            return redirect('account_reset_password_done')
+
+        email_errors = reset_form.errors.get('email') or reset_form.non_field_errors()
+        if email_errors:
+            messages.error(request, email_errors[0])
+        else:
+            messages.error(request, 'ارسال درخواست بازیابی انجام نشد.')
+
+    return render(request, 'account/password_reset.html', {'identifier': identifier})
+
+
+@ratelimit(key='ip', rate='15/m', block=True)
+def smart_password_reset_phone_verify(request):
+    phone = request.session.get('pwd_reset_phone')
+    user_id = request.session.get('pwd_reset_user_id')
+    if not phone or not user_id:
+        messages.error(request, 'درخواست بازیابی رمز پیامکی معتبر نیست. دوباره شروع کنید.')
+        return redirect('account_reset_password')
+
+    User = get_user_model()
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        _password_reset_session_clear(request)
+        messages.error(request, 'حساب کاربری مرتبط پیدا نشد. دوباره تلاش کنید.')
+        return redirect('account_reset_password')
+
+    form_data = {'code': '', 'password1': '', 'password2': ''}
+    errors = {}
+    settings_obj = _site_settings()
+    expiry = settings_obj.otp_expiry_seconds if settings_obj else 120
+
+    if request.method == 'POST':
+        form_data['code'] = (request.POST.get('code') or '').strip()
+        form_data['password1'] = (request.POST.get('password1') or '').strip()
+        form_data['password2'] = (request.POST.get('password2') or '').strip()
+
+        if not form_data['code']:
+            errors['code'] = 'کد تایید الزامی است.'
+        if not form_data['password1']:
+            errors['password1'] = 'رمز عبور جدید را وارد کنید.'
+        if not form_data['password2']:
+            errors['password2'] = 'تکرار رمز عبور جدید الزامی است.'
+        if form_data['password1'] and form_data['password2'] and form_data['password1'] != form_data['password2']:
+            errors['password2'] = 'رمز عبور و تکرار آن یکسان نیست.'
+        if form_data['password1'] and user.check_password(form_data['password1']):
+            errors['password1'] = 'شما نمی‌توانید رمز قبلی‌تان را دوباره انتخاب کنید.'
+        if form_data['password1'] and 'password1' not in errors:
+            try:
+                validate_password(form_data['password1'], user=user)
+            except ValidationError as exc:
+                errors['password1'] = exc.messages[0] if exc.messages else 'رمز عبور جدید معتبر نیست.'
+
+        otp = PhoneOTP.objects.filter(phone=phone).first()
+        if not otp:
+            errors['code'] = 'ابتدا کد تایید را دریافت کنید.'
+        elif otp.locked_until and dj_timezone.now() < otp.locked_until:
+            errors['code'] = 'تعداد تلاش بیش از حد مجاز است. چند دقیقه بعد دوباره تلاش کنید.'
+        elif otp.is_expired(expiry):
+            errors['code'] = 'کد تایید منقضی شده است. کد جدید دریافت کنید.'
+        elif form_data['code'] and not otp.check_code(form_data['code']):
+            otp.attempts += 1
+            max_attempts = settings_obj.otp_max_attempts if settings_obj else 3
+            if otp.attempts >= max_attempts:
+                otp.locked_until = dj_timezone.now() + timezone.timedelta(
+                    seconds=(settings_obj.otp_resend_cooldown if settings_obj else 120)
+                )
+            otp.save(update_fields=['attempts', 'locked_until'])
+            errors['code'] = 'کد تایید واردشده صحیح نیست.'
+
+        if not errors:
+            user.set_password(form_data['password1'])
+            user.save(update_fields=['password'])
+            if otp:
+                otp.otp_hmac = None
+                otp.attempts = 0
+                otp.locked_until = None
+                otp.save(update_fields=['otp_hmac', 'attempts', 'locked_until'])
+            _password_reset_session_clear(request)
+            messages.success(request, 'رمز عبور با موفقیت تغییر کرد. اکنون می‌توانید وارد شوید.')
+            return redirect('account_login')
+
+    return render(
+        request,
+        'account/password_reset_phone_verify.html',
+        {
+            'phone': phone,
+            'masked_phone': _mask_phone(phone),
+            'form_data': form_data,
+            'errors': errors,
+        },
+    )
+
+
+@require_POST
+@ratelimit(key='ip', rate='6/m', block=True)
+def smart_password_reset_phone_resend(request):
+    phone = request.session.get('pwd_reset_phone')
+    user_id = request.session.get('pwd_reset_user_id')
+    if not phone or not user_id:
+        messages.error(request, 'درخواست بازیابی رمز پیامکی معتبر نیست. دوباره شروع کنید.')
+        return redirect('account_reset_password')
+
+    user = _find_user_by_phone(phone)
+    if not user or str(user.id) != str(user_id):
+        _password_reset_session_clear(request)
+        messages.error(request, 'حساب کاربری مرتبط پیدا نشد. دوباره تلاش کنید.')
+        return redirect('account_reset_password')
+
+    settings_obj = _site_settings()
+    cooldown = settings_obj.otp_resend_cooldown if settings_obj else 120
+    otp, _ = PhoneOTP.objects.get_or_create(phone=phone)
+    if not otp.can_resend(cooldown):
+        seconds_left = max(1, int(cooldown - (dj_timezone.now() - otp.last_sent_at).total_seconds()))
+        messages.warning(request, f'ارسال مجدد کد فعلاً ممکن نیست. {seconds_left} ثانیه دیگر تلاش کنید.')
+        return redirect('account_reset_password_phone_verify')
+
+    code = f'{secrets.randbelow(900000) + 100000}'
+    otp.set_code(code)
+    otp.mark_sent()
+    otp.save()
+    provider = get_sms_provider(provider_name=(settings_obj.sms_provider if settings_obj else None))
+    provider.send_otp(phone, code)
+    messages.success(request, 'کد جدید برای شما ارسال شد.')
+    return redirect('account_reset_password_phone_verify')
 
 
 @login_required
@@ -516,4 +767,3 @@ def verify_otp_login(request):
     # Log the user in via session
     login(request, user)
     return JsonResponse({'ok': True})
-

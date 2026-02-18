@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 from django.contrib.staticfiles import finders
 from datetime import datetime, timezone
 from .sitemaps import StaticViewSitemap, BlogSitemap, ProductSitemap
+from apps.accounts import views as account_views
 
 sitemaps = {
     'static': StaticViewSitemap,
@@ -44,6 +45,10 @@ def service_worker(request):
 urlpatterns = [
     path('healthz/', healthcheck, name='healthcheck'),  # G-4: Monitoring endpoint
     path('sw.js', service_worker, name='service_worker'),
+    # Smart password reset (must be before allauth include to override default path)
+    path('accounts/password/reset/', account_views.smart_password_reset, name='account_reset_password'),
+    path('accounts/password/reset/phone/verify/', account_views.smart_password_reset_phone_verify, name='account_reset_password_phone_verify'),
+    path('accounts/password/reset/phone/resend/', account_views.smart_password_reset_phone_resend, name='account_reset_password_phone_resend'),
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots_txt'),
     path('terms/', TemplateView.as_view(template_name='terms.html'), name='terms'),
     path('privacy/', TemplateView.as_view(template_name='privacy.html'), name='privacy'),

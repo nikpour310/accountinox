@@ -150,6 +150,8 @@ ACCOUNT_SIGNUP_FIELDS = ['email', 'username']
 ACCOUNT_FORMS = {
     'change_password': 'apps.accounts.forms_allauth.CustomChangePasswordForm',
 }
+ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
+ACCOUNT_PASSWORD_RESET_BY_CODE_TIMEOUT = 300
 # Use custom signup form to capture phone and store in Profile
 # Temporarily disabled to avoid import-time circular import during test collection.
 # If you want to enable this in production, ensure allauth is importable
