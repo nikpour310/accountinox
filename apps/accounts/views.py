@@ -243,7 +243,7 @@ def smart_password_reset_phone_verify(request):
                 otp.save(update_fields=['otp_hmac', 'attempts', 'locked_until'])
             _password_reset_session_clear(request)
             messages.success(request, 'رمز عبور با موفقیت تغییر کرد. اکنون می‌توانید وارد شوید.')
-            return redirect('account_login')
+            return redirect('account_password_reset_completed')
 
     return render(
         request,
@@ -253,6 +253,7 @@ def smart_password_reset_phone_verify(request):
             'masked_phone': _mask_phone(phone),
             'form_data': form_data,
             'errors': errors,
+            'submitted': request.method == 'POST',
         },
     )
 
