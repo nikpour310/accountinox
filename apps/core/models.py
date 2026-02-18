@@ -2,6 +2,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class SiteSettings(models.Model):
@@ -76,6 +77,17 @@ class SiteSettings(models.Model):
     order_email_footer = models.TextField('متن پایانی ایمیل سفارش', blank=True,
                                            default='در صورت هرگونه سوال، با پشتیبانی ما در تماس باشید.',
                                            help_text='متن زیر فاکتور در ایمیل')
+    vat_enabled = models.BooleanField(
+        'مالیات بر ارزش افزوده فعال',
+        default=True,
+        help_text='در صورت فعال بودن، درصد مالیات بر جمع جزء سفارش افزوده می‌شود.',
+    )
+    vat_percent = models.PositiveSmallIntegerField(
+        'درصد مالیات بر ارزش افزوده',
+        default=10,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text='به‌صورت درصد. مقدار پیش‌فرض ۱۰ است.',
+    )
 
     # ── درگاه پرداخت ──────────────────────────────
     payment_gateway = models.CharField('درگاه پرداخت', max_length=50, blank=True, default='zarinpal')

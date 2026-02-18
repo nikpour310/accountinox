@@ -131,8 +131,15 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             'classes': ('collapse',),
         }),
         ('� اعلان سفارش', {
-            'fields': ('order_sms_enabled', 'order_sms_text', 'order_email_intro', 'order_email_footer'),
-            'description': 'تنظیمات ایمیل و پیامک پس از خرید موفق. در متن پیامک از {order_number} برای درج شماره سفارش استفاده کنید.',
+            'fields': (
+                'order_sms_enabled',
+                'order_sms_text',
+                'order_email_intro',
+                'order_email_footer',
+                'vat_enabled',
+                'vat_percent',
+            ),
+            'description': 'تنظیمات ایمیل/پیامک پس از خرید و مالیات فاکتور. در متن پیامک از {order_number} برای درج شماره سفارش استفاده کنید.',
         }),
         ('�💳 درگاه پرداخت', {
             'fields': ('payment_gateway',),

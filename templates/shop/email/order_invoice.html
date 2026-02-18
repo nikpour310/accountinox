@@ -71,20 +71,30 @@
     <tr style="background-color:#f9fafb;">
         <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;">ردیف</td>
         <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;">محصول</td>
-        <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;text-align:left;">قیمت (تومان)</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:bold;color:#6b7280;border-bottom:2px solid #e5e7eb;text-align:left;">مبلغ (تومان)</td>
     </tr>
     {# Items #}
     {% for item in items %}
     <tr>
         <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">{{ forloop.counter }}</td>
-        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">{{ item.product.title|default:"محصول حذف‌شده" }}</td>
-        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:left;font-family:Consolas,monospace;">{{ item.price|price_format }}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">{{ item.product.title|default:"محصول حذف‌شده" }} {% if item.quantity > 1 %}<span style="font-size:11px;color:#6b7280;">× {{ item.quantity }}</span>{% endif %}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:left;font-family:Consolas,monospace;">{{ item.line_total|price_format }}</td>
     </tr>
     {% endfor %}
-    {# Total Row #}
+    {# Invoice Breakdown #}
+    <tr style="background-color:#f9fafb;">
+        <td colspan="2" style="padding:10px 12px;font-size:13px;font-weight:bold;color:#4b5563;border-top:2px solid #e5e7eb;">جمع جزء</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:bold;color:#4b5563;text-align:left;border-top:2px solid #e5e7eb;font-family:Consolas,monospace;">{{ invoice_subtotal|price_format }} تومان</td>
+    </tr>
+    {% if invoice_has_vat %}
+    <tr style="background-color:#fffbeb;">
+        <td colspan="2" style="padding:10px 12px;font-size:13px;font-weight:bold;color:#92400e;">مالیات بر ارزش افزوده ({{ invoice_vat_percent }}٪)</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:bold;color:#92400e;text-align:left;font-family:Consolas,monospace;">+ {{ invoice_vat_amount|price_format }} تومان</td>
+    </tr>
+    {% endif %}
     <tr style="background-color:#f0f9ff;">
-        <td colspan="2" style="padding:12px;font-size:14px;font-weight:bold;color:#1e40af;border-top:2px solid #bfdbfe;">جمع کل</td>
-        <td style="padding:12px;font-size:16px;font-weight:bold;color:#1e40af;text-align:left;border-top:2px solid #bfdbfe;font-family:Consolas,monospace;">{{ order.total|price_format }} تومان</td>
+        <td colspan="2" style="padding:12px;font-size:14px;font-weight:bold;color:#1e40af;border-top:2px solid #bfdbfe;">مبلغ کل قابل پرداخت</td>
+        <td style="padding:12px;font-size:16px;font-weight:bold;color:#1e40af;text-align:left;border-top:2px solid #bfdbfe;font-family:Consolas,monospace;">{{ invoice_total|price_format }} تومان</td>
     </tr>
     </table>
 </td>

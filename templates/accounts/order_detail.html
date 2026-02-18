@@ -135,6 +135,16 @@
                 </div>
                 <div class="border-t border-gray-100"></div>
                 <div class="flex justify-between items-center">
+                  <dt class="text-gray-500">جمع جزء</dt>
+                  <dd class="text-gray-900 font-medium">{{ order.effective_subtotal|price_format }} <span class="text-xs text-gray-400">تومان</span></dd>
+                </div>
+                {% if order.has_vat %}
+                <div class="flex justify-between items-center">
+                  <dt class="text-gray-500">مالیات بر ارزش افزوده ({{ order.effective_vat_percent }}٪)</dt>
+                  <dd class="text-gray-900 font-medium">+ {{ order.effective_vat_amount|price_format }} <span class="text-xs text-gray-400">تومان</span></dd>
+                </div>
+                {% endif %}
+                <div class="flex justify-between items-center">
                   <dt class="text-gray-500">مبلغ کل</dt>
                   <dd class="text-lg font-bold text-primary-600">{{ order.total|price_format }} <span class="text-xs text-gray-400">تومان</span></dd>
                 </div>
@@ -219,4 +229,3 @@
   </div>
 </div>
 {% endblock %}
-

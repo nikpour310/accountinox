@@ -4,6 +4,7 @@ Order notifications — email invoice + SMS after successful payment.
 Called from payment_callback after a verified, successful payment.
 """
 import logging
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -36,10 +37,18 @@ def send_order_email(order):
     site_url = getattr(settings, 'SITE_URL', '').strip().rstrip('/')
 
     items = order.items.select_related('product').all()
+    invoice_subtotal = Decimal(getattr(order, 'effective_subtotal', order.total) or 0)
+    invoice_vat_amount = Decimal(getattr(order, 'effective_vat_amount', 0) or 0)
+    invoice_vat_percent = int(getattr(order, 'effective_vat_percent', 0) or 0)
 
     context = {
         'order': order,
         'items': items,
+        'invoice_subtotal': invoice_subtotal,
+        'invoice_vat_amount': invoice_vat_amount,
+        'invoice_vat_percent': invoice_vat_percent,
+        'invoice_has_vat': invoice_vat_amount > 0,
+        'invoice_total': order.total,
         'site_name': site_name,
         'email_intro': email_intro,
         'email_footer': email_footer,

@@ -156,6 +156,12 @@
             <dt>جمع جزء</dt>
             <dd>{{ subtotal|price_format }} <span class="text-xs">تومان</span></dd>
           </div>
+          {% if vat_enabled and vat_amount > 0 %}
+          <div class="flex items-center justify-between text-gray-600">
+            <dt>مالیات بر ارزش افزوده ({{ vat_percent }}٪)</dt>
+            <dd>+ {{ vat_amount|price_format }} <span class="text-xs">تومان</span></dd>
+          </div>
+          {% endif %}
           <div class="flex items-center justify-between border-t border-gray-200 pt-3 text-base font-semibold text-gray-900">
             <dt>مبلغ پرداخت</dt>
             <dd>{{ final_total|price_format }} <span class="text-sm font-normal">تومان</span></dd>

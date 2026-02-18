@@ -159,6 +159,12 @@
               <dt>جمع جزء</dt>
               <dd class="font-medium text-gray-900">{{ subtotal|price_format }} تومان</dd>
             </div>
+            {% if vat_enabled and vat_amount > 0 %}
+            <div class="flex items-center justify-between text-gray-600">
+              <dt>مالیات بر ارزش افزوده ({{ vat_percent }}٪)</dt>
+              <dd class="font-medium text-gray-900">+ {{ vat_amount|price_format }} تومان</dd>
+            </div>
+            {% endif %}
 
             <div class="divider"></div>
 

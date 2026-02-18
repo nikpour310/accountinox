@@ -334,9 +334,9 @@ class OrderAdmin(admin.ModelAdmin):
             'fields': ('shipping_address',),
             'classes': ('collapse',),
         }),
-        ('جزئیات مالی', {'fields': ('total', 'created_at')}),
+        ('جزئیات مالی', {'fields': ('subtotal_amount', 'vat_percent_applied', 'vat_amount', 'total', 'created_at')}),
     )
-    readonly_fields = ('order_number', 'created_at', 'status_updated_at')
+    readonly_fields = ('order_number', 'created_at', 'status_updated_at', 'subtotal_amount', 'vat_percent_applied', 'vat_amount')
 
     def get_queryset(self, request):
         failed_tx = TransactionLog.objects.filter(order=OuterRef('pk'), success=False)

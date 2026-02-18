@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import logging
 
 from django.conf import settings
@@ -31,6 +31,46 @@ def _safe_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _get_vat_settings():
+    default_enabled = True
+    default_percent = 10
+    try:
+        from apps.core.models import SiteSettings
+
+        settings_obj = SiteSettings.load()
+        vat_enabled = bool(getattr(settings_obj, 'vat_enabled', default_enabled))
+        vat_percent = _safe_int(getattr(settings_obj, 'vat_percent', default_percent), default_percent)
+    except Exception:
+        vat_enabled = default_enabled
+        vat_percent = default_percent
+
+    vat_percent = max(0, min(vat_percent, 100))
+    return vat_enabled, vat_percent
+
+
+def _build_invoice_totals(subtotal):
+    subtotal_amount = Decimal(subtotal or 0).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    vat_enabled, vat_percent = _get_vat_settings()
+
+    if not vat_enabled or vat_percent <= 0:
+        vat_amount = Decimal('0.00')
+        final_total = subtotal_amount
+    else:
+        vat_amount = (subtotal_amount * Decimal(vat_percent) / Decimal('100')).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP,
+        )
+        final_total = (subtotal_amount + vat_amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    return {
+        'subtotal': subtotal_amount,
+        'vat_enabled': vat_enabled,
+        'vat_percent': vat_percent,
+        'vat_amount': vat_amount,
+        'final_total': final_total,
+    }
 
 
 def _sync_cart_to_db(request):
@@ -353,13 +393,17 @@ def cart_add(request):
 def cart_detail(request):
     _load_cart_from_db(request)
     lines, subtotal, total_quantity = _build_cart_lines(request)
+    totals = _build_invoice_totals(subtotal)
     return render(
         request,
         'shop/cart.html',
         {
             'cart_lines': lines,
-            'subtotal': subtotal,
-            'final_total': subtotal,
+            'subtotal': totals['subtotal'],
+            'vat_enabled': totals['vat_enabled'],
+            'vat_percent': totals['vat_percent'],
+            'vat_amount': totals['vat_amount'],
+            'final_total': totals['final_total'],
             'total_quantity': total_quantity,
         },
     )
@@ -462,6 +506,7 @@ def checkout(request):
         ]
         subtotal = cart_lines[0]['line_total']
         total_quantity = legacy_quantity
+    totals = _build_invoice_totals(subtotal)
 
     addresses = []
     if request.user.is_authenticated:
@@ -474,8 +519,11 @@ def checkout(request):
             'shop/checkout.html',
             {
                 'cart_lines': cart_lines,
-                'subtotal': subtotal,
-                'final_total': subtotal,
+                'subtotal': totals['subtotal'],
+                'vat_enabled': totals['vat_enabled'],
+                'vat_percent': totals['vat_percent'],
+                'vat_amount': totals['vat_amount'],
+                'final_total': totals['final_total'],
                 'total_quantity': total_quantity,
                 'addresses': addresses,
                 'checkout_data': initial_data,
@@ -534,8 +582,11 @@ def checkout(request):
             'shop/checkout.html',
             {
                 'cart_lines': cart_lines,
-                'subtotal': subtotal,
-                'final_total': subtotal,
+                'subtotal': totals['subtotal'],
+                'vat_enabled': totals['vat_enabled'],
+                'vat_percent': totals['vat_percent'],
+                'vat_amount': totals['vat_amount'],
+                'final_total': totals['final_total'],
                 'total_quantity': total_quantity,
                 'addresses': addresses,
                 'checkout_data': checkout_data,
@@ -546,7 +597,10 @@ def checkout(request):
 
     order = Order.objects.create(
         user=request.user if request.user.is_authenticated else None,
-        total=subtotal,
+        subtotal_amount=totals['subtotal'],
+        vat_percent_applied=totals['vat_percent'] if totals['vat_enabled'] else 0,
+        vat_amount=totals['vat_amount'],
+        total=totals['final_total'],
         status=Order.STATUS_PENDING_REVIEW,
         customer_name=checkout_data['full_name'],
         customer_phone=checkout_data['phone'],

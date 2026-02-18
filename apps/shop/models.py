@@ -335,6 +335,9 @@ class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                              null=True, blank=True, verbose_name='کاربر')
     order_number = models.CharField('شماره سفارش', max_length=30, unique=True, blank=True)
+    subtotal_amount = models.DecimalField('جمع جزء', max_digits=10, decimal_places=2, default=0)
+    vat_percent_applied = models.PositiveSmallIntegerField('درصد مالیات اعمال‌شده', default=0)
+    vat_amount = models.DecimalField('مبلغ مالیات بر ارزش افزوده', max_digits=10, decimal_places=2, default=0)
     total = models.DecimalField('مبلغ کل', max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField('تاریخ ایجاد', default=timezone.now)
     status_updated_at = models.DateTimeField('آخرین تغییر وضعیت', default=timezone.now)
@@ -398,6 +401,32 @@ class Order(models.Model):
                 state = 'pending'
             steps.append({'key': key, 'label': label, 'state': state})
         return steps
+
+    @property
+    def effective_subtotal(self):
+        subtotal = Decimal(self.subtotal_amount or 0)
+        if subtotal > 0:
+            return subtotal
+        if self.vat_amount and self.total:
+            calculated = Decimal(self.total or 0) - Decimal(self.vat_amount or 0)
+            if calculated > 0:
+                return calculated
+        return Decimal(self.total or 0)
+
+    @property
+    def effective_vat_amount(self):
+        vat = Decimal(self.vat_amount or 0)
+        if vat > 0:
+            return vat
+        return Decimal('0')
+
+    @property
+    def effective_vat_percent(self):
+        return int(self.vat_percent_applied or 0)
+
+    @property
+    def has_vat(self):
+        return self.effective_vat_amount > 0
 
     def __str__(self):
         return f'سفارش {self.order_number}'
