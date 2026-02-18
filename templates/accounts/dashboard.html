@@ -128,7 +128,7 @@
                 </div>
                 <div>
                   <p class="text-sm font-medium text-gray-900">سفارش {{ order.order_number }}</p>
-                  <p class="text-xs text-gray-400 mt-0.5">{{ order.created_at|date:'Y/m/d H:i' }}</p>
+                  <p class="text-xs text-gray-400 mt-0.5">{{ order.created_at|jdate:'Y/m/d H:i' }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-3">
@@ -172,7 +172,7 @@
               </div>
               <div>
                 <p class="text-sm font-medium text-gray-900">گفتگوی #{{ session.id }}</p>
-                <p class="text-xs text-gray-400">{{ session.created_at|date:'Y/m/d H:i' }}</p>
+                <p class="text-xs text-gray-400">{{ session.created_at|jdate:'Y/m/d H:i' }}</p>
               </div>
             </div>
             <span class="chip text-xs {% if session.is_resolved %}bg-green-50 text-green-700{% else %}bg-sky-50 text-sky-700{% endif %}">

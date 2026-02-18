@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n socialaccount %}
+
+{% block meta_robots %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block title %}اتصال حساب‌های ثالث | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="page-wrapper py-10 sm:py-14">
+  <section id="social-connections-page" class="mx-auto max-w-3xl px-4">
+    <div class="text-center mb-8">
+      <h1 class="section-title">حساب‌های متصل</h1>
+      <p class="section-subtitle mt-2">مدیریت ورود با سرویس‌های ثالث</p>
+    </div>
+
+    <div class="card card-elevated p-6 sm:p-8">
+      {% if form.accounts %}
+      <p class="text-sm text-gray-500 mb-5">اکانت‌های زیر به حساب شما متصل هستند:</p>
+      <form method="post" action="{% url 'socialaccount_connections' %}" class="space-y-4">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="alert-error">
+          {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="space-y-3">
+          {% for acc in form.fields.account.choices %}
+            {% with account=acc.0.instance.get_provider_account %}
+            <label class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer">
+              <div class="flex items-center gap-3 min-w-0">
+                <input
+                  type="radio"
+                  name="account"
+                  value="{{ account.account.pk }}"
+                  class="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                  {% if forloop.first %}checked{% endif %}
+                >
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 truncate">{{ account }}</p>
+                  <p class="text-xs text-gray-500">{{ account.get_brand.name }}</p>
+                </div>
+              </div>
+            </label>
+            {% endwith %}
+          {% endfor %}
+        </div>
+
+        {% if form.account.errors %}
+        <p class="text-xs text-red-600">{{ form.account.errors.0 }}</p>
+        {% endif %}
+
+        <button type="submit" class="btn btn-lg w-full justify-center border-2 border-red-300 text-red-700 hover:bg-red-50 transition-colors font-semibold rounded-xl">
+          حذف اتصال انتخاب‌شده
+        </button>
+      </form>
+      {% else %}
+      <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center text-sm text-gray-600">
+        در حال حاضر هیچ حساب ثالثی به اکانت شما متصل نیست.
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card card-elevated p-6 sm:p-8 mt-5">
+      <h2 class="text-base sm:text-lg font-bold text-gray-900 mb-4">افزودن حساب جدید</h2>
+
+      {% if site_settings and site_settings.google_oauth_enabled and google_oauth_ready %}
+      <a href="{% provider_login_url 'google' process='connect' %}" class="btn btn-lg w-full justify-center border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-semibold rounded-xl">
+        <svg class="w-5 h-5 ml-2 inline-block" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6.1-2.8-6.1-6.2s2.8-6.2 6.1-6.2c1.9 0 3.2.8 3.9 1.5l2.7-2.6C17 2.9 14.7 2 12 2 6.8 2 2.6 6.4 2.6 11.8S6.8 21.6 12 21.6c6.9 0 9.1-4.9 9.1-7.4 0-.5-.1-.9-.1-1.3H12z"/>
+        </svg>
+        اتصال حساب گوگل
+      </a>
+      {% else %}
+      <div class="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+        ورود با گوگل غیرفعال است یا پیکربندی آن کامل نشده است.
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

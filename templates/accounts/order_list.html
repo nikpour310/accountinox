@@ -45,7 +45,7 @@
                 <td class="px-6 py-4">
                   <span class="font-semibold text-gray-900 font-mono text-xs">{{ order.order_number }}</span>
                 </td>
-                <td class="px-6 py-4 text-gray-500">{{ order.created_at|date:'Y/m/d H:i' }}</td>
+                <td class="px-6 py-4 text-gray-500">{{ order.created_at|jdate:'Y/m/d H:i' }}</td>
                 <td class="px-6 py-4">
                   <span class="font-semibold text-gray-900">{{ order.total|price_format }}</span>
                   <span class="text-xs text-gray-400">تومان</span>
@@ -79,7 +79,7 @@
                 </div>
                 <div>
                   <p class="text-sm font-semibold text-gray-900">سفارش {{ order.order_number }}</p>
-                  <p class="text-xs text-gray-400">{{ order.created_at|date:'Y/m/d' }}</p>
+                  <p class="text-xs text-gray-400">{{ order.created_at|jdate:'Y/m/d' }}</p>
                 </div>
               </div>
               <svg class="w-4 h-4 text-gray-400 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -113,4 +113,3 @@
   </div>
 </div>
 {% endblock %}
-

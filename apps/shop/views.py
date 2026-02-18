@@ -664,7 +664,7 @@ def checkout(request):
         payment_url = result.get('payment_url', '')
         return redirect(payment_url)
 
-    error = result.get('error', 'Payment initiation failed')
+    error = result.get('error', 'شروع پرداخت در درگاه انجام نشد.')
     return render(
         request,
         'shop/payment_error.html',
@@ -701,7 +701,7 @@ def payment_callback(request, provider):
             request,
             'shop/payment_failed.html',
             {
-                'error': f'Payment failed with status {status_code}',
+                'error': f'پرداخت در درگاه ناموفق بود. کد وضعیت: {status_code or "-"}',
                 'reference': reference,
             },
         )
@@ -761,7 +761,7 @@ def payment_callback(request, provider):
                 request,
                 'shop/payment_failed.html',
                 {
-                    'error': 'Payment reference mismatch',
+                    'error': 'مرجع تراکنش با سفارش مطابقت ندارد.',
                     'reference': reference,
                 },
                 status=400,
@@ -783,7 +783,7 @@ def payment_callback(request, provider):
                 request,
                 'shop/payment_error.html',
                 {
-                    'error': 'Verified payment could not be mapped to an order',
+                    'error': 'پرداخت تایید شد اما سفارش مرتبط پیدا نشد.',
                     'reference': reference,
                 },
                 status=400,
@@ -829,7 +829,7 @@ def payment_callback(request, provider):
                 request,
                 'shop/payment_error.html',
                 {
-                    'error': 'Order not found',
+                    'error': 'سفارش مرتبط با این تراکنش یافت نشد.',
                     'reference': reference,
                 },
                 status=404,
@@ -840,13 +840,13 @@ def payment_callback(request, provider):
                 request,
                 'shop/payment_error.html',
                 {
-                    'error': f'Error: {exc}',
+                    'error': 'در پردازش پرداخت خطا رخ داد. لطفا دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.',
                     'reference': reference,
                 },
                 status=500,
             )
 
-    error = verify_result.get('error', 'Payment verification failed')
+    error = verify_result.get('error', 'تایید تراکنش در درگاه ناموفق بود.')
     logger.warning('[Payment] Verification failed: %s', error)
     return render(
         request,

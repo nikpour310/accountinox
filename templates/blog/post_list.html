@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block meta_title %}بلاگ | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}آموزش‌ها و راهنمای خرید محصولات دیجیتال در بلاگ {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
@@ -25,7 +26,7 @@
           {% endif %}
         </a>
         <div class="flex flex-1 flex-col p-5 sm:p-6">
-          <span class="text-xs font-medium text-gray-400">{{ p.created_at|date:'Y/m/d' }}</span>
+          <span class="text-xs font-medium text-gray-400">{{ p.created_at|jdate:'Y/m/d' }}</span>
           <h2 class="mt-2 text-base font-semibold text-gray-900 leading-snug">
             <a href="{{ p.get_absolute_url }}" class="hover:text-primary-600 transition-colors">{{ p.title }}</a>
           </h2>
@@ -42,4 +43,3 @@
 
 </div>
 {% endblock %}
-

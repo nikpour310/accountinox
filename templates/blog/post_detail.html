@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static seo_tags %}
 
 {% block meta_title %}{{ post.seo_title|default:post.title }} | بلاگ {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}{{ post.seo_description|default:post.content|striptags|truncatechars:160 }}{% endblock %}
@@ -108,7 +108,7 @@
       <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400">
         <span class="inline-flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
-          {{ post.created_at|date:'Y/m/d' }}
+          {{ post.created_at|jdate:'Y/m/d' }}
         </span>
         {% if post.reading_time %}
         <span class="inline-flex items-center gap-1.5">
@@ -221,7 +221,7 @@
                 {% endif %}
               </div>
               <div class="p-4 flex-1 flex flex-col">
-                <span class="text-[11px] text-gray-400">{{ rp.created_at|date:'Y/m/d' }}</span>
+                <span class="text-[11px] text-gray-400">{{ rp.created_at|jdate:'Y/m/d' }}</span>
                 <h3 class="mt-1.5 text-sm font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-primary-600 transition-colors">{{ rp.title }}</h3>
               </div>
             </a>

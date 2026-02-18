@@ -31,10 +31,24 @@ def send_order_email(order):
 
     site = _get_site_settings()
     site_name = site.site_name if site else 'Accountinox'
+    site_brand_name = (
+        site.brand_wordmark_fa if site and getattr(site, 'brand_wordmark_fa', '') else 'اکانتینوکس'
+    )
     email_intro = site.order_email_intro if site else ''
     email_footer = site.order_email_footer if site else ''
     support_email = site.email if site else ''
-    site_url = getattr(settings, 'SITE_URL', '').strip().rstrip('/')
+    site_url = (
+        getattr(settings, 'SITE_BASE_URL', '').strip().rstrip('/')
+        or getattr(settings, 'SITE_URL', '').strip().rstrip('/')
+    )
+    logo_url = ''
+    if site and getattr(site, 'logo', None):
+        try:
+            logo_url = site.logo.url
+            if logo_url.startswith('/') and site_url:
+                logo_url = f'{site_url}{logo_url}'
+        except Exception:
+            logo_url = ''
 
     items = order.items.select_related('product').all()
     invoice_subtotal = Decimal(getattr(order, 'effective_subtotal', order.total) or 0)
@@ -50,13 +64,15 @@ def send_order_email(order):
         'invoice_has_vat': invoice_vat_amount > 0,
         'invoice_total': order.total,
         'site_name': site_name,
+        'site_brand_name': site_brand_name,
+        'site_logo_url': logo_url,
         'email_intro': email_intro,
         'email_footer': email_footer,
         'support_email': support_email,
         'site_url': site_url,
     }
 
-    subject = f'{site_name} — فاکتور سفارش {order.order_number}'
+    subject = f'{site_brand_name} — فاکتور سفارش {order.order_number}'
 
     try:
         html_body = render_to_string('shop/email/order_invoice.html', context)

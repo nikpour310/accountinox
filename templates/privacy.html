@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load seo_tags %}
 {% block title %}حریم خصوصی - {{ site_settings.site_name }}{% endblock %}
 {% block meta_description %}سیاست حریم خصوصی {{ site_settings.site_name|default:'Accountinox' }} و نحوه مدیریت اطلاعات کاربران.{% endblock %}
 {% block content %}
@@ -20,7 +21,7 @@
     <p class="mt-4 text-xs text-gray-500">
       آخرین به‌روزرسانی:
       {% if site_settings and site_settings.privacy_updated %}
-      <span class="font-medium text-gray-700">{{ site_settings.privacy_updated|date:"Y/m/d H:i" }}</span>
+      <span class="font-medium text-gray-700">{{ site_settings.privacy_updated|jdate:"Y/m/d H:i" }}</span>
       {% else %}
       <span class="font-medium text-gray-700">ثبت نشده</span>
       {% endif %}

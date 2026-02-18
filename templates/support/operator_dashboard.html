@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}داشبورد اپراتور پشتیبانی{% endblock %}
 {% block meta_robots %}
@@ -58,7 +59,7 @@
                 {% endif %}
                 | {{ session.subject|default:'گفتگوی پشتیبانی' }}
               </p>
-              <p class="text-[11px] text-gray-400 mt-1">{{ session.created_at|date:"Y/m/d H:i" }}</p>
+              <p class="text-[11px] text-gray-400 mt-1">{{ session.created_at|jdate:"Y/m/d H:i" }}</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
               {% if session.unread_count %}

@@ -17,7 +17,10 @@
 {# ── Header ── #}
 <tr>
 <td style="background:linear-gradient(135deg,#0468BD 0%,#1ABBC8 100%);padding:28px 32px;text-align:center;">
-    <h1 style="color:#ffffff;font-size:22px;margin:0 0 4px 0;">{{ site_name }}</h1>
+    {% if site_logo_url %}
+    <img src="{{ site_logo_url }}" alt="{{ site_brand_name|default:'اکانتینوکس' }}" style="height:48px;max-width:180px;object-fit:contain;margin:0 auto 10px auto;display:block;">
+    {% endif %}
+    <h1 style="color:#ffffff;font-size:22px;margin:0 0 4px 0;">{{ site_brand_name|default:'اکانتینوکس' }}</h1>
     <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;">فاکتور خرید</p>
 </td>
 </tr>
@@ -44,7 +47,7 @@
         </tr>
         <tr>
             <td style="color:#4b5563;font-size:12px;">تاریخ</td>
-            <td style="color:#4b5563;font-size:12px;text-align:left;">{{ order.created_at|date:"Y/m/d H:i" }}</td>
+            <td style="color:#4b5563;font-size:12px;text-align:left;">{{ order.created_at|jdate:"Y/m/d H:i" }}</td>
         </tr>
         <tr>
             <td style="color:#4b5563;font-size:12px;padding-top:4px;">نام مشتری</td>
@@ -128,7 +131,7 @@
 <td style="padding:20px 32px;text-align:center;">
     {% if site_url %}
     <p style="margin:0 0 6px 0;">
-        <a href="{{ site_url }}" style="color:#0468BD;font-size:12px;text-decoration:none;">{{ site_name }}</a>
+        <a href="{{ site_url }}" style="color:#0468BD;font-size:12px;text-decoration:none;">{{ site_brand_name|default:'اکانتینوکس' }}</a>
     </p>
     {% endif %}
     {% if support_email %}

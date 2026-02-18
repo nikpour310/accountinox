@@ -1,7 +1,76 @@
 from django import template
 from django.conf import settings
+from django.utils import timezone
+
+import datetime as _dt
 
 register = template.Library()
+
+_JALALI_MONTHS_FA = (
+    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+)
+
+
+def _gregorian_to_jalali(gy: int, gm: int, gd: int):
+    g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+    if gy > 1600:
+        jy = 979
+        gy -= 1600
+    else:
+        jy = 0
+        gy -= 621
+    gy2 = gy + 1 if gm > 2 else gy
+    days = (
+        (365 * gy)
+        + ((gy2 + 3) // 4)
+        - ((gy2 + 99) // 100)
+        + ((gy2 + 399) // 400)
+        - 80
+        + gd
+        + g_d_m[gm - 1]
+    )
+    jy += 33 * (days // 12053)
+    days %= 12053
+    jy += 4 * (days // 1461)
+    days %= 1461
+    if days > 365:
+        jy += (days - 1) // 365
+        days = (days - 1) % 365
+    if days < 186:
+        jm = 1 + (days // 31)
+        jd = 1 + (days % 31)
+    else:
+        jm = 7 + ((days - 186) // 30)
+        jd = 1 + ((days - 186) % 30)
+    return jy, jm, jd
+
+
+def _format_jalali(jy: int, jm: int, jd: int, dt: _dt.datetime, fmt: str):
+    token_map = {
+        'Y': f'{jy:04d}',
+        'y': f'{jy % 100:02d}',
+        'm': f'{jm:02d}',
+        'n': str(jm),
+        'd': f'{jd:02d}',
+        'j': str(jd),
+        'F': _JALALI_MONTHS_FA[jm - 1],
+        'H': f'{dt.hour:02d}',
+        'i': f'{dt.minute:02d}',
+        's': f'{dt.second:02d}',
+    }
+    out = []
+    escaped = False
+    for ch in fmt:
+        if escaped:
+            out.append(ch)
+            escaped = False
+            continue
+        if ch == '\\':
+            escaped = True
+            continue
+        out.append(token_map.get(ch, ch))
+    return ''.join(out)
 
 
 @register.filter(is_safe=True)
@@ -103,3 +172,27 @@ def price_format(value):
         return f'{num:,}'
     except (ValueError, TypeError):
         return value
+
+
+@register.filter(name='jdate', is_safe=True)
+def jdate(value, fmt='Y/m/d H:i'):
+    """Format datetime/date to Jalali (Solar Hijri) using a Django-like pattern."""
+    if not value:
+        return ''
+    dt = value
+    if isinstance(dt, _dt.date) and not isinstance(dt, _dt.datetime):
+        dt = _dt.datetime(dt.year, dt.month, dt.day)
+    if not isinstance(dt, _dt.datetime):
+        return value
+    if timezone.is_aware(dt):
+        dt = timezone.localtime(dt)
+    jy, jm, jd = _gregorian_to_jalali(dt.year, dt.month, dt.day)
+    try:
+        return _format_jalali(jy, jm, jd, dt, fmt or 'Y/m/d H:i')
+    except Exception:
+        return value
+
+
+@register.filter(name='jalali', is_safe=True)
+def jalali(value, fmt='Y/m/d H:i'):
+    return jdate(value, fmt)
