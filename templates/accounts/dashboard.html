@@ -175,8 +175,8 @@
                 <p class="text-xs text-gray-400">{{ session.created_at|jdate:'Y/m/d H:i' }}</p>
               </div>
             </div>
-            <span class="chip text-xs {% if session.is_resolved %}bg-green-50 text-green-700{% else %}bg-sky-50 text-sky-700{% endif %}">
-              {% if session.is_resolved %}حل شده{% else %}باز{% endif %}
+            <span class="chip text-xs {% if session.is_active %}bg-sky-50 text-sky-700{% else %}bg-gray-100 text-gray-700{% endif %}">
+              {% if session.is_active %}باز{% else %}بسته{% endif %}
             </span>
           </div>
           {% endfor %}

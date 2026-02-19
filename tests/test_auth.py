@@ -14,6 +14,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from unittest.mock import patch, MagicMock
 from allauth.account.models import EmailAddress
+from apps.support.models import ChatSession
 
 
 @pytest.mark.django_db
@@ -241,3 +242,25 @@ class TestSessionManagement:
         # Profile may or may not exist depending on signals setup
         # This test documents the current behavior
         # assert profile is not None or profile is None  # Flexible assertion
+
+
+@pytest.mark.django_db
+def test_dashboard_support_closed_session_shows_closed_badge(client):
+    user = User.objects.create_user(
+        username='support_dashboard_user',
+        email='support_dashboard_user@example.com',
+        password='StrongPass123!',
+    )
+    session = ChatSession.objects.create(
+        user=user,
+        user_name='Support User',
+        is_active=False,
+    )
+
+    client.force_login(user)
+    resp = client.get(reverse('accounts:dashboard'))
+    assert resp.status_code == 200
+
+    html = resp.content.decode('utf-8')
+    assert f'گفتگوی #{session.id}' in html
+    assert 'بسته' in html
