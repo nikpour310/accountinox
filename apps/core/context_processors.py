@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib import messages
 
 def site_settings(request):
     try:
@@ -65,3 +66,17 @@ def site_settings(request):
         'cart_count': cart_count,
         'google_oauth_ready': google_oauth_ready,
     }
+
+
+def auth_feedback(request):
+    """
+    Convert auth/session system flags into one-time user-facing flash messages.
+    """
+    timeout_reason = request.session.pop('core_idle_timeout_reason', None)
+    if timeout_reason == 'staff':
+        messages.warning(request, 'به دلیل عدم فعالیت، نشست مدیریتی شما به صورت خودکار بسته شد.')
+        request.session.modified = True
+    elif timeout_reason == 'user':
+        messages.warning(request, 'به دلیل عدم فعالیت، از حساب خود خارج شدید. لطفا دوباره وارد شوید.')
+        request.session.modified = True
+    return {}

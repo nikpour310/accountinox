@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.core.middleware.IdleSessionTimeoutMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
@@ -86,6 +87,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.core.context_processors.site_settings',
+                'apps.core.context_processors.auth_feedback',
                 'apps.accounts.context_processors.panel_sidebar',
             ],
         },
@@ -200,6 +202,8 @@ if GOOGLE_CLIENT_ID and GOOGLE_SECRET:
 #CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
 CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+SESSION_IDLE_TIMEOUT_USER_SECONDS = env.int('SESSION_IDLE_TIMEOUT_USER_SECONDS', default=2 * 60 * 60)
+SESSION_IDLE_TIMEOUT_STAFF_SECONDS = env.int('SESSION_IDLE_TIMEOUT_STAFF_SECONDS', default=30 * 60)
 
 # Rate limiting defaults (login endpoints will use decorators)
 
