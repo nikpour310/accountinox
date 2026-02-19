@@ -252,6 +252,39 @@ def test_support_start_chat_to_close_and_reopen_smoke():
 
 
 @pytest.mark.django_db
+def test_poll_messages_reports_session_closed_flag():
+    user_client = Client()
+    operator_client = Client()
+    operator = User.objects.create_superuser(
+        username='support_poll_close_admin',
+        email='support_poll_close_admin@example.com',
+        password='pass123456',
+    )
+
+    start_resp = user_client.post(
+        reverse('support:start_chat'),
+        {'name': 'Poll User', 'phone': '09121118888'},
+    )
+    assert start_resp.status_code == 302
+
+    session_id = user_client.session.get('support_session_id')
+    assert session_id
+
+    operator_client.force_login(operator)
+    close_resp = operator_client.get(reverse('support:close_session', args=[session_id]))
+    assert close_resp.status_code in (200, 302)
+
+    poll_resp = user_client.get(
+        reverse('support:poll_messages'),
+        {'thread_id': session_id, 'since': 0, 'timeout': 1},
+    )
+    assert poll_resp.status_code == 200
+    data = poll_resp.json()
+    assert data['session_closed'] is True
+    assert data['messages'] == []
+
+
+@pytest.mark.django_db
 @patch('apps.shop.views.get_payment_provider')
 def test_checkout_and_callback_reference_mismatch_smoke(mock_get_provider, client, route_seed):
     provider_mock = MagicMock()
