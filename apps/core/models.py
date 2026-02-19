@@ -3,6 +3,7 @@ from pathlib import Path
 from django.conf import settings
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
 
 
 class SiteSettings(models.Model):
@@ -97,6 +98,18 @@ class SiteSettings(models.Model):
                                  choices=(('ws', 'WebSocket'), ('poll', 'Polling')), default='poll')
     support_email_notifications_enabled = models.BooleanField('اعلان ایمیلی پشتیبانی', default=False)
     support_notify_email = models.CharField('ایمیل اعلان پشتیبانی', max_length=255, blank=True, default='')
+    support_sla_warning_seconds = models.PositiveIntegerField(
+        'آستانه SLA فوری (ثانیه)',
+        default=300,
+        validators=[MinValueValidator(30), MaxValueValidator(86400)],
+        help_text='پس از این زمان، گفتگوی بی‌پاسخ در وضعیت «فوری» نمایش داده می‌شود.',
+    )
+    support_sla_breach_seconds = models.PositiveIntegerField(
+        'آستانه SLA بحرانی (ثانیه)',
+        default=900,
+        validators=[MinValueValidator(60), MaxValueValidator(172800)],
+        help_text='پس از این زمان، گفتگوی بی‌پاسخ در وضعیت «بحرانی / SLA نقض شده» نمایش داده می‌شود.',
+    )
 
     # ── تلگرام ─────────────────────────────────────
     telegram_admin_url = models.CharField('لینک تلگرام ادمین', max_length=255, blank=True,
@@ -146,6 +159,14 @@ class SiteSettings(models.Model):
         blank=True,
         default='ادامه با گوگل',
     )
+
+    def clean(self):
+        warning_seconds = int(self.support_sla_warning_seconds or 0)
+        breach_seconds = int(self.support_sla_breach_seconds or 0)
+        if breach_seconds and warning_seconds and breach_seconds <= warning_seconds:
+            raise ValidationError({
+                'support_sla_breach_seconds': 'آستانه SLA بحرانی باید از آستانه SLA فوری بزرگ‌تر باشد.',
+            })
 
     def __str__(self):
         return f"تنظیمات سایت ({self.site_name})"

@@ -146,7 +146,13 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             'classes': ('collapse',),
         }),
         ('💬 پشتیبانی', {
-            'fields': ('chat_mode', 'support_email_notifications_enabled', 'support_notify_email'),
+            'fields': (
+                'chat_mode',
+                'support_email_notifications_enabled',
+                'support_notify_email',
+                'support_sla_warning_seconds',
+                'support_sla_breach_seconds',
+            ),
             'classes': ('collapse',),
         }),
         ('✅ اینماد و نمادها', {

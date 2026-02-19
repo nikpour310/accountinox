@@ -2,16 +2,18 @@
 import json
 import logging
 import time
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Count, Q
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
@@ -45,6 +47,7 @@ logger = logging.getLogger('support.chat')
 PUSH_LAST_ERROR_CACHE_KEY = 'support.push.last_error'
 PUSH_ENDPOINT_PREVIEW_LEN = 30
 ONLINE_WINDOW_MINUTES = 5
+TYPING_TIMEOUT_SECONDS = 8
 
 
 def _short_endpoint(endpoint):
@@ -222,6 +225,55 @@ def _is_rating_owner(request, session):
     return bool(contact_id and session.contact_id and int(contact_id) == session.contact_id)
 
 
+def _is_session_owner(request, session):
+    return _is_rating_owner(request, session)
+
+
+def _safe_next_url(request, fallback='support:chat_room'):
+    next_url = (request.POST.get('next') or request.GET.get('next') or '').strip()
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return reverse(fallback)
+
+
+def _add_or_replace_query_param(url, key, value):
+    parsed = urlsplit(url)
+    query_params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query_params[key] = value
+    new_query = urlencode(query_params, doseq=True)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, new_query, parsed.fragment))
+
+
+def _ticket_action_feedback(action):
+    normalized = (action or '').strip().lower()
+    if normalized == 'closed':
+        return 'گفتگو با موفقیت بسته شد.', 'alert alert-info'
+    if normalized == 'reopened':
+        return 'گفتگو با موفقیت بازگشایی شد.', 'alert alert-success'
+    return '', ''
+
+
+def _decorate_session_status(session):
+    if not session:
+        return
+    if not hasattr(session, 'last_message_from_user'):
+        session.last_message_from_user = (
+            session.messages.order_by('-created_at', '-id').values_list('is_from_user', flat=True).first()
+        )
+    if not hasattr(session, 'last_message_at'):
+        session.last_message_at = (
+            session.messages.order_by('-created_at', '-id').values_list('created_at', flat=True).first()
+        )
+    status_key, status_label, status_badge_class = _session_status_meta(session)
+    session.status_key = status_key
+    session.status_label = status_label
+    session.status_badge_class = status_badge_class
+
+
 def _resolve_session_agent(session):
     if not session:
         return None
@@ -257,6 +309,398 @@ def _active_unread_count():
         is_from_user=True,
         session__is_active=True,
     ).count()
+
+
+def _parse_bool(raw_value):
+    if isinstance(raw_value, bool):
+        return raw_value
+    if raw_value is None:
+        return False
+    normalized = str(raw_value).strip().lower()
+    return normalized in {'1', 'true', 'yes', 'on'}
+
+
+def _typing_actor_for_request(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return 'operator'
+    return 'user'
+
+
+def _typing_cache_key(session_id, actor):
+    return f'support.typing.{int(session_id)}.{actor}'
+
+
+def _set_typing_state(session_id, actor, is_typing):
+    key = _typing_cache_key(session_id, actor)
+    if is_typing:
+        cache.set(key, 1, timeout=TYPING_TIMEOUT_SECONDS)
+    else:
+        cache.delete(key)
+
+
+def _get_typing_state(session_id, actor):
+    return bool(cache.get(_typing_cache_key(session_id, actor)))
+
+
+def _can_access_session(request, session):
+    if not session:
+        return False
+    if request.user.is_authenticated and request.user.is_staff:
+        return True
+    return _is_session_owner(request, session)
+
+
+def _session_status_meta(session):
+    if not session.is_active:
+        return 'closed', 'بسته', 'bg-gray-100 text-gray-700'
+    last_from_user = getattr(session, 'last_message_from_user', None)
+    if last_from_user is True:
+        return 'waiting', 'در انتظار پاسخ', 'bg-amber-50 text-amber-700'
+    if last_from_user is False:
+        return 'answered', 'پاسخ داده شده', 'bg-emerald-50 text-emerald-700'
+    return 'open', 'باز', 'bg-sky-50 text-sky-700'
+
+
+def _session_list_filters():
+    return [
+        ('all', 'همه'),
+        ('open', 'باز'),
+        ('waiting', 'در انتظار پاسخ'),
+        ('answered', 'پاسخ داده شده'),
+        ('closed', 'بسته'),
+    ]
+
+
+def _build_user_session_list(request, contact=None):
+    status = (request.GET.get('status') or 'all').strip().lower()
+    query = (request.GET.get('q') or '').strip()
+    allowed_statuses = {key for key, _ in _session_list_filters()}
+    if status not in allowed_statuses:
+        status = 'all'
+
+    base_qs = ChatSession.objects.none()
+    if request.user.is_authenticated:
+        base_qs = ChatSession.objects.filter(user=request.user)
+    elif contact:
+        base_qs = ChatSession.objects.filter(contact=contact)
+
+    if not base_qs.exists():
+        return [], status, query
+
+    latest_message_qs = ChatMessage.objects.filter(session_id=OuterRef('pk')).order_by('-created_at', '-id')
+    qs = base_qs.annotate(
+        last_message_from_user=Subquery(latest_message_qs.values('is_from_user')[:1]),
+        last_message_at=Subquery(latest_message_qs.values('created_at')[:1]),
+        unread_count=Count(
+            'messages',
+            filter=Q(messages__is_from_user=False, messages__read=False),
+        ),
+    )
+
+    if status == 'open':
+        qs = qs.filter(is_active=True)
+    elif status == 'waiting':
+        qs = qs.filter(is_active=True, last_message_from_user=True)
+    elif status == 'answered':
+        qs = qs.filter(is_active=True, last_message_from_user=False)
+    elif status == 'closed':
+        qs = qs.filter(is_active=False)
+
+    if query:
+        if query.isdigit():
+            qs = qs.filter(id=int(query))
+        else:
+            qs = qs.filter(
+                Q(subject__icontains=query)
+                | Q(user_name__icontains=query)
+                | Q(user_phone__icontains=query)
+            )
+
+    sessions = list(qs.order_by('-created_at')[:10])
+    for session in sessions:
+        status_key, status_label, status_badge_class = _session_status_meta(session)
+        session.status_key = status_key
+        session.status_label = status_label
+        session.status_badge_class = status_badge_class
+    return sessions, status, query
+
+
+def _operator_queue_filters():
+    return [
+        ('all', 'همه'),
+        ('unread', 'نیازمند پاسخ'),
+        ('sla_risk', 'SLA پرریسک'),
+        ('mine', 'ارجاع به من'),
+        ('unassigned', 'بدون اپراتور'),
+    ]
+
+
+def _operator_queue_sorts():
+    return [
+        ('priority', 'اولویت پاسخ'),
+        ('wait_longest', 'بیشترین انتظار'),
+        ('newest', 'جدیدترین'),
+        ('oldest', 'قدیمی‌ترین'),
+    ]
+
+
+def _format_wait_duration_fa(seconds):
+    seconds = max(0, int(seconds or 0))
+    if seconds < 60:
+        return f'{seconds} ثانیه'
+    minutes = seconds // 60
+    if minutes < 60:
+        return f'{minutes} دقیقه'
+    hours = minutes // 60
+    remaining_minutes = minutes % 60
+    if hours < 24:
+        if remaining_minutes:
+            return f'{hours} ساعت و {remaining_minutes} دقیقه'
+        return f'{hours} ساعت'
+    days = hours // 24
+    remaining_hours = hours % 24
+    if remaining_hours:
+        return f'{days} روز و {remaining_hours} ساعت'
+    return f'{days} روز'
+
+
+def _operator_active_sessions_queryset():
+    latest_message_qs = ChatMessage.objects.filter(session_id=OuterRef('pk')).order_by('-created_at', '-id')
+    oldest_unread_user_qs = ChatMessage.objects.filter(
+        session_id=OuterRef('pk'),
+        is_from_user=True,
+        read=False,
+    ).order_by('created_at', 'id')
+    return (
+        ChatSession.objects.filter(is_active=True)
+        .select_related('contact', 'user', 'assigned_to')
+        .annotate(
+            unread_count=Count('messages', filter=Q(messages__read=False, messages__is_from_user=True)),
+            unread_oldest_at=Subquery(oldest_unread_user_qs.values('created_at')[:1]),
+            last_message_at=Subquery(latest_message_qs.values('created_at')[:1]),
+            last_message_from_user=Subquery(latest_message_qs.values('is_from_user')[:1]),
+        )
+    )
+
+
+def _decorate_operator_sessions(sessions, operator_user, warning_seconds, breach_seconds):
+    now = timezone.now()
+    for session in sessions:
+        wait_anchor = session.unread_oldest_at or session.last_message_at or session.created_at
+        wait_seconds = max(0, int((now - wait_anchor).total_seconds())) if wait_anchor else 0
+        session.wait_seconds = wait_seconds
+        session.wait_duration = _format_wait_duration_fa(wait_seconds)
+        session.needs_reply = bool(session.unread_count)
+        session.is_mine = bool(operator_user and session.assigned_to_id == operator_user.id)
+        session.is_unassigned = session.assigned_to_id is None
+
+        if session.assigned_to_id:
+            assignee_name = session.assigned_to.get_full_name() or session.assigned_to.username
+            if session.is_mine:
+                session.assignment_label = 'ارجاع به من'
+                session.assignment_badge_class = 'bg-primary-50 text-primary-700'
+            else:
+                session.assignment_label = f'ارجاع: {assignee_name}'
+                session.assignment_badge_class = 'bg-gray-100 text-gray-700'
+        else:
+            session.assignment_label = 'بدون اپراتور'
+            session.assignment_badge_class = 'bg-violet-50 text-violet-700'
+
+        if session.needs_reply:
+            if wait_seconds >= breach_seconds:
+                session.priority_rank = 0
+                session.priority_label = 'بحرانی'
+                session.priority_badge_class = 'bg-red-50 text-red-700'
+                session.sla_label = 'SLA نقض شده'
+                session.sla_badge_class = 'bg-red-100 text-red-700'
+            elif wait_seconds >= warning_seconds:
+                session.priority_rank = 1
+                session.priority_label = 'فوری'
+                session.priority_badge_class = 'bg-amber-50 text-amber-700'
+                session.sla_label = 'نزدیک SLA'
+                session.sla_badge_class = 'bg-amber-100 text-amber-700'
+            else:
+                session.priority_rank = 2
+                session.priority_label = 'جدید'
+                session.priority_badge_class = 'bg-sky-50 text-sky-700'
+                session.sla_label = 'در SLA'
+                session.sla_badge_class = 'bg-emerald-50 text-emerald-700'
+        else:
+            session.priority_rank = 3 if session.is_unassigned else 4
+            session.priority_label = 'بدون پیام جدید' if session.is_unassigned else 'در حال پیگیری'
+            session.priority_badge_class = 'bg-gray-100 text-gray-700'
+            session.sla_label = 'بدون SLA'
+            session.sla_badge_class = 'bg-gray-100 text-gray-600'
+
+        if session.last_message_from_user is True:
+            session.last_side_label = 'آخرین پیام: کاربر'
+            session.last_side_class = 'text-amber-700'
+        elif session.last_message_from_user is False:
+            session.last_side_label = 'آخرین پیام: اپراتور'
+            session.last_side_class = 'text-emerald-700'
+        else:
+            session.last_side_label = 'بدون پیام'
+            session.last_side_class = 'text-gray-500'
+
+
+def _apply_operator_status_filter(sessions, status, operator_user, warning_seconds):
+    if status == 'unread':
+        return [session for session in sessions if session.needs_reply]
+    if status == 'sla_risk':
+        return [
+            session for session in sessions
+            if session.needs_reply and session.wait_seconds >= warning_seconds
+        ]
+    if status == 'mine':
+        return [session for session in sessions if session.assigned_to_id == operator_user.id]
+    if status == 'unassigned':
+        return [session for session in sessions if session.assigned_to_id is None]
+    return list(sessions)
+
+
+def _apply_operator_sort(sessions, sort_key):
+    sessions = list(sessions)
+    if sort_key == 'newest':
+        sessions.sort(key=lambda session: session.created_at, reverse=True)
+        return sessions
+    if sort_key == 'oldest':
+        sessions.sort(key=lambda session: session.created_at)
+        return sessions
+    if sort_key == 'wait_longest':
+        sessions.sort(key=lambda session: (session.wait_seconds, session.created_at), reverse=True)
+        return sessions
+    sessions.sort(
+        key=lambda session: (
+            session.priority_rank,
+            -session.wait_seconds,
+            session.created_at,
+        )
+    )
+    return sessions
+
+
+def _operator_quick_replies():
+    return [
+        {'label': 'در حال بررسی', 'text': 'درخواست شما دریافت شد و در حال بررسی است. نتیجه را همین‌جا اطلاع می‌دهم.'},
+        {'label': 'نیاز به زمان', 'text': 'برای بررسی دقیق‌تر به زمان بیشتری نیاز است. حداکثر تا پایان امروز پاسخ نهایی ارسال می‌شود.'},
+        {'label': 'تایید انجام شد', 'text': 'بررسی انجام شد و مورد شما با موفقیت ثبت/اعمال شد.'},
+        {'label': 'نیاز به اطلاعات', 'text': 'برای ادامه لطفاً شماره سفارش یا جزئیات بیشتر را ارسال کنید.'},
+        {'label': 'ارجاع فنی', 'text': 'این مورد به تیم فنی ارجاع شد. پس از دریافت نتیجه اطلاع می‌دهم.'},
+        {'label': 'پایان گفتگو', 'text': 'اگر سوال دیگری ندارید، گفتگو را می‌بندم. هر زمان نیاز داشتید می‌توانید دوباره پیام بدهید.'},
+    ]
+
+
+def _support_sla_thresholds():
+    warning_default = 5 * 60
+    breach_default = 15 * 60
+    warning_seconds = warning_default
+    breach_seconds = breach_default
+
+    try:
+        settings_obj = SiteSettings.load()
+    except Exception:
+        settings_obj = None
+
+    if settings_obj is not None:
+        warning_raw = getattr(settings_obj, 'support_sla_warning_seconds', warning_default)
+        breach_raw = getattr(settings_obj, 'support_sla_breach_seconds', breach_default)
+        warning_seconds = _parse_non_negative_int(warning_raw, default=warning_default)
+        breach_seconds = _parse_non_negative_int(breach_raw, default=breach_default)
+
+    warning_seconds = max(30, warning_seconds)
+    breach_seconds = max(60, breach_seconds)
+    if breach_seconds <= warning_seconds:
+        breach_seconds = warning_seconds + 60
+    return warning_seconds, breach_seconds
+
+
+def _audit_action_label(action):
+    labels = {
+        SupportAuditLog.ACTION_SEND: 'ارسال پیام',
+        SupportAuditLog.ACTION_OPEN: 'باز کردن گفتگو',
+        SupportAuditLog.ACTION_CLOSE: 'بستن گفتگو',
+        SupportAuditLog.ACTION_SUBSCRIBE: 'فعال‌سازی اعلان',
+        SupportAuditLog.ACTION_UNSUBSCRIBE: 'غیرفعال‌سازی اعلان',
+        SupportAuditLog.ACTION_PUSH_SUCCESS: 'ارسال موفق اعلان',
+        SupportAuditLog.ACTION_PUSH_FAILURE: 'خطای اعلان',
+    }
+    return labels.get(action, action)
+
+
+def _build_operator_queue_context(request, *, use_request_filters=True):
+    filter_options = _operator_queue_filters()
+    sort_options = _operator_queue_sorts()
+    allowed_filter_keys = {item[0] for item in filter_options}
+    allowed_sort_keys = {item[0] for item in sort_options}
+
+    selected_filter = 'all'
+    selected_sort = 'priority'
+    query = ''
+    if use_request_filters:
+        selected_filter = (request.GET.get('status') or 'all').strip().lower()
+        selected_sort = (request.GET.get('sort') or 'priority').strip().lower()
+        query = (request.GET.get('q') or '').strip()
+    if selected_filter not in allowed_filter_keys:
+        selected_filter = 'all'
+    if selected_sort not in allowed_sort_keys:
+        selected_sort = 'priority'
+
+    qs = _operator_active_sessions_queryset()
+    if query:
+        if query.isdigit():
+            qs = qs.filter(
+                Q(id=int(query))
+                | Q(user_phone__icontains=query)
+                | Q(contact__phone__icontains=query)
+            )
+        else:
+            qs = qs.filter(
+                Q(user_name__icontains=query)
+                | Q(user_phone__icontains=query)
+                | Q(subject__icontains=query)
+                | Q(contact__name__icontains=query)
+                | Q(contact__phone__icontains=query)
+            )
+
+    warning_seconds, breach_seconds = _support_sla_thresholds()
+    sessions = list(qs)
+    _decorate_operator_sessions(
+        sessions,
+        request.user,
+        warning_seconds=warning_seconds,
+        breach_seconds=breach_seconds,
+    )
+
+    summary_waits = [session.wait_seconds for session in sessions if session.needs_reply]
+    summary = {
+        'total_active': len(sessions),
+        'need_reply': sum(1 for session in sessions if session.needs_reply),
+        'critical': sum(1 for session in sessions if session.needs_reply and session.wait_seconds >= breach_seconds),
+        'mine': sum(1 for session in sessions if session.assigned_to_id == request.user.id),
+        'avg_wait_minutes': int(sum(summary_waits) / len(summary_waits) / 60) if summary_waits else 0,
+        'sla_warning_seconds': warning_seconds,
+        'sla_breach_seconds': breach_seconds,
+        'sla_warning_minutes': (warning_seconds + 59) // 60,
+        'sla_breach_minutes': (breach_seconds + 59) // 60,
+    }
+
+    sessions = _apply_operator_status_filter(
+        sessions,
+        selected_filter,
+        request.user,
+        warning_seconds=warning_seconds,
+    )
+    sessions = _apply_operator_sort(sessions, selected_sort)
+
+    return {
+        'sessions': sessions,
+        'selected_filter': selected_filter,
+        'selected_sort': selected_sort,
+        'query': query,
+        'filter_options': filter_options,
+        'sort_options': sort_options,
+        'summary': summary,
+    }
 
 def _send_push_notifications_for_user_message(msg, site_settings_obj=None):
     result = {
@@ -416,6 +860,8 @@ def support_index(request):
     active_session = _session_from_request_state(request)
     contact = _resolve_contact_from_request(request)
     closed_unrated_session = _latest_closed_unrated_session(contact)
+    session_list, session_filter, session_query = _build_user_session_list(request, contact=contact)
+    action_message, action_message_class = _ticket_action_feedback(request.GET.get('ticket_action'))
     context = {
         'active_session': active_session,
         'closed_unrated_session': closed_unrated_session,
@@ -423,6 +869,12 @@ def support_index(request):
         'form_name': contact.name if contact else '',
         'form_phone': contact.phone if contact else '',
         'form_errors': {},
+        'session_list': session_list,
+        'session_filter': session_filter,
+        'session_query': session_query,
+        'session_filters': _session_list_filters(),
+        'ticket_action_message': action_message,
+        'ticket_action_message_class': action_message_class,
     }
     return render(request, 'support/index.html', context)
 
@@ -441,6 +893,7 @@ def start_chat(request):
 
     if errors:
         contact = _resolve_contact_from_request(request)
+        session_list, session_filter, session_query = _build_user_session_list(request, contact=contact)
         return render(
             request,
             'support/index.html',
@@ -451,6 +904,10 @@ def start_chat(request):
                 'form_name': name,
                 'form_phone': phone_raw,
                 'form_errors': errors,
+                'session_list': session_list,
+                'session_filter': session_filter,
+                'session_query': session_query,
+                'session_filters': _session_list_filters(),
             },
             status=400,
         )
@@ -502,6 +959,7 @@ def chat_room(request):
     _store_session_state(request, session)
     _touch_contact(session.contact)
     messages = session.messages.all()[:200]
+    _decorate_session_status(session)
     rating = getattr(session, 'rating', None)
     session_agent = _resolve_session_agent(session)
     can_rate = bool(
@@ -510,13 +968,17 @@ def chat_room(request):
         and session_agent
         and _is_rating_owner(request, session)
     )
+    action_message, action_message_class = _ticket_action_feedback(request.GET.get('ticket_action'))
     return render(request, 'support/chat.html', {
         'session': session,
         'messages': messages,
         'contact': session.contact,
         'session_closed': not session.is_active,
+        'session_is_owner': _is_session_owner(request, session),
         'can_rate': can_rate,
         'session_rating': rating,
+        'ticket_action_message': action_message,
+        'ticket_action_message_class': action_message_class,
     })
 
 
@@ -540,16 +1002,7 @@ def send_message(request):
     # anonymous users allowed to post messages by session id (no session cookie required)
 
     if not session.is_active:
-        contact = session.contact or _resolve_contact_from_request(request)
-        session = ChatSession.objects.create(
-            user=request.user if request.user.is_authenticated else session.user,
-            contact=contact,
-            user_name=(contact.name if contact else (session.user_name or 'Guest')),
-            user_phone=(contact.phone if contact else session.user_phone),
-            user_email=session.user_email,
-            subject=session.subject or 'Support Request',
-            is_active=True,
-        )
+        return JsonResponse({'error': 'session is closed', 'session_closed': True}, status=400)
 
     if session.contact:
         _touch_contact(session.contact)
@@ -578,6 +1031,7 @@ def send_message(request):
         is_from_user=True,
         read=False,
     )
+    _set_typing_state(session.id, 'user', False)
 
     logger.info('[Chat] Message %s sent in session %s', msg.id, session.id)
     settings_obj = None
@@ -702,6 +1156,59 @@ def poll_messages(request):
         time.sleep(1)
 
     return JsonResponse({'messages': [], 'since': since})
+
+
+@require_POST
+def typing_update(request):
+    payload = _load_json_payload(request)
+    if payload is None:
+        return JsonResponse({'error': 'invalid JSON payload'}, status=400)
+    payload = payload or {}
+
+    session_id = _parse_non_negative_int(
+        payload.get('session_id') if 'session_id' in payload else request.POST.get('session_id'),
+        default=0,
+    )
+    if not session_id:
+        return JsonResponse({'error': 'session_id required'}, status=400)
+
+    session = ChatSession.objects.filter(id=session_id).first()
+    if not session:
+        return JsonResponse({'error': 'session not found'}, status=404)
+    if not _can_access_session(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    raw_is_typing = payload.get('is_typing') if 'is_typing' in payload else request.POST.get('is_typing')
+    is_typing = _parse_bool(raw_is_typing)
+    actor = _typing_actor_for_request(request)
+    _set_typing_state(session.id, actor, is_typing)
+
+    return JsonResponse({
+        'ok': True,
+        'session_id': session.id,
+        'actor': actor,
+        'is_typing': is_typing,
+    })
+
+
+@require_http_methods(['GET'])
+def typing_status(request):
+    session_id = _parse_non_negative_int(request.GET.get('session_id'), default=0)
+    if not session_id:
+        return JsonResponse({'error': 'session_id required'}, status=400)
+
+    session = ChatSession.objects.filter(id=session_id).first()
+    if not session:
+        return JsonResponse({'error': 'session not found'}, status=404)
+    if not _can_access_session(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    return JsonResponse({
+        'ok': True,
+        'session_id': session.id,
+        'user_typing': _get_typing_state(session.id, 'user'),
+        'operator_typing': _get_typing_state(session.id, 'operator'),
+    })
 
 
 @require_http_methods(['GET', 'POST'])
@@ -840,14 +1347,82 @@ def rate_session(request, session_id):
     return redirect(f'{reverse("support:chat_room")}?rated=1')
 
 
+def user_open_session(request, session_id):
+    session = get_object_or_404(ChatSession, id=session_id)
+    if not _is_session_owner(request, session):
+        return redirect('support:chat')
+    _store_session_state(request, session)
+    return redirect('support:chat_room')
+
+
+@require_POST
+def user_close_session(request, session_id):
+    session = get_object_or_404(ChatSession, id=session_id)
+    if not _is_session_owner(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    changed = False
+    if session.is_active:
+        session.is_active = False
+        session.closed_at = timezone.now()
+        if request.user.is_authenticated:
+            session.closed_by = request.user
+            session.save(update_fields=['is_active', 'closed_at', 'closed_by'])
+        else:
+            session.save(update_fields=['is_active', 'closed_at'])
+        _create_audit_log(
+            action=SupportAuditLog.ACTION_CLOSE,
+            request=request,
+            session=session,
+            metadata={'source': 'user'},
+        )
+        changed = True
+
+    target = _safe_next_url(request)
+    if changed:
+        target = _add_or_replace_query_param(target, 'ticket_action', 'closed')
+    return redirect(target)
+
+
+@require_POST
+def user_reopen_session(request, session_id):
+    session = get_object_or_404(ChatSession, id=session_id)
+    if not _is_session_owner(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    changed = False
+    if not session.is_active:
+        session.is_active = True
+        session.closed_at = None
+        session.closed_by = None
+        session.save(update_fields=['is_active', 'closed_at', 'closed_by'])
+        _create_audit_log(
+            action=SupportAuditLog.ACTION_OPEN,
+            request=request,
+            session=session,
+            metadata={'source': 'user'},
+        )
+        changed = True
+
+    _store_session_state(request, session)
+    target = _safe_next_url(request)
+    if changed:
+        target = _add_or_replace_query_param(target, 'ticket_action', 'reopened')
+    return redirect(target)
+
+
 @staff_member_required
 def operator_dashboard(request):
     _set_operator_presence(request.user, active_session_id=None)
-    active_sessions = ChatSession.objects.filter(is_active=True).select_related('contact', 'user').annotate(
-        unread_count=Count('messages', filter=Q(messages__read=False, messages__is_from_user=True))
-    ).order_by('-created_at')
+    queue_context = _build_operator_queue_context(request, use_request_filters=True)
     return render(request, 'support/operator_dashboard.html', {
-        'active_sessions': active_sessions,
+        'active_sessions': queue_context['sessions'],
+        'queue_filter': queue_context['selected_filter'],
+        'queue_sort': queue_context['selected_sort'],
+        'queue_query': queue_context['query'],
+        'queue_filters': queue_context['filter_options'],
+        'queue_sorts': queue_context['sort_options'],
+        'queue_summary': queue_context['summary'],
         'unread_count': _active_unread_count(),
         'support_push_enabled': bool(
             getattr(settings, 'SUPPORT_PUSH_ENABLED', False) and getattr(settings, 'VAPID_PUBLIC_KEY', '')
@@ -882,16 +1457,26 @@ def operator_session_view(request, session_id):
         metadata={'session_id': session.id},
     )
 
-    active_sessions = ChatSession.objects.filter(is_active=True).select_related('contact', 'user').annotate(
-        unread_count=Count('messages', filter=Q(messages__read=False, messages__is_from_user=True))
-    ).order_by('-created_at')
+    queue_context = _build_operator_queue_context(request, use_request_filters=False)
     messages = session.messages.all()[:300]
     last_message_id = session.messages.order_by('-id').values_list('id', flat=True).first() or 0
+    quick_replies = _operator_quick_replies()
+    audit_logs = list(session.audit_logs.select_related('staff').order_by('-created_at')[:12])
+    for log_item in audit_logs:
+        log_item.action_label = _audit_action_label(log_item.action)
+        if log_item.staff_id:
+            log_item.actor_label = log_item.staff.get_full_name() or log_item.staff.username
+        else:
+            log_item.actor_label = 'سیستم'
+
     return render(request, 'support/operator_session.html', {
         'session': session,
         'messages': messages,
         'last_message_id': last_message_id,
-        'active_sessions': active_sessions,
+        'active_sessions': queue_context['sessions'],
+        'queue_summary': queue_context['summary'],
+        'quick_replies': quick_replies,
+        'audit_logs': audit_logs,
         'unread_count': _active_unread_count(),
         'support_push_enabled': bool(
             getattr(settings, 'SUPPORT_PUSH_ENABLED', False) and getattr(settings, 'VAPID_PUBLIC_KEY', '')
@@ -957,6 +1542,7 @@ def operator_send_message(request):
         is_from_user=False,
         read=True,
     )
+    _set_typing_state(session.id, 'operator', False)
     logger.info('[Chat] Operator %s sent message %s in session %s', request.user, msg.id, session.id)
     _create_audit_log(
         action=SupportAuditLog.ACTION_SEND,

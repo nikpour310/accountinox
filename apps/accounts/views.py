@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
-from django.db.models import Sum
+from django.db.models import Count, OuterRef, Q, Subquery, Sum
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.http import JsonResponse
@@ -37,6 +37,17 @@ def _site_settings():
         return SiteSettings.load()
     except Exception:
         return None
+
+
+def _support_session_badge(session):
+    if not session.is_active:
+        return 'بسته', 'bg-gray-100 text-gray-700'
+    last_from_user = getattr(session, 'last_message_from_user', None)
+    if last_from_user is True:
+        return 'در انتظار پاسخ', 'bg-amber-50 text-amber-700'
+    if last_from_user is False:
+        return 'پاسخ داده شده', 'bg-emerald-50 text-emerald-700'
+    return 'باز', 'bg-sky-50 text-sky-700'
 
 
 def _orders_for_user(user):
@@ -367,13 +378,27 @@ def dashboard(request):
 
     support_sessions = []
     try:
-        from apps.support.models import ChatSession
+        from apps.support.models import ChatMessage, ChatSession
+
+        latest_message_qs = ChatMessage.objects.filter(session_id=OuterRef('pk')).order_by('-created_at', '-id')
 
         support_sessions = list(
             ChatSession.objects.filter(user=request.user)
+            .annotate(
+                last_message_from_user=Subquery(latest_message_qs.values('is_from_user')[:1]),
+                last_message_at=Subquery(latest_message_qs.values('created_at')[:1]),
+                user_unread_count=Count(
+                    'messages',
+                    filter=Q(messages__is_from_user=False, messages__read=False),
+                ),
+            )
             .select_related('assigned_to')
-            .order_by('-created_at')[:4]
+            .order_by('-created_at')[:6]
         )
+        for session in support_sessions:
+            status_label, status_badge_class = _support_session_badge(session)
+            session.status_label = status_label
+            session.status_badge_class = status_badge_class
     except Exception:
         support_sessions = []
 

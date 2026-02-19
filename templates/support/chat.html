@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block meta_title %}گفت‌وگوی پشتیبانی | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_robots %}
@@ -7,6 +8,9 @@
 
 {% block content %}
 <div class="page-wrapper max-w-3xl">
+  {% if ticket_action_message %}
+    <div class="{{ ticket_action_message_class }} mb-6 reveal">{{ ticket_action_message }}</div>
+  {% endif %}
   {% if request.GET.rated == '1' %}
     <div class="alert alert-success mb-6 reveal">امتیاز شما ثبت شد. متشکریم.</div>
   {% endif %}
@@ -17,11 +21,27 @@
       {% if contact %}
         <p class="section-subtitle">{{ contact.name }} - {{ contact.phone }}</p>
       {% endif %}
-      {% if session_closed %}
-        <p class="mt-1 text-xs font-medium text-amber-600">این گفتگو بسته شده است.</p>
-      {% endif %}
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <span class="chip text-xs {{ session.status_badge_class }}">{{ session.status_label }}</span>
+        <span class="text-xs text-gray-400">آخرین بروزرسانی: {{ session.last_message_at|default:session.created_at|jdate:'Y/m/d H:i' }}</span>
+      </div>
     </div>
-    <a href="{% url 'support:chat' %}" class="btn btn-ghost btn-sm w-full sm:w-auto">ویرایش اطلاعات</a>
+    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      {% if session_is_owner and not session_closed %}
+        <form method="post" action="{% url 'support:user_close_session' session.id %}" onsubmit="return confirm('گفتگو بسته شود؟');">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-ghost btn-sm w-full sm:w-auto">بستن گفتگو</button>
+        </form>
+      {% elif session_is_owner and session_closed %}
+        <form method="post" action="{% url 'support:user_reopen_session' session.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-primary btn-sm w-full sm:w-auto">بازگشایی گفتگو</button>
+        </form>
+      {% endif %}
+      <a href="{% url 'support:chat' %}" class="btn btn-ghost btn-sm w-full sm:w-auto">ویرایش اطلاعات</a>
+    </div>
   </div>
 
   <div class="card-elevated overflow-hidden reveal">
@@ -43,6 +63,7 @@
         <div id="empty-message" class="py-16 text-center text-sm text-gray-400">هنوز پیامی ارسال نشده است.</div>
       {% endif %}
     </div>
+    <p id="operator-typing-indicator" class="hidden px-4 py-2 text-xs text-amber-600 sm:px-6">اپراتور در حال نوشتن پاسخ است...</p>
 
     <div class="divider"></div>
 
@@ -77,6 +98,7 @@
             <p class="text-xs text-gray-400">حداکثر 500 کاراکتر</p>
             <button type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پیام</button>
           </div>
+          <p id="chat-form-feedback" class="hidden text-xs text-red-600"></p>
         </form>
       {% endif %}
     </div>
@@ -96,9 +118,16 @@
       const emptyMessage = document.getElementById('empty-message');
       const messageInput = document.getElementById('user-message-input');
       const sessionIdInput = document.getElementById('session-id-input');
+      const feedbackEl = document.getElementById('chat-form-feedback');
+      const operatorTypingIndicator = document.getElementById('operator-typing-indicator');
       const sessionClosed = {{ session_closed|yesno:"true,false" }};
+      const typingUpdateUrl = '{% url "support:typing_update" %}';
+      const typingStatusBaseUrl = '{% url "support:typing_status" %}';
       let currentSessionId = Number(sessionIdInput ? sessionIdInput.value : {{ session.id }});
       let isPolling = false;
+      let typingResetTimer = null;
+      let userTypingSent = false;
+      let typingStatusInFlight = false;
 
       const getLastMessageId = function() {
         const messageElements = messagesDiv.querySelectorAll('[data-message-id]');
@@ -150,6 +179,61 @@
         scrollToBottom();
       };
 
+      const setOperatorTypingIndicator = function(isTyping) {
+        if (!operatorTypingIndicator) {
+          return;
+        }
+        operatorTypingIndicator.classList.toggle('hidden', !isTyping);
+      };
+
+      const updateUserTypingState = async function(isTyping, force) {
+        if (!form || !sessionIdInput) {
+          return;
+        }
+        const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (!csrfInput) {
+          return;
+        }
+        if (!force && userTypingSent === Boolean(isTyping)) {
+          return;
+        }
+        userTypingSent = Boolean(isTyping);
+        try {
+          const payload = new URLSearchParams();
+          payload.append('session_id', String(currentSessionId));
+          payload.append('is_typing', isTyping ? '1' : '0');
+          await fetch(typingUpdateUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'X-CSRFToken': csrfInput.value,
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: payload,
+          });
+        } catch (_) {}
+      };
+
+      const refreshTypingStatus = async function() {
+        if (!currentSessionId || typingStatusInFlight) {
+          return;
+        }
+        typingStatusInFlight = true;
+        try {
+          const response = await fetch(`${typingStatusBaseUrl}?session_id=${currentSessionId}`, {
+            credentials: 'same-origin',
+          });
+          if (!response.ok) {
+            return;
+          }
+          const data = await response.json();
+          setOperatorTypingIndicator(Boolean(data.operator_typing));
+        } catch (_) {
+        } finally {
+          typingStatusInFlight = false;
+        }
+      };
+
       const pollMessages = async function() {
         if (sessionClosed) {
           return;
@@ -173,6 +257,7 @@
               lastId = Math.max(lastId, Number(msg.id || 0));
             });
           }
+          await refreshTypingStatus();
         } catch (_) {
         } finally {
           isPolling = false;
@@ -181,15 +266,53 @@
       };
 
       if (form && messageInput) {
+        messageInput.addEventListener('input', function() {
+          const hasText = Boolean((messageInput.value || '').trim());
+          if (hasText) {
+            updateUserTypingState(true, false);
+            if (typingResetTimer) {
+              window.clearTimeout(typingResetTimer);
+            }
+            typingResetTimer = window.setTimeout(function() {
+              updateUserTypingState(false, false);
+            }, 2800);
+          } else {
+            if (typingResetTimer) {
+              window.clearTimeout(typingResetTimer);
+              typingResetTimer = null;
+            }
+            updateUserTypingState(false, false);
+          }
+        });
+
+        messageInput.addEventListener('blur', function() {
+          if (typingResetTimer) {
+            window.clearTimeout(typingResetTimer);
+            typingResetTimer = null;
+          }
+          updateUserTypingState(false, true);
+        });
+
         form.addEventListener('submit', async function(event) {
           event.preventDefault();
           const text = messageInput.value.trim();
           if (!text || !currentSessionId) {
             return;
           }
+          if (typingResetTimer) {
+            window.clearTimeout(typingResetTimer);
+            typingResetTimer = null;
+          }
+          await updateUserTypingState(false, true);
+          if (feedbackEl) {
+            feedbackEl.classList.add('hidden');
+            feedbackEl.textContent = '';
+          }
           const submitButton = form.querySelector('button[type="submit"]');
+          const originalButtonText = submitButton ? submitButton.textContent : '';
           if (submitButton) {
             submitButton.disabled = true;
+            submitButton.textContent = 'در حال ارسال...';
           }
           try {
             const response = await fetch('{% url "support:send_message" %}', {
@@ -201,6 +324,10 @@
               return {};
             });
             if (!response.ok || !data.ok) {
+              if (data && data.session_closed) {
+                window.location.reload();
+                return;
+              }
               throw new Error(data.error || 'send failed');
             }
 
@@ -215,20 +342,29 @@
 
             messageInput.value = '';
             window.setTimeout(pollMessages, 200);
-          } catch (_) {
-            alert('ارسال پیام انجام نشد. دوباره تلاش کنید.');
+          } catch (error) {
+            if (feedbackEl) {
+              feedbackEl.textContent = 'ارسال پیام انجام نشد. دوباره تلاش کنید.';
+              if (error && String(error.message || '').toLowerCase().includes('forbidden')) {
+                feedbackEl.textContent = 'دسترسی شما به این گفتگو محدود شده است.';
+              }
+              feedbackEl.classList.remove('hidden');
+            }
           } finally {
             if (submitButton) {
               submitButton.disabled = false;
+              submitButton.textContent = originalButtonText || 'ارسال پیام';
             }
+            await updateUserTypingState(false, true);
           }
         });
       }
 
       if (!sessionClosed) {
+        refreshTypingStatus();
+        window.setInterval(refreshTypingStatus, 2500);
         window.setTimeout(pollMessages, 1200);
       }
     });
   </script>
 {% endblock %}
-

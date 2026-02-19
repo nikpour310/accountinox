@@ -165,19 +165,36 @@
         </div>
         <div class="divide-y divide-gray-50">
           {% for session in support_sessions %}
-          <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+          <div class="px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-gray-50/50 transition-colors">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
               </div>
               <div>
                 <p class="text-sm font-medium text-gray-900">گفتگوی #{{ session.id }}</p>
-                <p class="text-xs text-gray-400">{{ session.created_at|jdate:'Y/m/d H:i' }}</p>
+                <p class="text-xs text-gray-400">{{ session.last_message_at|default:session.created_at|jdate:'Y/m/d H:i' }}</p>
+                {% if session.user_unread_count %}
+                  <p class="mt-1 text-xs text-primary-600">{{ session.user_unread_count }} پیام خوانده‌نشده</p>
+                {% endif %}
               </div>
             </div>
-            <span class="chip text-xs {% if session.is_active %}bg-sky-50 text-sky-700{% else %}bg-gray-100 text-gray-700{% endif %}">
-              {% if session.is_active %}باز{% else %}بسته{% endif %}
-            </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="chip text-xs {{ session.status_badge_class }}">{{ session.status_label }}</span>
+              <a href="{% url 'support:user_open_session' session.id %}" class="btn btn-ghost btn-sm">مشاهده</a>
+              {% if session.is_active %}
+                <form method="post" action="{% url 'support:user_close_session' session.id %}" onsubmit="return confirm('گفتگو بسته شود؟');">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-ghost btn-sm">بستن</button>
+                </form>
+              {% else %}
+                <form method="post" action="{% url 'support:user_reopen_session' session.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-primary btn-sm">بازگشایی</button>
+                </form>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>

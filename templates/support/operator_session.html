@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}گفت‌وگوی پشتیبانی #{{ session.id }}{% endblock %}
 {% block meta_robots %}
@@ -19,6 +20,9 @@
           {{ session.user_name|default:session.user|default:'کاربر ناشناس' }}
         {% endif %}
         | کد گفتگو: #{{ session.id }}
+      </p>
+      <p class="mt-2 text-xs text-gray-500">
+        SLA فوری: {{ queue_summary.sla_warning_minutes }} دقیقه | SLA بحرانی: {{ queue_summary.sla_breach_minutes }} دقیقه
       </p>
       {% if rate_limited %}
         <p class="mt-2 text-sm text-red-600">ارسال پیام موقتاً محدود شده است. کمی بعد دوباره تلاش کنید.</p>
@@ -65,6 +69,10 @@
                       شماره ثبت نشده
                     {% endif %}
                   </p>
+                  <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span class="chip text-[10px] {{ active.priority_badge_class }}">{{ active.priority_label }}</span>
+                    <span class="chip text-[10px] {{ active.sla_badge_class }}">{{ active.sla_label }}</span>
+                  </div>
                 </div>
                 {% if active.unread_count %}
                   <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
@@ -72,6 +80,7 @@
                   </span>
                 {% endif %}
               </div>
+              <p class="mt-2 text-[10px] text-gray-400">انتظار: {{ active.wait_duration }}</p>
             </a>
           {% empty %}
             <div class="px-4 py-10 text-center text-sm text-gray-400">گفتگوی فعالی وجود ندارد.</div>
@@ -105,6 +114,22 @@
           <form id="operator-reply-form" method="post" action="{% url 'support:operator_send_message' %}" class="space-y-3">
             {% csrf_token %}
             <input type="hidden" name="session_id" value="{{ session.id }}">
+            {% if quick_replies %}
+              <div class="rounded-xl border border-gray-100 bg-gray-50/70 p-3">
+                <p class="mb-2 text-xs font-semibold text-gray-700">پاسخ‌های آماده</p>
+                <div class="flex flex-wrap gap-2">
+                  {% for reply in quick_replies %}
+                    <button
+                      type="button"
+                      class="quick-reply-btn btn btn-ghost btn-sm !h-8 !px-3 !text-xs"
+                      data-quick-reply="{{ reply.text|escapejs }}"
+                    >
+                      {{ reply.label }}
+                    </button>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
             <textarea
               id="operator-message-input"
               name="message"
@@ -115,10 +140,32 @@
               required
             ></textarea>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p id="send-status" class="text-xs text-gray-400">ارسال پاسخ بدون ترک صفحه انجام می‌شود.</p>
+              <div class="space-y-1">
+                <p id="send-status" class="text-xs text-gray-400">ارسال پاسخ بدون ترک صفحه انجام می‌شود.</p>
+                <p id="user-typing-indicator" class="hidden text-xs text-amber-600">کاربر در حال نوشتن پیام است...</p>
+              </div>
               <button id="operator-send-btn" type="submit" class="btn btn-primary w-full sm:w-auto">ارسال پاسخ</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <div class="card mt-5 overflow-hidden">
+        <div class="border-b border-gray-100 bg-gray-50/60 px-4 py-3">
+          <h2 class="text-sm font-semibold text-gray-900">تاریخچه عملیات گفتگو</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+          {% for log in audit_logs %}
+            <div class="px-4 py-3">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-gray-900">{{ log.action_label }}</p>
+                <p class="text-[11px] text-gray-400">{{ log.created_at|jdate:'Y/m/d H:i' }}</p>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">توسط: {{ log.actor_label }}</p>
+            </div>
+          {% empty %}
+            <div class="px-4 py-8 text-center text-sm text-gray-400">برای این گفتگو هنوز سابقه‌ای ثبت نشده است.</div>
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -140,10 +187,19 @@
     const unreadStatusUrl = '{% url "support:operator_unread_status" %}?session_id={{ session.id }}';
     const presenceUrl = '{% url "support:operator_presence" %}?session_id={{ session.id }}';
     const pollUrl = '{% url "support:poll_messages" %}';
+    const typingUpdateUrl = '{% url "support:typing_update" %}';
+    const typingStatusUrl = '{% url "support:typing_status" %}?session_id={{ session.id }}';
     const storageKey = 'support_operator_sound_enabled';
+    const quickReplyButtons = document.querySelectorAll('.quick-reply-btn');
+    const userTypingIndicator = document.getElementById('user-typing-indicator');
+    const csrfInput = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+    const csrfToken = csrfInput ? csrfInput.value : '';
     let lastMessageId = Number('{{ last_message_id|default:0 }}');
     let unreadCount = Number('{{ unread_count|default:0 }}');
     let polling = false;
+    let typingStatusInFlight = false;
+    let typingResetTimer = null;
+    let operatorTypingSent = false;
 
     const savedState = localStorage.getItem(storageKey);
     soundToggle.checked = savedState === null ? true : savedState === '1';
@@ -188,6 +244,37 @@
       }
     };
 
+    const setUserTypingIndicator = (isTyping) => {
+      if (!userTypingIndicator) {
+        return;
+      }
+      userTypingIndicator.classList.toggle('hidden', !isTyping);
+    };
+
+    const updateOperatorTypingState = async (isTyping, force = false) => {
+      if (!csrfToken) {
+        return;
+      }
+      if (!force && operatorTypingSent === Boolean(isTyping)) {
+        return;
+      }
+      operatorTypingSent = Boolean(isTyping);
+      try {
+        const payload = new URLSearchParams();
+        payload.append('session_id', String(sessionId));
+        payload.append('is_typing', isTyping ? '1' : '0');
+        await fetch(typingUpdateUrl, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: payload,
+        });
+      } catch (_) {}
+    };
+
     const updateUnreadUi = (count) => {
       unreadCount = Number(count || 0);
       if (unreadCountEl) {
@@ -197,6 +284,24 @@
         return;
       }
       unreadBanner.classList.toggle('hidden', unreadCount <= 0);
+    };
+
+    const refreshTypingStatus = async () => {
+      if (typingStatusInFlight) {
+        return;
+      }
+      typingStatusInFlight = true;
+      try {
+        const response = await fetch(typingStatusUrl, { credentials: 'same-origin' });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        setUserTypingIndicator(Boolean(data.user_typing));
+      } catch (_) {
+      } finally {
+        typingStatusInFlight = false;
+      }
     };
 
     const appendMessage = (message) => {
@@ -280,6 +385,7 @@
           });
           await refreshUnreadStatus();
         }
+        await refreshTypingStatus();
       } catch (_) {
       } finally {
         polling = false;
@@ -287,12 +393,57 @@
       }
     };
 
+    quickReplyButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const quickReplyText = (button.getAttribute('data-quick-reply') || '').trim();
+        if (!quickReplyText) {
+          return;
+        }
+        const currentValue = (messageInput.value || '').trim();
+        messageInput.value = currentValue ? `${currentValue}\n${quickReplyText}` : quickReplyText;
+        messageInput.focus();
+        messageInput.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+
+    messageInput.addEventListener('input', () => {
+      const hasText = Boolean((messageInput.value || '').trim());
+      if (hasText) {
+        updateOperatorTypingState(true);
+        if (typingResetTimer) {
+          clearTimeout(typingResetTimer);
+        }
+        typingResetTimer = window.setTimeout(() => {
+          updateOperatorTypingState(false);
+        }, 2800);
+      } else {
+        if (typingResetTimer) {
+          clearTimeout(typingResetTimer);
+          typingResetTimer = null;
+        }
+        updateOperatorTypingState(false);
+      }
+    });
+
+    messageInput.addEventListener('blur', () => {
+      if (typingResetTimer) {
+        clearTimeout(typingResetTimer);
+        typingResetTimer = null;
+      }
+      updateOperatorTypingState(false, true);
+    });
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const text = messageInput.value.trim();
       if (!text) {
         return;
       }
+      if (typingResetTimer) {
+        clearTimeout(typingResetTimer);
+        typingResetTimer = null;
+      }
+      await updateOperatorTypingState(false, true);
       sendBtn.disabled = true;
       setSendStatus('در حال ارسال پاسخ...');
       try {
@@ -328,14 +479,17 @@
         setSendStatus('ارسال پاسخ انجام نشد. دوباره تلاش کنید.', 'error');
       } finally {
         sendBtn.disabled = false;
+        await updateOperatorTypingState(false, true);
       }
     });
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     heartbeat();
     refreshUnreadStatus();
+    refreshTypingStatus();
     window.setInterval(heartbeat, 60000);
     window.setInterval(refreshUnreadStatus, 7000);
+    window.setInterval(refreshTypingStatus, 2500);
     window.setTimeout(pollMessages, 1200);
   });
 </script>

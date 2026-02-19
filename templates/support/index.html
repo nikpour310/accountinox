@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block meta_title %}پشتیبانی | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}شروع گفت‌وگو با پشتیبانی {{ site_settings.site_name|default:'Accountinox' }} برای سوالات خرید و پیگیری سفارش.{% endblock %}
@@ -8,7 +9,10 @@
 {% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'support:chat' %}">{% endblock %}
 
 {% block content %}
-<div class="page-wrapper max-w-2xl">
+<div class="page-wrapper max-w-3xl">
+  {% if ticket_action_message %}
+    <div class="{{ ticket_action_message_class }} mb-5 reveal">{{ ticket_action_message }}</div>
+  {% endif %}
   <div class="text-center mb-8 reveal">
     <h1 class="section-title">پشتیبانی آنلاین</h1>
     <p class="section-subtitle mt-2">برای شروع گفت‌وگو، اطلاعات تماس را وارد کنید تا سریع‌تر راهنمایی شوید.</p>
@@ -70,6 +74,79 @@
       <button type="submit" class="btn btn-primary w-full sm:w-auto">ورود به چت</button>
     </form>
   </div>
+
+  {% if request.user.is_authenticated or contact %}
+    <div class="card p-6 mt-6 reveal">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-base font-semibold text-gray-900 mb-1">تیکت‌های شما</h2>
+          <p class="text-sm text-gray-500">با فیلتر یا جستجو سریع‌تر تیکت موردنظر را پیدا کنید.</p>
+        </div>
+        {% if active_session %}
+          <a href="{% url 'support:chat_room' %}" class="btn btn-ghost btn-sm w-full sm:w-auto">ادامه گفتگوی فعال</a>
+        {% endif %}
+      </div>
+
+      <form method="get" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap gap-2">
+          {% for filter_key, filter_label in session_filters %}
+            <a
+              href="?status={{ filter_key }}{% if session_query %}&q={{ session_query|urlencode }}{% endif %}"
+              class="chip text-xs {% if session_filter == filter_key %}bg-primary-50 text-primary-700{% else %}bg-gray-100 text-gray-700{% endif %}"
+            >
+              {{ filter_label }}
+            </a>
+          {% endfor %}
+        </div>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            name="q"
+            value="{{ session_query }}"
+            class="form-input !h-10 !py-2 !text-sm"
+            placeholder="جستجو (شماره/موضوع/نام)"
+          >
+          <input type="hidden" name="status" value="{{ session_filter }}">
+          <button type="submit" class="btn btn-ghost btn-sm">جستجو</button>
+        </div>
+      </form>
+
+      {% if session_list %}
+        <div class="mt-4 divide-y divide-gray-100">
+          {% for session in session_list %}
+            <div class="py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm font-semibold text-gray-900">گفتگوی #{{ session.id }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ session.last_message_at|default:session.created_at|jdate:'Y/m/d H:i' }}</p>
+                {% if session.unread_count %}
+                  <p class="text-xs text-primary-600 mt-1">{{ session.unread_count }} پیام خوانده‌نشده</p>
+                {% endif %}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="chip text-xs {{ session.status_badge_class }}">{{ session.status_label }}</span>
+                <a href="{% url 'support:user_open_session' session.id %}" class="btn btn-ghost btn-sm">مشاهده</a>
+                {% if session.is_active %}
+                  <form method="post" action="{% url 'support:user_close_session' session.id %}" onsubmit="return confirm('گفتگو بسته شود؟');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-ghost btn-sm">بستن</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'support:user_reopen_session' session.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-primary btn-sm">بازگشایی</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-4 text-sm text-gray-500">تیکتی با این فیلتر پیدا نشد.</p>
+      {% endif %}
+    </div>
+  {% endif %}
 
   {% if site_settings.telegram_admin_url or site_settings.telegram_channel_url %}
     <div class="card p-6 mt-6 reveal">

@@ -14,7 +14,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from unittest.mock import patch, MagicMock
 from allauth.account.models import EmailAddress
-from apps.support.models import ChatSession
+from apps.support.models import ChatMessage, ChatSession
 
 
 @pytest.mark.django_db
@@ -264,3 +264,59 @@ def test_dashboard_support_closed_session_shows_closed_badge(client):
     html = resp.content.decode('utf-8')
     assert f'گفتگوی #{session.id}' in html
     assert 'بسته' in html
+
+
+@pytest.mark.django_db
+def test_dashboard_support_waiting_for_reply_status(client):
+    user = User.objects.create_user(
+        username='support_waiting_user',
+        email='support_waiting_user@example.com',
+        password='StrongPass123!',
+    )
+    session = ChatSession.objects.create(
+        user=user,
+        user_name='Support User',
+        is_active=True,
+    )
+    ChatMessage.objects.create(
+        session=session,
+        name='Customer',
+        message='پیام مشتری',
+        is_from_user=True,
+    )
+
+    client.force_login(user)
+    resp = client.get(reverse('accounts:dashboard'))
+    assert resp.status_code == 200
+
+    html = resp.content.decode('utf-8')
+    assert f'گفتگوی #{session.id}' in html
+    assert 'در انتظار پاسخ' in html
+
+
+@pytest.mark.django_db
+def test_dashboard_support_answered_status(client):
+    user = User.objects.create_user(
+        username='support_answered_user',
+        email='support_answered_user@example.com',
+        password='StrongPass123!',
+    )
+    session = ChatSession.objects.create(
+        user=user,
+        user_name='Support User',
+        is_active=True,
+    )
+    ChatMessage.objects.create(
+        session=session,
+        name='Operator',
+        message='پاسخ اپراتور',
+        is_from_user=False,
+    )
+
+    client.force_login(user)
+    resp = client.get(reverse('accounts:dashboard'))
+    assert resp.status_code == 200
+
+    html = resp.content.decode('utf-8')
+    assert f'گفتگوی #{session.id}' in html
+    assert 'پاسخ داده شده' in html

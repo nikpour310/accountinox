@@ -255,7 +255,7 @@ def test_setup_support_roles_command_creates_expected_groups():
 
 
 @pytest.mark.django_db
-def test_message_after_close_creates_new_session_and_reappears_in_operator_unread():
+def test_message_after_close_is_rejected_and_not_listed_as_unread():
     operator = User.objects.create_user(username='operator_reopen', password='pass123', is_staff=True)
     contact = SupportContact.objects.create(name='Reopen User', phone='09129990000')
     closed_session = ChatSession.objects.create(
@@ -272,15 +272,14 @@ def test_message_after_close_creates_new_session_and_reappears_in_operator_unrea
         reverse('support:send_message'),
         {'session_id': closed_session.id, 'message': 'new message after close'},
     )
-    assert response.status_code == 200
+    assert response.status_code == 400
     data = response.json()
-    assert int(data['session_id']) != closed_session.id
-    new_session_id = int(data['session_id'])
+    assert data['error'] == 'session is closed'
+    assert data['session_closed'] is True
 
     operator_client = Client()
     operator_client.force_login(operator)
     dashboard = operator_client.get(reverse('support:operator_dashboard'))
     assert dashboard.status_code == 200
     active_ids = {session.id for session in dashboard.context['active_sessions']}
-    assert new_session_id in active_ids
-    assert dashboard.context['unread_count'] >= 1
+    assert closed_session.id not in active_ids

@@ -37,14 +37,72 @@
     <span> پیام خوانده‌نشده در گفتگوهای فعال وجود دارد.</span>
   </div>
 
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6 reveal">
+    <div class="card p-4">
+      <p class="text-xs text-gray-500">کل گفتگوهای فعال</p>
+      <p class="mt-1 text-xl font-bold text-gray-900">{{ queue_summary.total_active }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-500">نیازمند پاسخ</p>
+      <p class="mt-1 text-xl font-bold text-amber-700">{{ queue_summary.need_reply }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-500">موارد بحرانی</p>
+      <p class="mt-1 text-xl font-bold text-red-700">{{ queue_summary.critical }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-500">ارجاع به من</p>
+      <p class="mt-1 text-xl font-bold text-primary-700">{{ queue_summary.mine }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-500">میانگین انتظار</p>
+      <p class="mt-1 text-xl font-bold text-gray-900">{{ queue_summary.avg_wait_minutes }} <span class="text-sm font-medium">دقیقه</span></p>
+    </div>
+  </div>
+  <div class="mb-5 text-xs text-gray-500 reveal">
+    SLA فوری از {{ queue_summary.sla_warning_minutes }} دقیقه و SLA بحرانی از {{ queue_summary.sla_breach_minutes }} دقیقه محاسبه می‌شود.
+  </div>
+
+  <div class="card p-4 sm:p-5 mb-5 reveal">
+    <form method="get" class="space-y-3">
+      <div class="flex flex-wrap gap-2">
+        {% for key, label in queue_filters %}
+          <a
+            href="?status={{ key }}&sort={{ queue_sort }}{% if queue_query %}&q={{ queue_query|urlencode }}{% endif %}"
+            class="chip text-xs {% if queue_filter == key %}bg-primary-50 text-primary-700{% else %}bg-gray-100 text-gray-700{% endif %}"
+          >
+            {{ label }}
+          </a>
+        {% endfor %}
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input
+          type="text"
+          name="q"
+          value="{{ queue_query }}"
+          class="form-input !h-10 !py-2 !text-sm"
+          placeholder="جستجو (شماره تیکت/نام/شماره/موضوع)"
+        >
+        <select name="sort" class="form-input !h-10 !py-2 !text-sm sm:w-52">
+          {% for key, label in queue_sorts %}
+            <option value="{{ key }}"{% if queue_sort == key %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="status" value="{{ queue_filter }}">
+        <button type="submit" class="btn btn-ghost btn-sm">اعمال</button>
+      </div>
+    </form>
+  </div>
+
   <div class="card overflow-hidden reveal">
-    <div class="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5">
-      <h2 class="text-sm font-semibold text-gray-900">گفتگوهای فعال</h2>
+    <div class="border-b border-gray-100 bg-gray-50/60 px-5 py-3.5 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-900">صف گفتگوها</h2>
+      <span class="text-xs text-gray-500">{{ active_sessions|length }} مورد</span>
     </div>
     <div class="divide-y divide-gray-100">
       {% for session in active_sessions %}
         <a href="{% url 'support:operator_session' session.id %}" class="block px-5 py-4 hover:bg-gray-50/60 transition-colors">
-          <div class="flex items-start justify-between gap-3">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0">
               <p class="font-semibold text-gray-900 truncate">
                 {% if session.contact %}{{ session.contact.name }}{% else %}{{ session.user_name|default:session.user }}{% endif %}
@@ -59,7 +117,16 @@
                 {% endif %}
                 | {{ session.subject|default:'گفتگوی پشتیبانی' }}
               </p>
-              <p class="text-[11px] text-gray-400 mt-1">{{ session.created_at|jdate:"Y/m/d H:i" }}</p>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span class="chip text-xs {{ session.priority_badge_class }}">{{ session.priority_label }}</span>
+                <span class="chip text-xs {{ session.sla_badge_class }}">{{ session.sla_label }}</span>
+                <span class="chip text-xs {{ session.assignment_badge_class }}">{{ session.assignment_label }}</span>
+              </div>
+              <p class="text-[11px] text-gray-400 mt-2">
+                {{ session.last_message_at|default:session.created_at|jdate:"Y/m/d H:i" }}
+                | انتظار: {{ session.wait_duration }}
+              </p>
+              <p class="text-[11px] mt-1 {{ session.last_side_class }}">{{ session.last_side_label }}</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
               {% if session.unread_count %}
@@ -72,7 +139,7 @@
           </div>
         </a>
       {% empty %}
-        <div class="px-5 py-12 text-center text-sm text-gray-400">فعلاً گفتگوی فعالی وجود ندارد.</div>
+        <div class="px-5 py-12 text-center text-sm text-gray-400">گفتگویی با این فیلتر پیدا نشد.</div>
       {% endfor %}
     </div>
   </div>
