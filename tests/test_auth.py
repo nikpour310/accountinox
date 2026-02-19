@@ -153,18 +153,16 @@ class TestGoogleOAuthFlow:
             pass
 
     def test_google_oauth_url_generation(self, client):
-        """Test that Google OAuth login URL can be accessed"""
-        # Try to access socialaccount login page
-        # The URL might not exist if not configured, which is acceptable
-        
+        """Google login should start OAuth directly (no intermediary confirm page)."""
         try:
-            # Try the Google login page
-            login_url = 'http://localhost/accounts/google/login/'
-            resp = client.get(login_url)
-            # Should either redirect to Google or return 200/302/404
-            assert resp.status_code in (200, 302, 404)
+            resp = client.get('/accounts/google/login/?process=login')
+            # 302: direct redirect to provider
+            # 404: provider route unavailable in minimal test env
+            assert resp.status_code in (302, 404)
+            if resp.status_code == 302:
+                assert 'accounts.google.com' in (resp.get('Location') or '')
         except Exception:
-            # OAuth not configured in test environment = expected behavior
+            # OAuth can be unavailable in some test environments
             pass
 
     def test_allauth_installed_and_configured(self, client):

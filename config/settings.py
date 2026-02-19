@@ -179,6 +179,9 @@ else:
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='').strip()
 GOOGLE_SECRET = env('GOOGLE_SECRET', default='').strip()
 SOCIALACCOUNT_QUERY_EMAIL = True
+# Skip the allauth intermediary confirmation page on social login GET requests.
+# This makes clicking the Google button start OAuth immediately.
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -250,7 +253,7 @@ if REDIS_URL:
         }
     }
 else:
-    # test/dev fallback — locmem (adequate for single-threaded dev/test)
+    # test/dev fallback - locmem (adequate for single-threaded dev/test)
     # For production with multiple processes, use Redis or Memcached
     CACHES = {
         'default': {
