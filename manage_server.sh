@@ -16,6 +16,13 @@ MANAGE="${VENV_DIR}/bin/python ${APP_DIR}/manage.py"
 SERVICE_USER="${SERVICE_USER:-accountinox}"
 BACKUP_DIR="${APP_DIR}/backups"
 LOG_DIR="${APP_DIR}/logs"
+MAIL_BASE_DIR="${MAIL_BASE_DIR:-/var/mail/vhosts}"
+MAIL_VMAIL_USER="${MAIL_VMAIL_USER:-vmail}"
+MAIL_VMAIL_GROUP="${MAIL_VMAIL_GROUP:-vmail}"
+MAIL_VMAIL_UID="${MAIL_VMAIL_UID:-5000}"
+MAIL_VMAIL_GID="${MAIL_VMAIL_GID:-5000}"
+MAIL_DOVECOT_USERS_FILE="${MAIL_DOVECOT_USERS_FILE:-/etc/dovecot/users}"
+MAIL_DKIM_SELECTOR="${MAIL_DKIM_SELECTOR:-default}"
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -715,6 +722,789 @@ _env_upsert() {
   chown "$SERVICE_USER":"$SERVICE_USER" "$ENVFILE" 2>/dev/null || true
 }
 
+_env_get() {
+  local key="$1"
+  grep -E "^${key}=" "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-
+}
+
+_email_mask() {
+  local key="$1" value="$2"
+  if [[ -z "$value" ]]; then
+    echo "${DIM}(empty)${NC}"
+    return 0
+  fi
+  if [[ "$key" =~ (PASSWORD|SECRET|TOKEN|KEY) ]]; then
+    echo "${value:0:4}${DIM}••••••••${NC}"
+  else
+    echo "$value"
+  fi
+}
+
+_email_bool_default() {
+  local current="$1" fallback="$2"
+  case "${current:-$fallback}" in
+    1|true|TRUE|True|yes|YES|on|ON) echo "True" ;;
+    *) echo "False" ;;
+  esac
+}
+
+_email_prompt_bool() {
+  local prompt="$1" default_val="$2" input
+  if [[ "$default_val" == "True" ]]; then
+    read -rp "  ${prompt} [Y/n]: " input
+    [[ "$input" =~ ^[Nn]$ ]] && echo "False" || echo "True"
+  else
+    read -rp "  ${prompt} [y/N]: " input
+    [[ "$input" =~ ^[Yy]$ ]] && echo "True" || echo "False"
+  fi
+}
+
+_email_show_status() {
+  header "Email Configuration Status"
+  local keys=(
+    EMAIL_BACKEND
+    EMAIL_HOST
+    EMAIL_PORT
+    EMAIL_USE_TLS
+    EMAIL_USE_SSL
+    EMAIL_TIMEOUT
+    EMAIL_HOST_USER
+    EMAIL_HOST_PASSWORD
+    DEFAULT_FROM_EMAIL
+  )
+  local k v
+  for k in "${keys[@]}"; do
+    v=$(_env_get "$k")
+    echo -e "  ${CYAN}${k}${NC}=$(_email_mask "$k" "$v")"
+  done
+
+  local backend host port user pass from
+  backend=$(_env_get "EMAIL_BACKEND")
+  host=$(_env_get "EMAIL_HOST")
+  port=$(_env_get "EMAIL_PORT")
+  user=$(_env_get "EMAIL_HOST_USER")
+  pass=$(_env_get "EMAIL_HOST_PASSWORD")
+  from=$(_env_get "DEFAULT_FROM_EMAIL")
+
+  echo ""
+  if [[ -z "$backend" ]]; then
+    info "EMAIL_BACKEND is not set in .env (Django falls back to SMTP when DEBUG=0)."
+  fi
+
+  local effective_backend="${backend:-django.core.mail.backends.smtp.EmailBackend}"
+  if [[ "$effective_backend" == "django.core.mail.backends.console.EmailBackend" ]]; then
+    warn "Console backend is active — emails are NOT actually sent."
+  fi
+  if [[ "$effective_backend" == "django.core.mail.backends.smtp.EmailBackend" ]]; then
+    [[ -z "$host" ]] && warn "EMAIL_HOST is empty."
+    [[ -z "$port" ]] && warn "EMAIL_PORT is empty."
+    [[ -z "$user" ]] && warn "EMAIL_HOST_USER is empty."
+    [[ -z "$pass" ]] && warn "EMAIL_HOST_PASSWORD is empty."
+    [[ -z "$from" ]] && warn "DEFAULT_FROM_EMAIL is empty."
+  fi
+}
+
+_email_save_smtp_settings() {
+  local host="$1"
+  local port="$2"
+  local use_tls="$3"
+  local use_ssl="$4"
+  local user="$5"
+  local pass="$6"
+  local from_addr="$7"
+  local timeout="$8"
+
+  cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
+  _env_upsert "EMAIL_BACKEND" "django.core.mail.backends.smtp.EmailBackend"
+  _env_upsert "EMAIL_HOST" "$host"
+  _env_upsert "EMAIL_PORT" "$port"
+  _env_upsert "EMAIL_USE_TLS" "$use_tls"
+  _env_upsert "EMAIL_USE_SSL" "$use_ssl"
+  _env_upsert "EMAIL_HOST_USER" "$user"
+  _env_upsert "EMAIL_HOST_PASSWORD" "$pass"
+  _env_upsert "DEFAULT_FROM_EMAIL" "$from_addr"
+  _env_upsert "EMAIL_TIMEOUT" "$timeout"
+}
+
+_email_configure_wizard() {
+  header "SMTP Setup Wizard"
+  echo -e "  ${CYAN}1${NC}) Brevo (recommended)"
+  echo -e "  ${CYAN}2${NC}) Mailgun"
+  echo -e "  ${CYAN}3${NC}) SMTP2GO"
+  echo -e "  ${CYAN}4${NC}) Gmail / Google Workspace"
+  echo -e "  ${CYAN}5${NC}) Custom SMTP"
+  echo -e "  ${CYAN}0${NC}) Back"
+  read -rp "$(echo -e "${CYAN}▸${NC} Provider: ")" provider
+
+  local smtp_host smtp_port tls_default ssl_default timeout_default from_hint
+  timeout_default="20"
+  case "$provider" in
+    1) smtp_host="smtp-relay.brevo.com"; smtp_port="587"; tls_default="True";  ssl_default="False"; from_hint="noreply@your-domain.com" ;;
+    2) smtp_host="smtp.mailgun.org";     smtp_port="587"; tls_default="True";  ssl_default="False"; from_hint="noreply@your-domain.com" ;;
+    3) smtp_host="mail.smtp2go.com";     smtp_port="587"; tls_default="True";  ssl_default="False"; from_hint="noreply@your-domain.com" ;;
+    4) smtp_host="smtp.gmail.com";       smtp_port="587"; tls_default="True";  ssl_default="False"; from_hint="your-email@gmail.com" ;;
+    5) smtp_host="$(_env_get EMAIL_HOST)"; smtp_port="$(_env_get EMAIL_PORT)"; tls_default="$(_email_bool_default "$(_env_get EMAIL_USE_TLS)" "True")"; ssl_default="$(_email_bool_default "$(_env_get EMAIL_USE_SSL)" "False")"; from_hint="$(_env_get DEFAULT_FROM_EMAIL)" ;;
+    0|*) return 0 ;;
+  esac
+
+  [[ -z "$smtp_host" ]] && smtp_host="smtp.example.com"
+  [[ -z "$smtp_port" ]] && smtp_port="587"
+  [[ -z "$tls_default" ]] && tls_default="True"
+  [[ -z "$ssl_default" ]] && ssl_default="False"
+  [[ -z "$from_hint" ]] && from_hint="noreply@your-domain.com"
+
+  local input
+  read -rp "  SMTP Host [${smtp_host}]: " input
+  [[ -n "$input" ]] && smtp_host="$input"
+  read -rp "  SMTP Port [${smtp_port}]: " input
+  [[ -n "$input" ]] && smtp_port="$input"
+
+  local smtp_tls smtp_ssl
+  smtp_tls=$(_email_prompt_bool "Use TLS" "$tls_default")
+  smtp_ssl=$(_email_prompt_bool "Use SSL" "$ssl_default")
+  if [[ "$smtp_tls" == "True" && "$smtp_ssl" == "True" ]]; then
+    warn "Both TLS and SSL were enabled. Forcing SSL=False (recommended with port 587)."
+    smtp_ssl="False"
+  fi
+
+  local smtp_user smtp_pass from_addr timeout
+  read -rp "  SMTP Username: " smtp_user
+  read -rsp "  SMTP Password: " smtp_pass; echo
+  read -rp "  DEFAULT_FROM_EMAIL [${from_hint}]: " from_addr
+  from_addr="${from_addr:-$from_hint}"
+  read -rp "  EMAIL_TIMEOUT seconds [${timeout_default}]: " timeout
+  timeout="${timeout:-$timeout_default}"
+
+  if [[ -z "$smtp_host" || -z "$smtp_port" || -z "$smtp_user" || -z "$smtp_pass" || -z "$from_addr" ]]; then
+    fail "SMTP setup canceled: required fields cannot be empty."
+    return 1
+  fi
+
+  _email_save_smtp_settings "$smtp_host" "$smtp_port" "$smtp_tls" "$smtp_ssl" "$smtp_user" "$smtp_pass" "$from_addr" "$timeout"
+  success "SMTP configuration saved in .env"
+  echo -e "  ${YELLOW}Restart to apply: sudo bash $0 restart${NC}"
+}
+
+_email_enable_console_backend() {
+  header "Enable Console Email Backend"
+  echo -e "  ${YELLOW}This mode does NOT send real emails. Useful for temporary debugging.${NC}"
+  read -rp "  Continue? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled"; return 0; }
+  cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
+  _env_upsert "EMAIL_BACKEND" "django.core.mail.backends.console.EmailBackend"
+  success "Console email backend enabled"
+  echo -e "  ${YELLOW}Restart to apply: sudo bash $0 restart${NC}"
+}
+
+_email_reset_settings() {
+  header "Reset Email Settings"
+  echo -e "  ${RED}This will remove EMAIL_* and DEFAULT_FROM_EMAIL from .env.${NC}"
+  read -rp "  Continue? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled"; return 0; }
+  cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
+  sed -i '/^EMAIL_/d; /^DEFAULT_FROM_EMAIL=/d' "$ENVFILE"
+  success "Email settings removed from .env"
+  info "When DEBUG=0, Django will fall back to SMTP defaults unless you configure again."
+  echo -e "  ${YELLOW}Restart to apply: sudo bash $0 restart${NC}"
+}
+
+_email_send_test() {
+  local to="${1:-}"
+  [[ -z "$to" ]] && read -rp "  Test recipient email: " to
+  [[ -z "$to" ]] && { fail "Recipient email is required"; return 1; }
+
+  header "Sending Test Email"
+  load_env
+  cd "$APP_DIR"
+
+  if sudo -u "$SERVICE_USER" $MANAGE shell -c "
+from django.conf import settings
+from django.core.mail import send_mail
+subject = '[Accountinox] SMTP test'
+message = 'This is a test email from manage_server.sh.'
+sent = send_mail(subject, message, getattr(settings, 'DEFAULT_FROM_EMAIL', None), ['$to'], fail_silently=False)
+print(f'sent={sent} backend={getattr(settings, \"EMAIL_BACKEND\", \"\")}')
+"; then
+    success "Test email request completed. Check inbox/spam for: $to"
+  else
+    fail "Test email failed. Check app logs: sudo bash $0 logs django"
+    return 1
+  fi
+}
+
+_mail_validate_domain() {
+  local domain="$1"
+  [[ "$domain" =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ ]]
+}
+
+_mail_validate_email() {
+  local email="$1"
+  [[ "$email" =~ ^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$ ]]
+}
+
+_mail_guess_domain() {
+  local raw
+  raw=$(_env_get "SITE_BASE_URL")
+  [[ -z "$raw" ]] && raw=$(_env_get "SITE_URL")
+  [[ -z "$raw" ]] && raw=$(_env_get "ALLOWED_HOSTS")
+  raw="${raw%%,*}"
+  raw="${raw#http://}"
+  raw="${raw#https://}"
+  raw="${raw%%/*}"
+  raw="${raw#www.}"
+  echo "$raw"
+}
+
+_mail_first_domain() {
+  if [[ -f /etc/postfix/vmail_domains ]]; then
+    awk '!/^#/ && NF >= 1 {print $1; exit}' /etc/postfix/vmail_domains 2>/dev/null
+  fi
+}
+
+_mail_upsert_map_file() {
+  local file="$1" key="$2" value="$3"
+  touch "$file"
+  local tmp
+  tmp=$(mktemp)
+  awk -v k="$key" -v v="$value" '
+    BEGIN{done=0}
+    $1==k {print k " " v; done=1; next}
+    {print}
+    END{if(!done) print k " " v}
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
+_mail_remove_map_key() {
+  local file="$1" key="$2"
+  [[ -f "$file" ]] || return 0
+  local tmp
+  tmp=$(mktemp)
+  awk -v k="$key" '$1!=k {print}' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
+_mail_upsert_dovecot_user() {
+  local email="$1" hash="$2"
+  touch "$MAIL_DOVECOT_USERS_FILE"
+  local tmp
+  tmp=$(mktemp)
+  awk -F: -v e="$email" -v h="$hash" '
+    BEGIN{done=0}
+    $1==e {$0=e ":" h; done=1}
+    {print}
+    END{if(!done) print e ":" h}
+  ' "$MAIL_DOVECOT_USERS_FILE" > "$tmp"
+  mv "$tmp" "$MAIL_DOVECOT_USERS_FILE"
+  chown root:dovecot "$MAIL_DOVECOT_USERS_FILE" 2>/dev/null || true
+  chmod 640 "$MAIL_DOVECOT_USERS_FILE"
+}
+
+_mail_remove_dovecot_user() {
+  local email="$1"
+  [[ -f "$MAIL_DOVECOT_USERS_FILE" ]] || return 0
+  local tmp
+  tmp=$(mktemp)
+  awk -F: -v e="$email" '$1!=e {print}' "$MAIL_DOVECOT_USERS_FILE" > "$tmp"
+  mv "$tmp" "$MAIL_DOVECOT_USERS_FILE"
+}
+
+_mail_resolve_cert_paths() {
+  local mail_host="$1"
+  local le_dir="/etc/letsencrypt/live/${mail_host}"
+  if [[ -f "${le_dir}/fullchain.pem" && -f "${le_dir}/privkey.pem" ]]; then
+    echo "${le_dir}/fullchain.pem|${le_dir}/privkey.pem"
+    return 0
+  fi
+
+  local ssl_dir="/etc/ssl/accountinox-mail"
+  local cert_file="${ssl_dir}/${mail_host}.crt"
+  local key_file="${ssl_dir}/${mail_host}.key"
+  mkdir -p "$ssl_dir"
+  if [[ ! -f "$cert_file" || ! -f "$key_file" ]]; then
+    warn "Let's Encrypt cert not found for ${mail_host}; generating self-signed cert (temporary)."
+    openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+      -subj "/CN=${mail_host}" \
+      -keyout "$key_file" \
+      -out "$cert_file" >/dev/null 2>&1
+  fi
+  chmod 600 "$key_file"
+  chmod 644 "$cert_file"
+  echo "${cert_file}|${key_file}"
+}
+
+_mail_ensure_vmail_user() {
+  if ! getent group "$MAIL_VMAIL_GROUP" >/dev/null 2>&1; then
+    groupadd -g "$MAIL_VMAIL_GID" "$MAIL_VMAIL_GROUP" 2>/dev/null || groupadd "$MAIL_VMAIL_GROUP"
+  fi
+  if ! id -u "$MAIL_VMAIL_USER" >/dev/null 2>&1; then
+    useradd -u "$MAIL_VMAIL_UID" -g "$MAIL_VMAIL_GROUP" -d "$MAIL_BASE_DIR" -m -s /usr/sbin/nologin "$MAIL_VMAIL_USER" 2>/dev/null || \
+      useradd -g "$MAIL_VMAIL_GROUP" -d "$MAIL_BASE_DIR" -m -s /usr/sbin/nologin "$MAIL_VMAIL_USER"
+  fi
+  mkdir -p "$MAIL_BASE_DIR"
+  chown -R "$MAIL_VMAIL_USER:$MAIL_VMAIL_GROUP" "$MAIL_BASE_DIR"
+  chmod 770 "$MAIL_BASE_DIR"
+}
+
+_mail_postmap_refresh() {
+  postmap /etc/postfix/vmail_domains 2>/dev/null || true
+  postmap /etc/postfix/vmail_mailboxes 2>/dev/null || true
+  postmap /etc/postfix/vmail_aliases 2>/dev/null || true
+}
+
+_mail_reload_services() {
+  systemctl restart opendkim
+  systemctl restart dovecot
+  systemctl restart postfix
+}
+
+_mail_ensure_submission_service() {
+  if ! grep -Eq '^submission[[:space:]]+inet' /etc/postfix/master.cf 2>/dev/null; then
+    cat >> /etc/postfix/master.cf <<'EOF'
+submission inet n       -       y       -       -       smtpd
+  -o syslog_name=postfix/submission
+  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+EOF
+  fi
+}
+
+_mail_dns_instructions() {
+  local domain="${1:-$(_mail_first_domain)}"
+  local mail_host="${2:-mail.${domain}}"
+  [[ -z "$domain" ]] && { warn "No configured mail domain found."; return 1; }
+
+  header "DNS Records (add on your DNS provider)"
+  echo -e "  ${BOLD}A record${NC}"
+  echo -e "    ${CYAN}${mail_host}${NC} -> ${BOLD}<YOUR_SERVER_IP>${NC}"
+  echo -e "  ${BOLD}MX record${NC}"
+  echo -e "    ${CYAN}${domain}${NC} -> ${BOLD}10 ${mail_host}.${NC}"
+  echo -e "  ${BOLD}SPF TXT${NC}"
+  echo -e "    ${CYAN}${domain}${NC} -> ${BOLD}v=spf1 mx a:${mail_host} ~all${NC}"
+  echo -e "  ${BOLD}DMARC TXT${NC}"
+  echo -e "    ${CYAN}_dmarc.${domain}${NC} -> ${BOLD}v=DMARC1; p=quarantine; rua=mailto:postmaster@${domain}; adkim=s; aspf=s${NC}"
+
+  local dkim_txt_file="/etc/opendkim/keys/${domain}/${MAIL_DKIM_SELECTOR}.txt"
+  if [[ -f "$dkim_txt_file" ]]; then
+    local dkim_value
+    dkim_value=$(awk -F\" '/\"/ {for(i=2;i<=NF;i+=2) printf "%s",$i}' "$dkim_txt_file")
+    echo -e "  ${BOLD}DKIM TXT${NC}"
+    echo -e "    ${CYAN}${MAIL_DKIM_SELECTOR}._domainkey.${domain}${NC} -> ${BOLD}${dkim_value}${NC}"
+  else
+    warn "DKIM key file not found: $dkim_txt_file"
+  fi
+
+  echo ""
+  warn "Important: Set reverse DNS (PTR) for server IP -> ${mail_host}"
+}
+
+_mailserver_setup() {
+  header "Lightweight Mail Server Setup"
+  local domain="${1:-}"
+  local mail_host="${2:-}"
+
+  [[ -z "$domain" ]] && domain=$(_mail_guess_domain)
+  [[ -z "$domain" ]] && read -rp "  Mail domain (e.g. example.com): " domain
+  [[ -z "$mail_host" ]] && mail_host="mail.${domain}"
+  read -rp "  Mail hostname [${mail_host}]: " input_mail_host
+  mail_host="${input_mail_host:-$mail_host}"
+
+  if ! _mail_validate_domain "$domain"; then
+    fail "Invalid domain: $domain"
+    return 1
+  fi
+  if ! _mail_validate_domain "$mail_host"; then
+    fail "Invalid mail hostname: $mail_host"
+    return 1
+  fi
+
+  echo -e "  Domain: ${CYAN}${domain}${NC}"
+  echo -e "  Mail host: ${CYAN}${mail_host}${NC}"
+  echo -e "  Stack: ${BOLD}Postfix + Dovecot(IMAPS only) + OpenDKIM${NC} ${DIM}(no spam/clam heavy services)${NC}"
+  read -rp "  Continue setup? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled"; return 0; }
+
+  export DEBIAN_FRONTEND=noninteractive
+  if command -v debconf-set-selections >/dev/null 2>&1; then
+    echo "postfix postfix/mailname string ${domain}" | debconf-set-selections
+    echo "postfix postfix/main_mailer_type string Internet Site" | debconf-set-selections
+  fi
+
+  info "Installing required packages..."
+  apt-get update -qq
+  apt-get install -y -qq postfix dovecot-core dovecot-imapd opendkim opendkim-tools libsasl2-modules ca-certificates
+
+  echo "$domain" > /etc/mailname
+  _mail_ensure_vmail_user
+
+  touch /etc/postfix/vmail_domains /etc/postfix/vmail_mailboxes /etc/postfix/vmail_aliases
+  chmod 644 /etc/postfix/vmail_domains /etc/postfix/vmail_mailboxes /etc/postfix/vmail_aliases
+  _mail_upsert_map_file /etc/postfix/vmail_domains "$domain" "OK"
+  _mail_upsert_map_file /etc/postfix/vmail_aliases "postmaster@${domain}" "root"
+  _mail_postmap_refresh
+
+  local cert_pair cert_file key_file
+  cert_pair=$(_mail_resolve_cert_paths "$mail_host")
+  cert_file="${cert_pair%%|*}"
+  key_file="${cert_pair##*|}"
+
+  info "Configuring Postfix..."
+  postconf -e "myhostname = ${mail_host}"
+  postconf -e "mydomain = ${domain}"
+  postconf -e "myorigin = \$mydomain"
+  postconf -e "mydestination = localhost"
+  postconf -e "inet_interfaces = all"
+  postconf -e "inet_protocols = ipv4"
+  postconf -e "mailbox_size_limit = 0"
+  postconf -e "recipient_delimiter = +"
+  postconf -e "append_dot_mydomain = no"
+  postconf -e "biff = no"
+  postconf -e "readme_directory = no"
+  postconf -e "compatibility_level = 2"
+  postconf -e "virtual_mailbox_domains = hash:/etc/postfix/vmail_domains"
+  postconf -e "virtual_mailbox_base = ${MAIL_BASE_DIR}"
+  postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmail_mailboxes"
+  postconf -e "virtual_alias_maps = hash:/etc/postfix/vmail_aliases"
+  postconf -e "virtual_uid_maps = static:${MAIL_VMAIL_UID}"
+  postconf -e "virtual_gid_maps = static:${MAIL_VMAIL_GID}"
+  postconf -e "virtual_minimum_uid = ${MAIL_VMAIL_UID}"
+  postconf -e "smtpd_sasl_type = dovecot"
+  postconf -e "smtpd_sasl_path = private/auth"
+  postconf -e "smtpd_sasl_auth_enable = yes"
+  postconf -e "broken_sasl_auth_clients = yes"
+  postconf -e "smtpd_relay_restrictions = permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination"
+  postconf -e "smtpd_recipient_restrictions = permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination"
+  postconf -e "disable_vrfy_command = yes"
+  postconf -e "strict_rfc821_envelopes = yes"
+  postconf -e "smtpd_tls_security_level = may"
+  postconf -e "smtpd_tls_auth_only = yes"
+  postconf -e "smtp_tls_security_level = may"
+  postconf -e "smtpd_tls_cert_file = ${cert_file}"
+  postconf -e "smtpd_tls_key_file = ${key_file}"
+  postconf -e "milter_default_action = accept"
+  postconf -e "milter_protocol = 6"
+  postconf -e "smtpd_milters = inet:127.0.0.1:8891"
+  postconf -e "non_smtpd_milters = inet:127.0.0.1:8891"
+  _mail_ensure_submission_service
+
+  info "Configuring Dovecot..."
+  cat > /etc/dovecot/conf.d/90-accountinox-mail.conf <<EOF
+mail_location = maildir:${MAIL_BASE_DIR}/%d/%n
+disable_plaintext_auth = yes
+auth_mechanisms = plain login
+
+passdb {
+  driver = passwd-file
+  args = scheme=SHA512-CRYPT ${MAIL_DOVECOT_USERS_FILE}
+}
+
+userdb {
+  driver = static
+  args = uid=${MAIL_VMAIL_USER} gid=${MAIL_VMAIL_GROUP} home=${MAIL_BASE_DIR}/%d/%n
+}
+
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
+
+service imap-login {
+  inet_listener imap {
+    port = 0
+  }
+  inet_listener imaps {
+    port = 993
+  }
+}
+
+service pop3-login {
+  inet_listener pop3 {
+    port = 0
+  }
+  inet_listener pop3s {
+    port = 0
+  }
+}
+
+ssl = required
+ssl_cert = <${cert_file}
+ssl_key = <${key_file}
+EOF
+
+  touch "$MAIL_DOVECOT_USERS_FILE"
+  chown root:dovecot "$MAIL_DOVECOT_USERS_FILE" 2>/dev/null || true
+  chmod 640 "$MAIL_DOVECOT_USERS_FILE"
+
+  info "Configuring OpenDKIM..."
+  mkdir -p "/etc/opendkim/keys/${domain}"
+  cat > /etc/opendkim.conf <<'EOF'
+Syslog                  yes
+UMask                   002
+Canonicalization        relaxed/simple
+Mode                    sv
+SubDomains              no
+AutoRestart             yes
+Background              yes
+DNSTimeout              5
+SignatureAlgorithm      rsa-sha256
+UserID                  opendkim
+Socket                  inet:8891@127.0.0.1
+PidFile                 /run/opendkim/opendkim.pid
+KeyTable                /etc/opendkim/key.table
+SigningTable            refile:/etc/opendkim/signing.table
+ExternalIgnoreList      /etc/opendkim/trusted.hosts
+InternalHosts           /etc/opendkim/trusted.hosts
+EOF
+
+  if [[ -f /etc/default/opendkim ]]; then
+    if grep -q '^SOCKET=' /etc/default/opendkim 2>/dev/null; then
+      sed -i 's|^SOCKET=.*|SOCKET="inet:8891@127.0.0.1"|' /etc/default/opendkim
+    else
+      echo 'SOCKET="inet:8891@127.0.0.1"' >> /etc/default/opendkim
+    fi
+  fi
+
+  if [[ ! -f "/etc/opendkim/keys/${domain}/${MAIL_DKIM_SELECTOR}.private" ]]; then
+    opendkim-genkey -b 2048 -D "/etc/opendkim/keys/${domain}" -d "$domain" -s "$MAIL_DKIM_SELECTOR"
+  fi
+  chown -R opendkim:opendkim /etc/opendkim/keys
+  chmod 700 "/etc/opendkim/keys/${domain}"
+  chmod 600 "/etc/opendkim/keys/${domain}/${MAIL_DKIM_SELECTOR}.private"
+
+  cat > /etc/opendkim/key.table <<EOF
+${MAIL_DKIM_SELECTOR}._domainkey.${domain} ${domain}:${MAIL_DKIM_SELECTOR}:/etc/opendkim/keys/${domain}/${MAIL_DKIM_SELECTOR}.private
+EOF
+  cat > /etc/opendkim/signing.table <<EOF
+*@${domain} ${MAIL_DKIM_SELECTOR}._domainkey.${domain}
+EOF
+  cat > /etc/opendkim/trusted.hosts <<'EOF'
+127.0.0.1
+localhost
+EOF
+
+  systemctl enable postfix dovecot opendkim >/dev/null 2>&1 || true
+  _mail_reload_services
+
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    ufw allow 25/tcp >/dev/null 2>&1 || true
+    ufw allow 587/tcp >/dev/null 2>&1 || true
+    ufw allow 993/tcp >/dev/null 2>&1 || true
+  fi
+
+  success "Mail server setup completed."
+  info "Next: create mailbox (e.g. noreply@${domain}) from mailserver menu."
+  _mail_dns_instructions "$domain" "$mail_host"
+}
+
+_mailserver_create_mailbox() {
+  local email="${1:-}" password="${2:-}"
+  local configured_domain
+  configured_domain=$(_mail_first_domain)
+  [[ -z "$email" ]] && read -rp "  Mailbox email (e.g. noreply@${configured_domain:-example.com}): " email
+  if ! _mail_validate_email "$email"; then
+    fail "Invalid email address."
+    return 1
+  fi
+  if [[ -z "$password" ]]; then
+    read -rsp "  Password (min 10 chars): " password; echo
+  fi
+  [[ ${#password} -lt 10 ]] && { fail "Password must be at least 10 characters."; return 1; }
+
+  local localpart domain hash
+  localpart="${email%@*}"
+  domain="${email#*@}"
+  [[ -n "$configured_domain" && "$domain" != "$configured_domain" ]] && warn "Configured domain is ${configured_domain}; adding mailbox for ${domain}."
+
+  _mail_upsert_map_file /etc/postfix/vmail_domains "$domain" "OK"
+  hash=$(doveadm pw -s SHA512-CRYPT -p "$password")
+  _mail_upsert_dovecot_user "$email" "$hash"
+  _mail_upsert_map_file /etc/postfix/vmail_mailboxes "$email" "${domain}/${localpart}/"
+  mkdir -p "${MAIL_BASE_DIR}/${domain}/${localpart}"
+  chown -R "${MAIL_VMAIL_USER}:${MAIL_VMAIL_GROUP}" "${MAIL_BASE_DIR}/${domain}/${localpart}"
+  chmod 700 "${MAIL_BASE_DIR}/${domain}/${localpart}"
+  _mail_postmap_refresh
+  systemctl reload postfix dovecot
+  success "Mailbox created/updated: ${email}"
+}
+
+_mailserver_reset_password() {
+  local email="${1:-}" password="${2:-}"
+  [[ -z "$email" ]] && read -rp "  Mailbox email: " email
+  if ! _mail_validate_email "$email"; then
+    fail "Invalid email address."
+    return 1
+  fi
+  if [[ -z "$password" ]]; then
+    read -rsp "  New password: " password; echo
+  fi
+  [[ ${#password} -lt 10 ]] && { fail "Password must be at least 10 characters."; return 1; }
+  local hash
+  hash=$(doveadm pw -s SHA512-CRYPT -p "$password")
+  _mail_upsert_dovecot_user "$email" "$hash"
+  systemctl reload dovecot
+  success "Password updated: ${email}"
+}
+
+_mailserver_delete_mailbox() {
+  local email="${1:-}"
+  [[ -z "$email" ]] && read -rp "  Mailbox email to delete: " email
+  if ! _mail_validate_email "$email"; then
+    fail "Invalid email address."
+    return 1
+  fi
+  local localpart domain
+  localpart="${email%@*}"
+  domain="${email#*@}"
+  echo -e "  ${RED}This will remove mailbox account: ${email}${NC}"
+  read -rp "  Continue? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled"; return 0; }
+
+  _mail_remove_dovecot_user "$email"
+  _mail_remove_map_key /etc/postfix/vmail_mailboxes "$email"
+  _mail_postmap_refresh
+  read -rp "  Delete mailbox data directory too? [y/N] " del_data
+  if [[ "$del_data" =~ ^[Yy]$ ]]; then
+    rm -rf "${MAIL_BASE_DIR}/${domain}/${localpart}"
+    info "Mailbox data removed."
+  fi
+  systemctl reload postfix dovecot
+  success "Mailbox deleted: ${email}"
+}
+
+_mailserver_list_mailboxes() {
+  header "Mailboxes"
+  if [[ ! -f "$MAIL_DOVECOT_USERS_FILE" ]]; then
+    warn "No mailbox file found: $MAIL_DOVECOT_USERS_FILE"
+    return 0
+  fi
+  local count
+  count=$(awk -F: 'NF && $1 !~ /^#/ {print $1}' "$MAIL_DOVECOT_USERS_FILE" | wc -l)
+  if [[ "$count" -eq 0 ]]; then
+    info "No mailboxes configured."
+    return 0
+  fi
+  awk -F: 'NF && $1 !~ /^#/ {print "  - " $1}' "$MAIL_DOVECOT_USERS_FILE"
+  echo ""
+  info "Total mailboxes: $count"
+}
+
+_mailserver_status() {
+  header "Mail Server Status"
+  local services=(postfix dovecot opendkim)
+  for svc in "${services[@]}"; do
+    local st color="$RED"
+    st=$(systemctl is-active "$svc" 2>/dev/null || echo "inactive")
+    [[ "$st" == "active" ]] && color="$GREEN"
+    printf "  %-10s ${color}%-10s${NC}\n" "$svc" "$st"
+  done
+  echo ""
+  info "Listening ports (mail related):"
+  ss -tlnp 2>/dev/null | grep -E ':(25|465|587|993)\b' | awk '{print "  " $4 " -> " $7}' || true
+  echo ""
+  _mailserver_list_mailboxes
+}
+
+_mailserver_apply_app_env() {
+  header "Apply Local SMTP to Django .env"
+  local from_addr="${1:-}"
+  local guessed_domain
+  guessed_domain=$(_mail_first_domain)
+  [[ -z "$from_addr" ]] && read -rp "  DEFAULT_FROM_EMAIL [noreply@${guessed_domain:-example.com}]: " from_addr
+  [[ -z "$from_addr" ]] && from_addr="noreply@${guessed_domain:-example.com}"
+
+  cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
+  _env_upsert "EMAIL_BACKEND" "django.core.mail.backends.smtp.EmailBackend"
+  _env_upsert "EMAIL_HOST" "127.0.0.1"
+  _env_upsert "EMAIL_PORT" "25"
+  _env_upsert "EMAIL_USE_TLS" "False"
+  _env_upsert "EMAIL_USE_SSL" "False"
+  _env_upsert "EMAIL_HOST_USER" ""
+  _env_upsert "EMAIL_HOST_PASSWORD" ""
+  _env_upsert "DEFAULT_FROM_EMAIL" "$from_addr"
+  _env_upsert "EMAIL_TIMEOUT" "20"
+  success "Django SMTP configured to local Postfix (127.0.0.1:25)."
+  echo -e "  ${YELLOW}Restart app: sudo bash $0 restart${NC}"
+}
+
+_mailserver_send_probe() {
+  local to="${1:-}" from="${2:-}"
+  local domain
+  domain=$(_mail_first_domain)
+  [[ -z "$from" ]] && from="noreply@${domain:-example.com}"
+  [[ -z "$to" ]] && read -rp "  Recipient email for test: " to
+  if ! _mail_validate_email "$to"; then
+    fail "Invalid recipient email."
+    return 1
+  fi
+  header "Sending Mail Server Probe"
+  local now
+  now=$(date '+%Y-%m-%d %H:%M:%S')
+  /usr/sbin/sendmail -t <<EOF
+From: ${from}
+To: ${to}
+Subject: [Accountinox] Mail server probe
+
+Hello,
+This is a test email from Accountinox mail server.
+Time: ${now}
+EOF
+  success "Probe queued. Check recipient inbox/spam and logs."
+}
+
+cmd_mailserver() {
+  local subcmd="${1:-menu}"
+  case "$subcmd" in
+    setup)         _mailserver_setup "${2:-}" "${3:-}" ;;
+    status)        _mailserver_status ;;
+    create)        _mailserver_create_mailbox "${2:-}" "${3:-}" ;;
+    passwd|password) _mailserver_reset_password "${2:-}" "${3:-}" ;;
+    delete|remove) _mailserver_delete_mailbox "${2:-}" ;;
+    list)          _mailserver_list_mailboxes ;;
+    dns)           _mail_dns_instructions "${2:-}" "${3:-}" ;;
+    app-env|apply-env) _mailserver_apply_app_env "${2:-}" ;;
+    test|probe)    _mailserver_send_probe "${2:-}" "${3:-}" ;;
+    restart)       _mail_reload_services && success "Mail services restarted" ;;
+    logs)          journalctl -u postfix -u dovecot -u opendkim -n 120 --no-pager ;;
+    menu|*)
+      echo ""
+      echo -e "  ${BOLD}Mail Server (Lightweight)${NC}"
+      echo -e "  ${CYAN}1${NC}) Setup lightweight mail server (Postfix+Dovecot+DKIM)"
+      echo -e "  ${CYAN}2${NC}) Status"
+      echo -e "  ${CYAN}3${NC}) Create mailbox"
+      echo -e "  ${CYAN}4${NC}) Reset mailbox password"
+      echo -e "  ${CYAN}5${NC}) List mailboxes"
+      echo -e "  ${CYAN}6${NC}) Delete mailbox"
+      echo -e "  ${CYAN}7${NC}) Show DNS records (MX/SPF/DKIM/DMARC)"
+      echo -e "  ${CYAN}8${NC}) Apply local SMTP to Django .env"
+      echo -e "  ${CYAN}9${NC}) Send probe email"
+      echo -e "  ${CYAN}10${NC}) Restart mail services"
+      echo -e "  ${CYAN}11${NC}) Mail logs"
+      echo -e "  ${CYAN}0${NC}) Back"
+      echo ""
+      read -rp "$(echo -e "${CYAN}▸${NC} Choice: ")" mchoice
+      case "$mchoice" in
+        1)  _mailserver_setup ;;
+        2)  _mailserver_status ;;
+        3)  _mailserver_create_mailbox ;;
+        4)  _mailserver_reset_password ;;
+        5)  _mailserver_list_mailboxes ;;
+        6)  _mailserver_delete_mailbox ;;
+        7)  _mail_dns_instructions ;;
+        8)  _mailserver_apply_app_env ;;
+        9)  _mailserver_send_probe ;;
+        10) _mail_reload_services && success "Mail services restarted" ;;
+        11) journalctl -u postfix -u dovecot -u opendkim -n 120 --no-pager ;;
+        0|*) return 0 ;;
+      esac
+      ;;
+  esac
+}
+
 cmd_env() {
   local subcmd="${1:-menu}"
 
@@ -878,49 +1668,34 @@ cmd_env() {
       ;;
 
     email)
-      header "Email Configuration"
-      echo -e "  Current email settings:"
-      grep -E '^(EMAIL_|DEFAULT_FROM)' "$ENVFILE" 2>/dev/null | while read -r line; do
-        local k="${line%%=*}"
-        local v="${line#*=}"
-        if [[ "$k" =~ PASSWORD ]]; then
-          echo -e "    ${CYAN}${k}${NC}=${v:0:3}••••"
-        else
-          echo -e "    ${CYAN}${k}${NC}=${v}"
-        fi
-      done || info "No email settings configured"
-      echo ""
-      read -rp "  Configure email now? [y/N] " do_email
-      [[ "$do_email" =~ ^[Yy]$ ]] || return 0
-
-      cp "$ENVFILE" "${ENVFILE}.bak.$(date +%s)"
-
-      read -rp "  SMTP Host (e.g. smtp.gmail.com): " smtp_host
-      read -rp "  SMTP Port (default 587): " smtp_port
-      smtp_port="${smtp_port:-587}"
-      read -rp "  Use TLS? [Y/n]: " smtp_tls
-      smtp_tls="$([[ "$smtp_tls" =~ ^[Nn]$ ]] && echo 'False' || echo 'True')"
-      read -rp "  SMTP Username: " smtp_user
-      read -rsp "  SMTP Password: " smtp_pass; echo
-      read -rp "  From address (e.g. noreply@domain.com): " from_addr
-
-      # Remove old email settings (commented or active)
-      sed -i '/^#.*EMAIL_/d; /^EMAIL_/d; /^DEFAULT_FROM_EMAIL/d; /^#.*DEFAULT_FROM_EMAIL/d' "$ENVFILE"
-
-      cat >> "$ENVFILE" <<EMAILEOF
-
-# ─── Email ($(date +%Y-%m-%d)) ───
-EMAIL_HOST=${smtp_host}
-EMAIL_PORT=${smtp_port}
-EMAIL_USE_TLS=${smtp_tls}
-EMAIL_HOST_USER=${smtp_user}
-EMAIL_HOST_PASSWORD=${smtp_pass}
-DEFAULT_FROM_EMAIL=${from_addr}
-EMAILEOF
-
-      chmod 600 "$ENVFILE"
-      success "Email configured"
-      echo -e "  ${YELLOW}Restart to apply: sudo bash $0 restart${NC}"
+      local email_sub="${2:-menu}"
+      case "$email_sub" in
+        setup|configure) _email_configure_wizard ;;
+        status|show) _email_show_status ;;
+        test) _email_send_test "${3:-}" ;;
+        console) _email_enable_console_backend ;;
+        reset) _email_reset_settings ;;
+        menu|*)
+          echo ""
+          echo -e "  ${BOLD}Email Setup & Management${NC}"
+          echo -e "  ${CYAN}1${NC}) Status / validation"
+          echo -e "  ${CYAN}2${NC}) Setup SMTP (provider wizard)"
+          echo -e "  ${CYAN}3${NC}) Send test email"
+          echo -e "  ${CYAN}4${NC}) Enable console backend (no real send)"
+          echo -e "  ${CYAN}5${NC}) Reset email settings from .env"
+          echo -e "  ${CYAN}0${NC}) Back"
+          echo ""
+          read -rp "$(echo -e "${CYAN}▸${NC} Choice: ")" em_choice
+          case "$em_choice" in
+            1) _email_show_status ;;
+            2) _email_configure_wizard ;;
+            3) _email_send_test ;;
+            4) _email_enable_console_backend ;;
+            5) _email_reset_settings ;;
+            0|*) return 0 ;;
+          esac
+          ;;
+      esac
       ;;
 
     backup-list)
@@ -1207,7 +1982,7 @@ EMAILEOF
       echo -e "  ${CYAN} 7${NC}) Regenerate secret key"
       echo ""
       echo -e "  ${BOLD}Service Wizards${NC}"
-      echo -e "  ${CYAN} 8${NC}) Configure email (SMTP)   ${CYAN} 9${NC}) Google OAuth"
+      echo -e "  ${CYAN} 8${NC}) Email setup / manage     ${CYAN} 9${NC}) Google OAuth"
       echo -e "  ${CYAN}10${NC}) IPPanel SMS             ${CYAN}11${NC}) Web Push (VAPID)"
       echo -e "  ${CYAN}12${NC}) Payment gateways        ${CYAN}13${NC}) Redis cache"
       echo -e "  ${CYAN}14${NC}) Admin branding           ${CYAN}15${NC}) SSL / HSTS"
@@ -1470,6 +2245,8 @@ show_menu() {
   echo -e "${GREEN}║${NC}  ${BOLD}Maintenance${NC}                                      ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}  19) Disk cleanup           20) SSL status       ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}  21) Nginx test             22) Run Django cmd   ${GREEN}║${NC}"
+  echo -e "${GREEN}║${NC}  23) Pull + update project  24) Email manager    ${GREEN}║${NC}"
+  echo -e "${GREEN}║${NC}  25) Mail server toolkit                          ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}                                                  ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}   0) Exit                                        ${GREEN}║${NC}"
   echo -e "${GREEN}║${NC}                                                  ${GREEN}║${NC}"
@@ -1480,7 +2257,6 @@ show_menu() {
 interactive_menu() {
   while true; do
     show_menu
-    echo -e "  ${CYAN}23${NC}) Pull + update project"
     read -rp "$(echo -e "${CYAN}▸${NC} Enter choice: ")" choice
     case "$choice" in
       1)  cmd_status ;;
@@ -1517,6 +2293,8 @@ interactive_menu() {
         [[ -n "$dcmd" ]] && cmd_django $dcmd
         ;;
       23) cmd_pull_update ;;
+      24) cmd_env email menu ;;
+      25) cmd_mailserver menu ;;
       0|q|exit) echo ""; success "Goodbye!"; exit 0 ;;
       *) warn "Invalid choice" ;;
     esac
@@ -1572,7 +2350,11 @@ cmd_help() {
   printf "  ${CYAN}%-20s${NC} %s\n" "env toggle-debug" "Toggle DEBUG on/off"
   printf "  ${CYAN}%-20s${NC} %s\n" "env domain X"   "Update domain everywhere"
   printf "  ${CYAN}%-20s${NC} %s\n" "env regen-secret" "Regenerate Django secret key"
-  printf "  ${CYAN}%-20s${NC} %s\n" "env email"       "Configure SMTP email"
+  printf "  ${CYAN}%-20s${NC} %s\n" "env email"       "Email setup/management menu"
+  printf "  ${CYAN}%-20s${NC} %s\n" "env email status" "Validate current email config"
+  printf "  ${CYAN}%-20s${NC} %s\n" "env email setup" "SMTP provider wizard"
+  printf "  ${CYAN}%-20s${NC} %s\n" "env email test X" "Send test email to X"
+  printf "  ${CYAN}%-20s${NC} %s\n" "env email console" "Enable console backend (no real send)"
   printf "  ${CYAN}%-20s${NC} %s\n" "env google"      "Configure Google OAuth"
   printf "  ${CYAN}%-20s${NC} %s\n" "env sms"         "Configure IPPanel SMS"
   printf "  ${CYAN}%-20s${NC} %s\n" "env push"        "Configure VAPID push notifications"
@@ -1582,6 +2364,17 @@ cmd_help() {
   printf "  ${CYAN}%-20s${NC} %s\n" "env ssl"         "SSL / HSTS settings wizard"
   printf "  ${CYAN}%-20s${NC} %s\n" "env sentry"      "Sentry error tracking"
   printf "  ${CYAN}%-20s${NC} %s\n" "env restore"     "Restore .env from backup"
+  echo ""
+  echo -e "  ${BOLD}Mail Server (lightweight):${NC}"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver"      "Interactive lightweight mail server toolkit"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver setup" "Install/configure Postfix + Dovecot + OpenDKIM"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver create X" "Create mailbox (X=email)"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver passwd X" "Reset mailbox password"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver list"  "List configured mailboxes"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver dns"   "Show required DNS records"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver app-env" "Apply local SMTP settings to Django .env"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver test X" "Send probe email to X"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver logs"  "Tail mail service logs"
   echo ""
   echo -e "  ${BOLD}Maintenance:${NC}"
   printf "  ${CYAN}%-20s${NC} %s\n" "clear-cache"     "Clear Django + Redis + Python caches"
@@ -1626,6 +2419,8 @@ main() {
     django|manage)   cmd_django "$@" ;;
     admins|admin|users|user) cmd_admins "$@" ;;
     env|dotenv)      cmd_env "$@" ;;
+    email|smtp|mail) cmd_env email "$@" ;;
+    mailserver|mail-server|mailtool) cmd_mailserver "$@" ;;
     clear-cache|cache) cmd_clear_cache ;;
     cleanup|clean)   cmd_cleanup ;;
     perf|performance) cmd_perf ;;
