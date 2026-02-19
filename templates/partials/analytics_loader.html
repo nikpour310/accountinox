@@ -1,0 +1,54 @@
+<script>
+  (function () {
+    const measurementId = '{{ ga_measurement_id|default:""|escapejs }}';
+    if (!measurementId) {
+      return;
+    }
+
+    let loaded = false;
+
+    const readAnalyticsConsent = () => {
+      try {
+        const raw = window.localStorage.getItem('accx_cookie_prefs_v1');
+        if (!raw) {
+          return false;
+        }
+        const prefs = JSON.parse(raw);
+        return Boolean(prefs && prefs.analytics);
+      } catch (_) {
+        return false;
+      }
+    };
+
+    const loadAnalytics = () => {
+      if (loaded) {
+        return;
+      }
+      loaded = true;
+
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+      document.head.appendChild(script);
+
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){ window.dataLayer.push(arguments); }
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', measurementId, {
+        anonymize_ip: true,
+      });
+    };
+
+    if (readAnalyticsConsent()) {
+      loadAnalytics();
+    }
+
+    document.addEventListener('accx:cookie-consent-updated', function (event) {
+      const detail = event && event.detail ? event.detail : {};
+      if (detail.analytics) {
+        loadAnalytics();
+      }
+    });
+  })();
+</script>

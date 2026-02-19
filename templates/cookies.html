@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load seo_tags %}
+{% block title %}سیاست کوکی - {{ site_settings.site_name }}{% endblock %}
+{% block meta_description %}سیاست کوکی {{ site_settings.site_name|default:'Accountinox' }} و نحوه استفاده از کوکی‌های ضروری و تحلیلی.{% endblock %}
+{% block content %}
+<div class="page-wrapper max-w-3xl">
+  <nav class="mb-8 reveal" aria-label="breadcrumb">
+    <div class="flex items-center gap-2 text-sm text-gray-400">
+      <a href="{% url 'core:landing' %}" class="hover:text-primary-600 transition-colors">خانه</a>
+      <svg class="w-3 h-3 rotate-180 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      <span class="text-gray-600 font-medium">سیاست کوکی</span>
+    </div>
+  </nav>
+
+  <div class="text-center mb-8 reveal">
+    <span class="chip">حریم خصوصی</span>
+    <h1 class="section-title mt-4">سیاست کوکی</h1>
+    <p class="section-subtitle mt-2 mx-auto">
+      این صفحه توضیح می‌دهد چه کوکی‌هایی در سایت استفاده می‌شود و هر کدام چه کاربردی دارند.
+    </p>
+  </div>
+
+  <div class="card p-6 sm:p-8 reveal space-y-6">
+    <section>
+      <h2 class="text-base font-bold text-gray-900">کوکی چیست؟</h2>
+      <p class="mt-2 text-sm leading-7 text-gray-600">
+        کوکی فایل کوچکی است که مرورگر شما نگه می‌دارد تا سایت بتواند برخی تنظیمات و وضعیت ورود شما را حفظ کند.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-bold text-gray-900">کوکی‌های ضروری</h2>
+      <p class="mt-2 text-sm leading-7 text-gray-600">
+        این کوکی‌ها برای عملکرد پایه سایت لازم هستند؛ مثل نگه داشتن نشست ورود، امنیت فرم‌ها و سبد خرید.
+        بدون این‌ها برخی بخش‌ها درست کار نمی‌کنند.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-bold text-gray-900">کوکی‌های تحلیلی/تبلیغاتی</h2>
+      <p class="mt-2 text-sm leading-7 text-gray-600">
+        در صورت فعال شدن ابزارهای تحلیل یا تبلیغات، فقط بعد از رضایت شما از این دسته کوکی‌ها استفاده می‌شود.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-bold text-gray-900">مدیریت کوکی‌ها</h2>
+      <p class="mt-2 text-sm leading-7 text-gray-600">
+        می‌توانید از تنظیمات مرورگر خود کوکی‌ها را حذف یا محدود کنید. توجه داشته باشید با غیرفعال کردن کوکی‌های ضروری،
+        بعضی امکانات سایت غیرفعال می‌شود.
+      </p>
+    </section>
+  </div>
+
+  <div class="card mt-6 p-5 sm:p-6 reveal">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-base font-bold text-gray-900">کنترل سریع کوکی‌ها</h2>
+        <p class="mt-1 text-sm text-gray-500">انتخاب شما همین لحظه ذخیره می‌شود و بعدا هم قابل تغییر است.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="cookie-page-essential" type="button" class="btn btn-ghost btn-sm">فقط ضروری</button>
+        <button id="cookie-page-accept-all" type="button" class="btn btn-primary btn-sm">پذیرش همه</button>
+        <button id="cookie-page-open-settings" type="button" data-cookie-open-settings class="btn btn-ghost btn-sm">تنظیمات</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6 text-center reveal">
+    <a href="{% url 'core:privacy' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-primary-600 hover:bg-primary-50/50 transition-all">
+      مشاهده حریم خصوصی
+      <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+  (function () {
+    const btnEssential = document.getElementById('cookie-page-essential');
+    const btnAcceptAll = document.getElementById('cookie-page-accept-all');
+    if (!btnEssential || !btnAcceptAll) {
+      return;
+    }
+
+    const fallbackApply = (analyticsEnabled) => {
+      try {
+        window.localStorage.setItem('accx_cookie_prefs_v1', JSON.stringify({
+          essential: true,
+          analytics: Boolean(analyticsEnabled),
+        }));
+        window.localStorage.setItem('accx_cookie_consent_v2', '1');
+        window.localStorage.setItem('accx_cookie_consent_v1', 'accepted');
+      } catch (_) {}
+    };
+
+    const callConsentApi = (methodName) => {
+      const api = window.accxCookieConsent;
+      if (!api || typeof api[methodName] !== 'function') {
+        return false;
+      }
+      api[methodName]();
+      return true;
+    };
+
+    btnEssential.addEventListener('click', function () {
+      if (!callConsentApi('essentialOnly')) {
+        fallbackApply(false);
+      }
+    });
+
+    btnAcceptAll.addEventListener('click', function () {
+      if (!callConsentApi('acceptAll')) {
+        fallbackApply(true);
+      }
+    });
+  })();
+</script>
+{% endblock %}

@@ -65,6 +65,7 @@ def site_settings(request):
         'footer_links_legal': footer_links_legal,
         'cart_count': cart_count,
         'google_oauth_ready': google_oauth_ready,
+        'ga_measurement_id': getattr(settings, 'GA_MEASUREMENT_ID', ''),
     }
 
 

@@ -57,6 +57,7 @@ def test_public_shop_blog_support_and_seo_routes_smoke(client, route_seed):
         (reverse('core:landing'), 200),
         (reverse('core:terms'), 200),
         (reverse('core:privacy'), 200),
+        (reverse('core:cookies'), 200),
         (reverse('core:contact'), 200),
         (reverse('shop:product_list'), 200),
         (reverse('shop:product_detail', args=[route_seed['product'].slug]), 200),

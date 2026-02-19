@@ -32,6 +32,7 @@ VAPID_SUBJECT = env('VAPID_SUBJECT', default='').strip()
 ADMIN_BRAND_PRIMARY = env('ADMIN_BRAND_PRIMARY', default='').strip()
 ADMIN_BRAND_SECONDARY = env('ADMIN_BRAND_SECONDARY', default='').strip()
 ADMIN_BRAND_ACCENT = env('ADMIN_BRAND_ACCENT', default='').strip()
+GA_MEASUREMENT_ID = env('GA_MEASUREMENT_ID', default='').strip()
 
 INSTALLED_APPS = [
     'apps.core.admin_site.AccountinoxAdminConfig',

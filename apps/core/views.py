@@ -73,6 +73,10 @@ def privacy(request):
     return render(request, 'privacy.html')
 
 
+def cookies(request):
+    return render(request, 'cookies.html')
+
+
 def contact(request):
     return render(request, 'contact.html')
 

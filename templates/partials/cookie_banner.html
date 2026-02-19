@@ -1,0 +1,240 @@
+<div
+  id="cookie-banner"
+  class="fixed inset-x-0 bottom-4 z-[70] hidden px-4"
+  role="dialog"
+  aria-live="polite"
+  aria-label="تنظیمات کوکی"
+>
+  <div class="mx-auto max-w-4xl card-elevated border border-gray-200 bg-white/95 p-4 backdrop-blur sm:p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm leading-7 text-gray-700">
+        برای عملکرد درست سایت از کوکی‌های ضروری استفاده می‌کنیم.
+        برای کوکی‌های تحلیلی می‌توانید انتخاب داشته باشید.
+        <a href="{% url 'core:cookies' %}" class="font-semibold text-primary-700 hover:text-primary-800">سیاست کوکی</a>
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="cookie-banner-essential" type="button" class="btn btn-ghost btn-sm">فقط ضروری</button>
+        <button id="cookie-banner-manage" type="button" class="btn btn-ghost btn-sm">تنظیمات</button>
+        <button id="cookie-banner-accept-all" type="button" class="btn btn-primary btn-sm">پذیرش همه</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cookie-pref-modal" class="fixed inset-0 z-[80] hidden px-4">
+  <button id="cookie-modal-overlay" type="button" class="absolute inset-0 bg-black/45" aria-label="بستن تنظیمات"></button>
+  <div class="relative mx-auto mt-20 w-full max-w-lg">
+    <div class="card-elevated border border-gray-200 bg-white p-5 sm:p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-gray-900">تنظیمات کوکی</h3>
+        <button id="cookie-modal-close" type="button" class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="بستن">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <p class="mt-2 text-sm text-gray-600">هر زمان بخواهید می‌توانید تنظیمات کوکی را تغییر دهید.</p>
+
+      <div class="mt-5 space-y-3">
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-900">کوکی‌های ضروری</p>
+              <p class="mt-1 text-xs text-gray-500">برای ورود، امنیت فرم‌ها و عملکرد اصلی سایت لازم است.</p>
+            </div>
+            <span class="chip text-xs bg-emerald-50 text-emerald-700">همیشه فعال</span>
+          </div>
+        </div>
+
+        <label class="block rounded-xl border border-gray-200 p-3 hover:bg-gray-50/70">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-900">کوکی‌های تحلیلی</p>
+              <p class="mt-1 text-xs text-gray-500">برای بررسی کیفیت سرویس و بهبود تجربه کاربری.</p>
+            </div>
+            <input
+              id="cookie-analytics-toggle"
+              type="checkbox"
+              class="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            >
+          </div>
+        </label>
+      </div>
+
+      <div class="mt-5 flex flex-wrap justify-end gap-2">
+        <button id="cookie-modal-essential" type="button" class="btn btn-ghost btn-sm">فقط ضروری</button>
+        <button id="cookie-modal-accept-all" type="button" class="btn btn-ghost btn-sm">پذیرش همه</button>
+        <button id="cookie-modal-save" type="button" class="btn btn-primary btn-sm">ذخیره تنظیمات</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const CONSENT_KEY = 'accx_cookie_consent_v2';
+    const PREFS_KEY = 'accx_cookie_prefs_v1';
+    const LEGACY_CONSENT_KEY = 'accx_cookie_consent_v1';
+    const DEFAULT_PREFS = Object.freeze({ essential: true, analytics: false });
+
+    const banner = document.getElementById('cookie-banner');
+    const btnEssential = document.getElementById('cookie-banner-essential');
+    const btnManage = document.getElementById('cookie-banner-manage');
+    const btnAcceptAll = document.getElementById('cookie-banner-accept-all');
+
+    const modal = document.getElementById('cookie-pref-modal');
+    const modalOverlay = document.getElementById('cookie-modal-overlay');
+    const modalClose = document.getElementById('cookie-modal-close');
+    const modalSave = document.getElementById('cookie-modal-save');
+    const modalEssential = document.getElementById('cookie-modal-essential');
+    const modalAcceptAll = document.getElementById('cookie-modal-accept-all');
+    const analyticsToggle = document.getElementById('cookie-analytics-toggle');
+
+    if (!banner || !btnEssential || !btnManage || !btnAcceptAll || !modal || !analyticsToggle) {
+      return;
+    }
+
+    const safeRead = (key) => {
+      try {
+        return window.localStorage.getItem(key);
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const safeWrite = (key, value) => {
+      try {
+        window.localStorage.setItem(key, value);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    };
+
+    const hasDecision = () => safeRead(CONSENT_KEY) === '1';
+
+    const readPrefs = () => {
+      const raw = safeRead(PREFS_KEY);
+      if (!raw) {
+        return { ...DEFAULT_PREFS };
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          essential: true,
+          analytics: Boolean(parsed && parsed.analytics),
+        };
+      } catch (_) {
+        return { ...DEFAULT_PREFS };
+      }
+    };
+
+    const writePrefs = (prefs) => safeWrite(PREFS_KEY, JSON.stringify({
+      essential: true,
+      analytics: Boolean(prefs && prefs.analytics),
+    }));
+
+    const notifyPrefsChange = (prefs) => {
+      window.accxCookieConsent = {
+        hasDecision,
+        getPreferences: readPrefs,
+        isAllowed: (type) => {
+          if (type === 'essential') {
+            return true;
+          }
+          const current = readPrefs();
+          if (type === 'analytics') {
+            return Boolean(current.analytics);
+          }
+          return false;
+        },
+        openSettings: () => openModal(),
+        acceptAll: () => applyDecision({ essential: true, analytics: true }),
+        essentialOnly: () => applyDecision({ essential: true, analytics: false }),
+      };
+
+      try {
+        document.dispatchEvent(new CustomEvent('accx:cookie-consent-updated', { detail: { ...prefs } }));
+      } catch (_) {}
+    };
+
+    const openModal = () => {
+      const prefs = readPrefs();
+      analyticsToggle.checked = Boolean(prefs.analytics);
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+
+    const applyDecision = (prefs) => {
+      const normalized = {
+        essential: true,
+        analytics: Boolean(prefs && prefs.analytics),
+      };
+      writePrefs(normalized);
+      safeWrite(CONSENT_KEY, '1');
+      safeWrite(LEGACY_CONSENT_KEY, 'accepted');
+      banner.classList.add('hidden');
+      closeModal();
+      notifyPrefsChange(normalized);
+    };
+
+    const bootstrapLegacyDecision = () => {
+      if (hasDecision()) {
+        return;
+      }
+      if (safeRead(LEGACY_CONSENT_KEY) === 'accepted') {
+        writePrefs(readPrefs());
+        safeWrite(CONSENT_KEY, '1');
+      }
+    };
+
+    bootstrapLegacyDecision();
+
+    if (!hasDecision()) {
+      banner.classList.remove('hidden');
+    }
+    notifyPrefsChange(readPrefs());
+
+    btnAcceptAll.addEventListener('click', () => applyDecision({ essential: true, analytics: true }));
+    btnEssential.addEventListener('click', () => applyDecision({ essential: true, analytics: false }));
+    btnManage.addEventListener('click', openModal);
+
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', closeModal);
+    }
+    if (modalClose) {
+      modalClose.addEventListener('click', closeModal);
+    }
+
+    if (modalSave) {
+      modalSave.addEventListener('click', () => {
+        applyDecision({ essential: true, analytics: analyticsToggle.checked });
+      });
+    }
+    if (modalEssential) {
+      modalEssential.addEventListener('click', () => {
+        analyticsToggle.checked = false;
+        applyDecision({ essential: true, analytics: false });
+      });
+    }
+    if (modalAcceptAll) {
+      modalAcceptAll.addEventListener('click', () => {
+        analyticsToggle.checked = true;
+        applyDecision({ essential: true, analytics: true });
+      });
+    }
+
+    document.querySelectorAll('[data-cookie-open-settings]').forEach((el) => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        openModal();
+      });
+    });
+  })();
+</script>

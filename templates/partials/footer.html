@@ -50,6 +50,7 @@
                     {% empty %}
                     <li><a href="{% url 'core:terms' %}" class="text-sm text-gray-500 hover:text-white transition-colors">شرایط استفاده</a></li>
                     <li><a href="{% url 'core:privacy' %}" class="text-sm text-gray-500 hover:text-white transition-colors">حریم خصوصی</a></li>
+                    <li><a href="{% url 'core:cookies' %}" class="text-sm text-gray-500 hover:text-white transition-colors">سیاست کوکی</a></li>
                     {% endfor %}
                 </ul>
             </div>
@@ -78,6 +79,11 @@
         <div class="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p class="text-gray-600 text-xs">
                 &copy; {{ current_year|default:'2024' }} {{ site_settings.site_name|default:'Accountinox' }}. {{ site_settings.footer_copyright|default:'تمامی حقوق محفوظ است.' }}
+            </p>
+            <p class="text-gray-700 text-xs">
+                <a href="{% url 'core:cookies' %}" class="text-gray-500 hover:text-white transition-colors">سیاست کوکی</a>
+                <span class="px-1 text-gray-700">|</span>
+                <a href="#" data-cookie-open-settings class="text-gray-500 hover:text-white transition-colors">تنظیمات کوکی</a>
             </p>
             {% if site_settings.footer_developer_name %}
             <p class="text-gray-700 text-xs">
