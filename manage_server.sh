@@ -23,6 +23,7 @@ MAIL_VMAIL_UID="${MAIL_VMAIL_UID:-5000}"
 MAIL_VMAIL_GID="${MAIL_VMAIL_GID:-5000}"
 MAIL_DOVECOT_USERS_FILE="${MAIL_DOVECOT_USERS_FILE:-/etc/dovecot/users}"
 MAIL_DKIM_SELECTOR="${MAIL_DKIM_SELECTOR:-default}"
+MAIL_RELAY_CRED_FILE="${MAIL_RELAY_CRED_FILE:-/etc/postfix/sasl_passwd}"
 
 # ─── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -1408,6 +1409,8 @@ _mailserver_status() {
   info "Listening ports (mail related):"
   ss -tlnp 2>/dev/null | grep -E ':(25|465|587|993)\b' | awk '{print "  " $4 " -> " $7}' || true
   echo ""
+  _mail_relay_status
+  echo ""
   _mailserver_list_mailboxes
 }
 
@@ -1458,6 +1461,113 @@ EOF
   success "Probe queued. Check recipient inbox/spam and logs."
 }
 
+_mail_relay_status() {
+  header "SMTP Relay Status"
+  local relayhost sasl_enabled sasl_map tls_level
+  relayhost=$(postconf -h relayhost 2>/dev/null || true)
+  sasl_enabled=$(postconf -h smtp_sasl_auth_enable 2>/dev/null || true)
+  sasl_map=$(postconf -h smtp_sasl_password_maps 2>/dev/null || true)
+  tls_level=$(postconf -h smtp_tls_security_level 2>/dev/null || true)
+
+  echo -e "  relayhost: ${CYAN}${relayhost:-"(empty)"}${NC}"
+  echo -e "  smtp_sasl_auth_enable: ${CYAN}${sasl_enabled:-"(empty)"}${NC}"
+  echo -e "  smtp_sasl_password_maps: ${CYAN}${sasl_map:-"(empty)"}${NC}"
+  echo -e "  smtp_tls_security_level: ${CYAN}${tls_level:-"(empty)"}${NC}"
+
+  if [[ -f "$MAIL_RELAY_CRED_FILE" ]]; then
+    echo -e "  creds file: ${CYAN}${MAIL_RELAY_CRED_FILE}${NC} (${GREEN}present${NC})"
+  else
+    echo -e "  creds file: ${CYAN}${MAIL_RELAY_CRED_FILE}${NC} (${YELLOW}missing${NC})"
+  fi
+}
+
+_mail_relay_configure() {
+  header "Configure SMTP Relay for Postfix"
+  echo -e "  ${CYAN}1${NC}) Brevo (recommended)"
+  echo -e "  ${CYAN}2${NC}) Mailgun"
+  echo -e "  ${CYAN}3${NC}) SMTP2GO"
+  echo -e "  ${CYAN}4${NC}) Custom relay"
+  echo -e "  ${CYAN}0${NC}) Back"
+  read -rp "$(echo -e "${CYAN}▸${NC} Provider: ")" provider
+
+  local relay_host relay_port user_hint
+  case "$provider" in
+    1) relay_host="smtp-relay.brevo.com"; relay_port="587"; user_hint="apikey" ;;
+    2) relay_host="smtp.mailgun.org"; relay_port="587"; user_hint="postmaster@your-domain.com" ;;
+    3) relay_host="mail.smtp2go.com"; relay_port="587"; user_hint="smtp2go-username" ;;
+    4) relay_host=""; relay_port="587"; user_hint="" ;;
+    0|*) return 0 ;;
+  esac
+
+  local input relay_user relay_pass
+  read -rp "  Relay host [${relay_host:-smtp.example.com}]: " input
+  relay_host="${input:-${relay_host:-smtp.example.com}}"
+  read -rp "  Relay port [${relay_port}]: " input
+  relay_port="${input:-$relay_port}"
+  read -rp "  Relay username [${user_hint:-required}]: " relay_user
+  read -rsp "  Relay password/API key: " relay_pass; echo
+
+  if [[ -z "$relay_host" || -z "$relay_port" || -z "$relay_user" || -z "$relay_pass" ]]; then
+    fail "Relay setup canceled: host/port/username/password are required."
+    return 1
+  fi
+  if [[ ! "$relay_port" =~ ^[0-9]+$ ]]; then
+    fail "Invalid relay port: $relay_port"
+    return 1
+  fi
+
+  cp /etc/postfix/main.cf "/etc/postfix/main.cf.bak.$(date +%s)"
+  [[ -f "$MAIL_RELAY_CRED_FILE" ]] && cp "$MAIL_RELAY_CRED_FILE" "${MAIL_RELAY_CRED_FILE}.bak.$(date +%s)"
+
+  cat > "$MAIL_RELAY_CRED_FILE" <<EOF
+[${relay_host}]:${relay_port} ${relay_user}:${relay_pass}
+EOF
+  postmap "$MAIL_RELAY_CRED_FILE"
+  chown root:root "$MAIL_RELAY_CRED_FILE" "${MAIL_RELAY_CRED_FILE}.db"
+  chmod 600 "$MAIL_RELAY_CRED_FILE" "${MAIL_RELAY_CRED_FILE}.db"
+
+  postconf -e "relayhost = [${relay_host}]:${relay_port}"
+  postconf -e "smtp_sasl_auth_enable = yes"
+  postconf -e "smtp_sasl_password_maps = hash:${MAIL_RELAY_CRED_FILE}"
+  postconf -e "smtp_sasl_security_options = noanonymous"
+  postconf -e "smtp_tls_security_level = encrypt"
+  postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt"
+
+  systemctl restart postfix
+  success "SMTP relay configured and postfix restarted."
+  info "Relay: [${relay_host}]:${relay_port}"
+}
+
+_mail_relay_disable() {
+  header "Disable SMTP Relay"
+  echo -e "  ${YELLOW}This will disable relayhost and return Postfix to direct outbound delivery.${NC}"
+  echo -e "  ${YELLOW}If your server blocks outbound port 25, external delivery will fail again.${NC}"
+  read -rp "  Continue? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { info "Cancelled"; return 0; }
+
+  cp /etc/postfix/main.cf "/etc/postfix/main.cf.bak.$(date +%s)"
+  postconf -e "relayhost ="
+  postconf -e "smtp_sasl_auth_enable = no"
+  postconf -e "smtp_sasl_password_maps ="
+  postconf -e "smtp_sasl_security_options = noanonymous"
+  postconf -e "smtp_tls_security_level = may"
+  postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt"
+  systemctl restart postfix
+  success "SMTP relay disabled."
+}
+
+_mail_tail_logs() {
+  if [[ -f /var/log/mail.log ]]; then
+    tail -n 200 /var/log/mail.log
+    return 0
+  fi
+  if [[ -f /var/log/maillog ]]; then
+    tail -n 200 /var/log/maillog
+    return 0
+  fi
+  journalctl -u postfix -u dovecot -u opendkim -n 200 --no-pager
+}
+
 cmd_mailserver() {
   local subcmd="${1:-menu}"
   case "$subcmd" in
@@ -1470,8 +1580,11 @@ cmd_mailserver() {
     dns)           _mail_dns_instructions "${2:-}" "${3:-}" ;;
     app-env|apply-env) _mailserver_apply_app_env "${2:-}" ;;
     test|probe)    _mailserver_send_probe "${2:-}" "${3:-}" ;;
+    relay|relay-setup) _mail_relay_configure ;;
+    relay-status)  _mail_relay_status ;;
+    relay-disable) _mail_relay_disable ;;
     restart)       _mail_reload_services && success "Mail services restarted" ;;
-    logs)          journalctl -u postfix -u dovecot -u opendkim -n 120 --no-pager ;;
+    logs)          _mail_tail_logs ;;
     menu|*)
       echo ""
       echo -e "  ${BOLD}Mail Server (Lightweight)${NC}"
@@ -1484,8 +1597,11 @@ cmd_mailserver() {
       echo -e "  ${CYAN}7${NC}) Show DNS records (MX/SPF/DKIM/DMARC)"
       echo -e "  ${CYAN}8${NC}) Apply local SMTP to Django .env"
       echo -e "  ${CYAN}9${NC}) Send probe email"
-      echo -e "  ${CYAN}10${NC}) Restart mail services"
-      echo -e "  ${CYAN}11${NC}) Mail logs"
+      echo -e "  ${CYAN}10${NC}) Configure SMTP relay (recommended)"
+      echo -e "  ${CYAN}11${NC}) Relay status"
+      echo -e "  ${CYAN}12${NC}) Disable relay"
+      echo -e "  ${CYAN}13${NC}) Restart mail services"
+      echo -e "  ${CYAN}14${NC}) Mail logs"
       echo -e "  ${CYAN}0${NC}) Back"
       echo ""
       read -rp "$(echo -e "${CYAN}▸${NC} Choice: ")" mchoice
@@ -1499,8 +1615,11 @@ cmd_mailserver() {
         7)  _mail_dns_instructions ;;
         8)  _mailserver_apply_app_env ;;
         9)  _mailserver_send_probe ;;
-        10) _mail_reload_services && success "Mail services restarted" ;;
-        11) journalctl -u postfix -u dovecot -u opendkim -n 120 --no-pager ;;
+        10) _mail_relay_configure ;;
+        11) _mail_relay_status ;;
+        12) _mail_relay_disable ;;
+        13) _mail_reload_services && success "Mail services restarted" ;;
+        14) _mail_tail_logs ;;
         0|*) return 0 ;;
       esac
       ;;
@@ -2374,6 +2493,9 @@ cmd_help() {
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver passwd X" "Reset mailbox password"
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver list"  "List configured mailboxes"
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver dns"   "Show required DNS records"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver relay" "Configure outbound SMTP relay"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver relay-status" "Show current relay configuration"
+  printf "  ${CYAN}%-20s${NC} %s\n" "mailserver relay-disable" "Disable relay and use direct delivery"
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver app-env" "Apply local SMTP settings to Django .env"
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver test X" "Send probe email to X"
   printf "  ${CYAN}%-20s${NC} %s\n" "mailserver logs"  "Tail mail service logs"
