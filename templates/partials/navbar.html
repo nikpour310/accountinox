@@ -96,7 +96,7 @@
                             </svg>
                         </div>
                         <span class="hidden md:block text-sm font-semibold text-gray-700">پروفایل</span>
-                        <span class="hidden xl:block text-xs text-gray-500 max-w-[120px] truncate">{{ user.username }}</span>
+                        <span class="hidden xl:block text-xs text-gray-500 max-w-[120px] truncate" data-nav-identity>{{ user.username }}</span>
                         <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <!-- Dropdown -->
@@ -109,8 +109,8 @@
                         x-transition:leave-end="opacity-0 scale-95"
                         class="absolute top-full end-0 mt-2 w-56 bg-white rounded-2xl shadow-soft-lg border border-gray-100 py-2 z-50 origin-top-right">
                         <div class="px-4 py-3 border-b border-gray-50 mb-1">
-                            <p class="text-sm font-semibold text-gray-900 truncate">{{ user.username }}</p>
-                            <p class="text-xs text-gray-500 truncate mt-0.5">{{ user.email }}</p>
+                            <p class="text-sm font-semibold text-gray-900 truncate" data-nav-identity>{{ user.username }}</p>
+                            <p class="text-xs text-gray-500 truncate mt-0.5" data-nav-email>{{ user.email }}</p>
                         </div>
                         <a href="{% url 'accounts:dashboard' %}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>

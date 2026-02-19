@@ -345,7 +345,11 @@ function profileVerify() {
         });
         const data = await res.json();
         if (data.ok) {
-          this.phoneDisplay = this.newPhone;
+          this.phoneDisplay = data.new_value || this.newPhone;
+          const navIdentity = data.username || this.phoneDisplay;
+          document.querySelectorAll('[data-nav-identity]').forEach((el) => {
+            el.textContent = navIdentity;
+          });
           this.phoneStep = 'done';
           clearInterval(this._phoneInterval);
         } else {
@@ -419,7 +423,10 @@ function profileVerify() {
         });
         const data = await res.json();
         if (data.ok) {
-          this.emailDisplay = this.newEmail;
+          this.emailDisplay = data.new_value || this.newEmail;
+          document.querySelectorAll('[data-nav-email]').forEach((el) => {
+            el.textContent = this.emailDisplay;
+          });
           this.emailStep = 'done';
           clearInterval(this._emailInterval);
         } else {

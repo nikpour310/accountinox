@@ -19,7 +19,7 @@
     <div class="text-center mb-8">
       {% if process == "connect" %}
       <h1 class="section-title">اتصال حساب {{ provider.name }}</h1>
-      <p class="section-subtitle">در حال اتصال حساب جدید شخص ثالث برای استفاده در سایت هستید.</p>
+      <p class="section-subtitle">در حال اتصال حساب شخص ثالث برای استفاده در سایت هستید.</p>
       {% else %}
       <h1 class="section-title">ورود با {{ provider.name }}</h1>
       <p class="section-subtitle">برای ادامه ورود، اتصال امن به {{ provider.name }} را تایید کنید.</p>
@@ -27,9 +27,9 @@
     </div>
 
     <div class="card-elevated p-8">
-      <form method="post" class="space-y-4">
+      <form method="post" class="space-y-4" data-auth-form>
         {% csrf_token %}
-        <button type="submit" class="btn btn-primary btn-lg w-full justify-center">ادامه</button>
+        <button type="submit" class="btn btn-primary btn-lg w-full justify-center" data-submit-button data-loading-text="در حال انتقال...">ادامه</button>
         <a href="{% url 'account_login' %}" class="btn btn-lg w-full justify-center border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-semibold rounded-xl">
           بازگشت به ورود
         </a>
@@ -37,4 +37,6 @@
     </div>
   </div>
 </div>
+
+{% include "account/_auth_form_helpers.html" %}
 {% endblock %}

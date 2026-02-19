@@ -1,22 +1,26 @@
 {% extends "base.html" %}
 {% load i18n static socialaccount %}
 
-{% block title %}ثبت نام | {{ block.super }}{% endblock %}
+{% block title %}Ø«Ø¨Øª Ù†Ø§Ù… | {{ block.super }}{% endblock %}
 
 {% block content %}
 <div class="min-h-[60vh] flex items-center justify-center py-16 px-4">
   <div class="max-w-md w-full">
     <div class="text-center mb-8">
-      <h1 class="section-title">ثبت نام</h1>
-      <p class="section-subtitle">یک حساب جدید بسازید تا از خدمات ما استفاده کنید</p>
+      <h1 class="section-title">Ø«Ø¨Øª Ù†Ø§Ù…</h1>
+      <p class="section-subtitle">ÛŒÚ© Ø­Ø³Ø§Ø¨ Ø¬Ø¯ÛŒØ¯ Ø¨Ø³Ø§Ø²ÛŒØ¯ ØªØ§ Ø§Ø² Ø®Ø¯Ù…Ø§Øª Ù…Ø§ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯</p>
     </div>
 
     <div class="card-elevated p-8">
-      <form method="POST" action="{% url 'account_signup' %}" class="space-y-5" id="signup-form">
+      <div class="mb-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø¨Ø§ Ø§ÛŒÙ…ÛŒÙ„ Ø§Ù†Ø¬Ø§Ù… Ù…ÛŒâ€ŒØ´ÙˆØ¯ Ùˆ Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¨Ù‡â€ŒØµÙˆØ±Øª Ø®ÙˆØ¯Ú©Ø§Ø± Ø³Ø§Ø®ØªÙ‡ Ø®ÙˆØ§Ù‡Ø¯ Ø´Ø¯.
+      </div>
+
+      <form method="POST" action="{% url 'account_signup' %}" class="space-y-5" id="signup-form" data-auth-form>
         {% csrf_token %}
 
         {% if form.non_field_errors %}
-        <div class="alert-error">
+        <div class="alert-error" aria-live="polite">
           {% for error in form.non_field_errors %}
             <p>{{ error }}</p>
           {% endfor %}
@@ -25,64 +29,58 @@
 
         {% for field in form.visible_fields %}
         <div class="mb-3">
-          <label class="form-label">{{ field.label }}</label>
-          {{ field }}
+          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+          {% if field.name == 'email' %}
+            <input id="{{ field.id_for_label }}" name="{{ field.html_name }}" type="email" value="{{ field.value|default:'' }}" class="form-input" dir="ltr" autocomplete="email" inputmode="email" placeholder="info@example.com" required>
+          {% elif field.name == 'password1' %}
+            <input id="{{ field.id_for_label }}" name="{{ field.html_name }}" type="password" class="form-input" dir="ltr" autocomplete="new-password" placeholder="Ø­Ø¯Ø§Ù‚Ù„ Û¸ Ú©Ø§Ø±Ø§Ú©ØªØ±" required>
+          {% elif field.name == 'password2' %}
+            <input id="{{ field.id_for_label }}" name="{{ field.html_name }}" type="password" class="form-input" dir="ltr" autocomplete="new-password" placeholder="ØªÚ©Ø±Ø§Ø± Ø±Ù…Ø² Ø¹Ø¨ÙˆØ±" required>
+          {% else %}
+            {{ field }}
+          {% endif %}
           {% if field.errors %}
-            <p class="text-xs text-red-600 mt-1.5">{{ field.errors.0 }}</p>
+            <p class="text-xs text-red-600 mt-1.5" aria-live="polite">{{ field.errors.0 }}</p>
+          {% endif %}
+          {% if field.help_text %}
+            <p class="text-xs text-gray-400 mt-1">{{ field.help_text|safe }}</p>
           {% endif %}
         </div>
         {% endfor %}
 
-        <button type="submit" class="btn btn-primary btn-lg w-full justify-center">ثبت نام</button>
+        <button type="submit" class="btn btn-primary btn-lg w-full justify-center" data-submit-button data-loading-text="Ø¯Ø± Ø­Ø§Ù„ Ø«Ø¨Øªâ€ŒÙ†Ø§Ù…...">Ø«Ø¨Øª Ù†Ø§Ù…</button>
 
         {% if site_settings and site_settings.google_oauth_enabled and google_oauth_ready %}
         <div class="relative my-4">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">یا</span></div>
+          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">ÛŒØ§</span></div>
         </div>
         <a href="{% provider_login_url 'google' process='login' %}" class="btn btn-lg w-full justify-center border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-semibold rounded-xl">
           <svg class="w-5 h-5 ml-2 inline-block" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6.1-2.8-6.1-6.2s2.8-6.2 6.1-6.2c1.9 0 3.2.8 3.9 1.5l2.7-2.6C17 2.9 14.7 2 12 2 6.8 2 2.6 6.4 2.6 11.8S6.8 21.6 12 21.6c6.9 0 9.1-4.9 9.1-7.4 0-.5-.1-.9-.1-1.3H12z"/>
           </svg>
-          {{ site_settings.google_oauth_button_text|default:"ادامه با گوگل" }}
+          {{ site_settings.google_oauth_button_text|default:"Ø§Ø¯Ø§Ù…Ù‡ Ø¨Ø§ Ú¯ÙˆÚ¯Ù„" }}
         </a>
         {% endif %}
 
-        <!-- OTP Signup Option -->
         <div class="relative my-4">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">یا</span></div>
+          <div class="relative flex justify-center text-sm"><span class="px-3 bg-white text-gray-400">ÛŒØ§</span></div>
         </div>
         <a href="{% url 'accounts:otp_login' %}" class="btn btn-lg w-full justify-center border-2 border-teal-500 text-teal-600 hover:bg-teal-50 transition-colors font-semibold rounded-xl">
           <svg class="w-5 h-5 ml-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
           </svg>
-          ثبت‌نام سریع با موبایل
+          Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… Ø³Ø±ÛŒØ¹ Ø¨Ø§ Ù…ÙˆØ¨Ø§ÛŒÙ„
         </a>
 
         <p class="text-center text-sm text-gray-500 mt-4">
-          حساب کاربری دارید؟
-          <a href="{% url 'account_login' %}" class="font-semibold text-primary-600 hover:text-primary-700">وارد شوید</a>
+          Ø­Ø³Ø§Ø¨ Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¯Ø§Ø±ÛŒØ¯ØŸ
+          <a href="{% url 'account_login' %}" class="font-semibold text-primary-600 hover:text-primary-700">ÙˆØ§Ø±Ø¯ Ø´ÙˆÛŒØ¯</a>
         </p>
       </form>
-      <script>
-      document.addEventListener('DOMContentLoaded', function(){
-        var form = document.querySelector('form[action="{% url "account_signup" %}"]');
-        if(!form) return;
-        var controls = form.querySelectorAll('input, select, textarea');
-        controls.forEach(function(el){
-          el.classList.add('form-input');
-          if(!el.getAttribute('placeholder')){
-            var lbl = el.previousElementSibling;
-            if(lbl && lbl.tagName && lbl.tagName.toLowerCase() === 'label'){
-              el.setAttribute('placeholder', lbl.innerText.trim());
-            }
-          }
-        });
-      });
-      </script>
     </div>
   </div>
 </div>
+{% include "account/_auth_form_helpers.html" %}
 {% endblock %}

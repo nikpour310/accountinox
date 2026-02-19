@@ -12,17 +12,17 @@
   <section id="social-connections-page" class="mx-auto max-w-3xl px-4">
     <div class="text-center mb-8">
       <h1 class="section-title">حساب‌های متصل</h1>
-      <p class="section-subtitle mt-2">مدیریت ورود با سرویس‌های ثالث</p>
+      <p class="section-subtitle mt-2">مدیریت ورود با سرویس‌های شخص ثالث</p>
     </div>
 
     <div class="card card-elevated p-6 sm:p-8">
       {% if form.accounts %}
       <p class="text-sm text-gray-500 mb-5">اکانت‌های زیر به حساب شما متصل هستند:</p>
-      <form method="post" action="{% url 'socialaccount_connections' %}" class="space-y-4">
+      <form method="post" action="{% url 'socialaccount_connections' %}" class="space-y-4" data-auth-form>
         {% csrf_token %}
 
         {% if form.non_field_errors %}
-        <div class="alert-error">
+        <div class="alert-error" aria-live="polite">
           {% for error in form.non_field_errors %}
           <p>{{ error }}</p>
           {% endfor %}
@@ -52,10 +52,10 @@
         </div>
 
         {% if form.account.errors %}
-        <p class="text-xs text-red-600">{{ form.account.errors.0 }}</p>
+        <p class="text-xs text-red-600" aria-live="polite">{{ form.account.errors.0 }}</p>
         {% endif %}
 
-        <button type="submit" class="btn btn-lg w-full justify-center border-2 border-red-300 text-red-700 hover:bg-red-50 transition-colors font-semibold rounded-xl">
+        <button type="submit" class="btn btn-lg w-full justify-center border-2 border-red-300 text-red-700 hover:bg-red-50 transition-colors font-semibold rounded-xl" data-submit-button data-loading-text="در حال حذف اتصال...">
           حذف اتصال انتخاب‌شده
         </button>
       </form>
@@ -84,4 +84,6 @@
     </div>
   </section>
 </div>
+
+{% include "account/_auth_form_helpers.html" %}
 {% endblock %}

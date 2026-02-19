@@ -143,10 +143,13 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 # Use custom adapter to avoid sending email confirmation on login
 ACCOUNT_ADAPTER = 'apps.accounts.adapters.NoConfirmationOnLoginAdapter'
 SOCIALACCOUNT_ADAPTER = 'apps.accounts.social_adapters.AccountinoxSocialAccountAdapter'
-# Note: ACCOUNT_LOGIN_METHODS specifies auth method; ACCOUNT_SIGNUP_FIELDS specifies form fields
-# The warning about conflict can be safely ignored (allauth legacy vs new config style)
+# Auth policy (aligned with current project behavior):
+# - Password login is email-only.
+# - OTP login/registration is handled on separate dedicated endpoints.
+# - Google OAuth is handled via social login.
 ACCOUNT_LOGIN_METHODS = {'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email', 'username']
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_FORMS = {
     'change_password': 'apps.accounts.forms_allauth.CustomChangePasswordForm',
 }

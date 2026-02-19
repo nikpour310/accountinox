@@ -68,11 +68,72 @@ def _google_oauth_ready(request) -> bool:
 
 
 def _find_user_by_phone(phone: str):
+    user, _ = _resolve_user_by_phone(phone)
+    return user
+
+
+def _find_user_by_verified_phone(phone: str):
+    """Find user only when the phone is currently verified on Profile.phone."""
     profile = Profile.objects.select_related('user').filter(phone=phone).first()
     if profile:
         return profile.user
+    return None
+
+
+def _resolve_user_by_phone(phone: str):
+    """
+    Resolve a user by verified phone ownership.
+
+    Priority:
+    1) Profile.phone exact match (source of truth).
+    2) Legacy fallback by username==phone ONLY when profile has no phone yet.
+
+    Important security rule:
+    If username==phone but profile.phone points to another number, we must NOT
+    map this phone to that account (prevents old-number account takeover).
+    """
+    profile = Profile.objects.select_related('user').filter(phone=phone).first()
+    if profile:
+        return profile.user, profile
+
     User = get_user_model()
-    return User.objects.filter(username=phone).first()
+    legacy_user = User.objects.filter(username=phone).first()
+    if not legacy_user:
+        return None, None
+
+    profile, _ = Profile.objects.get_or_create(user=legacy_user)
+    current_phone = (profile.phone or '').strip()
+    if current_phone and current_phone != phone:
+        return None, None
+
+    if not current_phone:
+        profile.phone = phone
+        profile.save(update_fields=['phone'])
+
+    return legacy_user, profile
+
+
+def _create_user_for_phone(phone: str):
+    """Create a user for OTP phone login with a unique username."""
+    User = get_user_model()
+    username = phone
+    if User.objects.filter(username=username).exists():
+        username = f'user_{phone[-4:]}_{secrets.token_hex(3)}'
+        while User.objects.filter(username=username).exists():
+            username = f'user_{phone[-4:]}_{secrets.token_hex(3)}'
+
+    user = User.objects.create(username=username)
+    try:
+        user.set_unusable_password()
+        user.save(update_fields=['password'])
+    except Exception:
+        pass
+
+    profile, _ = Profile.objects.get_or_create(user=user)
+    if profile.phone != phone:
+        profile.phone = phone
+        profile.save(update_fields=['phone'])
+    return user
 
 
 def _mask_phone(phone: str) -> str:
@@ -109,7 +170,7 @@ def smart_password_reset(request):
                 messages.error(request, 'بازیابی با کد پیامکی موقتاً غیرفعال است.')
                 return render(request, 'account/password_reset.html', {'identifier': identifier})
 
-            user = _find_user_by_phone(identifier)
+            user = _find_user_by_verified_phone(identifier)
             if not user:
                 messages.error(request, 'کاربری با این شماره موبایل پیدا نشد.')
                 return render(request, 'account/password_reset.html', {'identifier': identifier})
@@ -190,6 +251,12 @@ def smart_password_reset_phone_verify(request):
         messages.error(request, 'حساب کاربری مرتبط پیدا نشد. دوباره تلاش کنید.')
         return redirect('account_reset_password')
 
+    verified_user = _find_user_by_verified_phone(phone)
+    if not verified_user or str(verified_user.id) != str(user.id):
+        _password_reset_session_clear(request)
+        messages.error(request, 'مالکیت شماره موبایل تایید نشد. دوباره درخواست بازیابی ثبت کنید.')
+        return redirect('account_reset_password')
+
     form_data = {'code': '', 'password1': '', 'password2': ''}
     errors = {}
     settings_obj = _site_settings()
@@ -267,7 +334,7 @@ def smart_password_reset_phone_resend(request):
         messages.error(request, 'درخواست بازیابی رمز پیامکی معتبر نیست. دوباره شروع کنید.')
         return redirect('account_reset_password')
 
-    user = _find_user_by_phone(phone)
+    user = _find_user_by_verified_phone(phone)
     if not user or str(user.id) != str(user_id):
         _password_reset_session_clear(request)
         messages.error(request, 'حساب کاربری مرتبط پیدا نشد. دوباره تلاش کنید.')
@@ -513,11 +580,28 @@ def verify_phone_change(request):
 
     # Apply the change
     profile, _ = Profile.objects.get_or_create(user=request.user)
+    old_phone = (profile.phone or '').strip()
     profile.phone = pending.new_value
     profile.save(update_fields=['phone'])
+
+    # Keep username in sync when it is phone-based (legacy/login-friendly behavior).
+    current_username = (request.user.username or '').strip()
+    new_phone = (pending.new_value or '').strip()
+    if (
+        current_username
+        and current_username != new_phone
+        and PHONE_RE.match(current_username)
+        and ((not old_phone) or current_username == old_phone)
+    ):
+        User = get_user_model()
+        username_taken = User.objects.filter(username=new_phone).exclude(pk=request.user.pk).exists()
+        if not username_taken:
+            request.user.username = new_phone
+            request.user.save(update_fields=['username'])
+
     pending.delete()
 
-    return JsonResponse({'ok': True, 'new_value': profile.phone})
+    return JsonResponse({'ok': True, 'new_value': profile.phone, 'username': request.user.username})
 
 
 @login_required
@@ -739,25 +823,9 @@ def verify_otp_login(request):
     otp.otp_hmac = None
     otp.save()
 
-    User = get_user_model()
-    # Prefer existing Profile link
-    try:
-        profile = Profile.objects.get(phone=phone)
-        user = profile.user
-    except Profile.DoesNotExist:
-        # Try to find a user with username==phone
-        try:
-            user = User.objects.get(username=phone)
-        except User.DoesNotExist:
-            # Create a new user with unusable password
-            user = User.objects.create(username=phone)
-            try:
-                user.set_unusable_password()
-                user.save()
-            except Exception:
-                pass
-        # Ensure profile exists and phone is set
-        Profile.objects.get_or_create(user=user, defaults={'phone': phone})
+    user, _ = _resolve_user_by_phone(phone)
+    if not user:
+        user = _create_user_for_phone(phone)
 
     # Ensure a backend is set when multiple auth backends are configured
     try:

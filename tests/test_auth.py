@@ -26,18 +26,18 @@ class TestEmailAuthFlow:
         resp = client.get(signup_url)
         assert resp.status_code == 200
         
-        # POST signup form
+        # POST signup form (username is generated automatically by allauth)
         resp = client.post(signup_url, {
             'email': 'newuser@example.com',
-            'username': 'newuser',
             'password1': 'SecurePass123!',
             'password2': 'SecurePass123!',
         })
         
         # Check user was created
-        user = User.objects.filter(username='newuser').first()
+        user = User.objects.filter(email='newuser@example.com').first()
         assert user is not None
         assert user.email == 'newuser@example.com'
+        assert (user.username or '').strip() != ''
         
         # After signup, usually redirected to email verification or login
         assert resp.status_code in (200, 302)

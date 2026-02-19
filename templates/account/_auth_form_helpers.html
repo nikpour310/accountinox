@@ -1,0 +1,87 @@
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function initPasswordToggle(button) {
+    if (!button || button.dataset.toggleBound === '1') return;
+    var inputId = button.getAttribute('data-target');
+    if (!inputId) return;
+
+    var input = document.getElementById(inputId);
+    if (!input) return;
+
+    input.style.paddingLeft = '2.75rem';
+    button.dataset.toggleBound = '1';
+
+    var eyeOpen = button.querySelector('[data-eye-open]');
+    var eyeOff = button.querySelector('[data-eye-off]');
+    var showText = button.getAttribute('data-label-show') || 'نمایش رمز عبور جدید';
+    var hideText = button.getAttribute('data-label-hide') || 'پنهان کردن رمز عبور جدید';
+
+    function syncToggleState() {
+      var isPassword = input.type === 'password';
+      if (eyeOpen) eyeOpen.classList.toggle('hidden', !isPassword);
+      if (eyeOff) eyeOff.classList.toggle('hidden', isPassword);
+      var label = isPassword ? showText : hideText;
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+    }
+
+    syncToggleState();
+    button.addEventListener('click', function () {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      syncToggleState();
+    });
+  }
+
+  document.querySelectorAll('[data-auth-form]').forEach(function (form) {
+    if (form.dataset.authEnhanced === '1') return;
+    form.dataset.authEnhanced = '1';
+
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.type === 'hidden' || el.type === 'checkbox' || el.type === 'radio') return;
+      el.classList.add('form-input');
+      if (!el.getAttribute('placeholder')) {
+        var label = form.querySelector('label[for="' + el.id + '"]');
+        if (label) el.setAttribute('placeholder', label.textContent.trim());
+      }
+    });
+
+    form.querySelectorAll('[data-password-toggle]').forEach(initPasswordToggle);
+
+    var fieldWithError = null;
+    form.querySelectorAll('.text-red-600').forEach(function (msg) {
+      if (fieldWithError) return;
+      var wrapper = msg.closest('div');
+      if (!wrapper) return;
+      fieldWithError = wrapper.querySelector('input, select, textarea');
+    });
+    if (!fieldWithError) {
+      fieldWithError = form.querySelector('input[autofocus], input, select, textarea');
+    }
+    if (fieldWithError) {
+      setTimeout(function () {
+        try { fieldWithError.focus(); } catch (e) {}
+      }, 10);
+    }
+
+    form.addEventListener('submit', function () {
+      if (!form.checkValidity()) return;
+      var submitButton = form.querySelector('[data-submit-button]');
+      if (!submitButton || submitButton.disabled) return;
+
+      var loadingText = submitButton.getAttribute('data-loading-text') || 'در حال پردازش...';
+      var spinnerTone = submitButton.classList.contains('btn-primary')
+        ? 'border-white/70 border-t-white'
+        : 'border-current/30 border-t-current';
+
+      submitButton.disabled = true;
+      submitButton.setAttribute('aria-busy', 'true');
+      submitButton.dataset.originalHtml = submitButton.innerHTML;
+      submitButton.innerHTML =
+        '<span class="inline-block w-4 h-4 border-2 rounded-full animate-spin ml-2 ' +
+        spinnerTone +
+        '"></span>' +
+        loadingText;
+    });
+  });
+});
+</script>
