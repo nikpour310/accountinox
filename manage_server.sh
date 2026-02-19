@@ -1398,7 +1398,9 @@ _mailserver_status() {
   local services=(postfix dovecot opendkim)
   for svc in "${services[@]}"; do
     local st color="$RED"
-    st=$(systemctl is-active "$svc" 2>/dev/null || echo "inactive")
+    st=$(systemctl is-active "$svc" 2>/dev/null || true)
+    st="${st%%$'\n'*}"
+    [[ -z "$st" ]] && st="inactive"
     [[ "$st" == "active" ]] && color="$GREEN"
     printf "  %-10s ${color}%-10s${NC}\n" "$svc" "$st"
   done
