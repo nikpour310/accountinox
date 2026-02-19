@@ -139,6 +139,7 @@ class AccountinoxAdminSite(admin.AdminSite):
 
         link_defs = [
             # پشتیبانی
+            ('support:operator_dashboard', 'پنل اپراتور پشتیبانی', 'اپراتور پشتیبانی زنده چت'),
             ('admin:support_chatsession_changelist', 'صندوق پشتیبانی', 'پشتیبانی چت گفتگو'),
             ('admin:support_supportcontact_changelist', 'مخاطبین پشتیبانی', 'مخاطب تماس'),
             ('admin:support_supportrating_changelist', 'امتیازهای پشتیبانی', 'امتیاز ریتینگ'),
@@ -181,6 +182,7 @@ class AccountinoxAdminSite(admin.AdminSite):
             return []
 
         defaults = [
+            ('support:operator_dashboard', 'پنل اپراتور پشتیبانی'),
             ('admin:support_chatsession_changelist', 'صندوق پشتیبانی'),
             ('admin:shop_order_changelist', 'سفارش‌ها'),
             ('admin:blog_post_changelist', 'بلاگ'),

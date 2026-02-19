@@ -4,6 +4,11 @@
 {% block object-tools-items %}
   {{ block.super }}
   <li>
+    <a href="{% url 'support:operator_dashboard' %}" class="viewlink">
+      پنل اپراتور
+    </a>
+  </li>
+  <li>
     <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes" class="viewlink">
       جلسات خوانده‌نشده
     </a>

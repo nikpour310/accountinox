@@ -31,6 +31,7 @@
   <div class="admin-workspace-actions admin-role-priority-links">
     {% if admin_primary_role == 'support' %}
       {% if perms.support.view_chatsession %}
+        <a href="{% url 'support:operator_dashboard' %}">پنل اپراتور</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes">صندوق خوانده‌نشده</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1">جلسات فعال</a>
       {% endif %}
@@ -60,6 +61,7 @@
       {% endif %}
     {% else %}
       {% if perms.support.view_chatsession %}
+        <a href="{% url 'support:operator_dashboard' %}">پنل اپراتور</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes">صندوق پشتیبانی</a>
       {% endif %}
       {% if perms.shop.view_order %}
@@ -91,6 +93,7 @@
   <article class="admin-workspace-panel is-active" data-workspace-panel="support" role="tabpanel">
     <div class="admin-workspace-actions">
       {% if perms.support.view_chatsession %}
+        <a href="{% url 'support:operator_dashboard' %}">🎛️ پنل اپراتور</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&has_unread=yes">📥 صندوق خوانده‌نشده</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}?is_active__exact=1&assigned_to__id__exact={{ user.id }}">👤 گفتگوهای من</a>
         <a href="{% url 'admin:support_chatsession_changelist' %}">📋 همه گفتگوها</a>
