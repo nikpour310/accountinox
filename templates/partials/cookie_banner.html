@@ -73,8 +73,9 @@
 
 <script>
   (function () {
-    const CONSENT_KEY = 'accx_cookie_consent_v2';
+    const CONSENT_KEY = 'accx_cookie_consent_v3';
     const PREFS_KEY = 'accx_cookie_prefs_v1';
+    const COMPAT_CONSENT_V2_KEY = 'accx_cookie_consent_v2';
     const LEGACY_CONSENT_KEY = 'accx_cookie_consent_v1';
     const DEFAULT_PREFS = Object.freeze({ essential: true, analytics: false });
 
@@ -112,7 +113,7 @@
       }
     };
 
-    const hasDecision = () => safeRead(CONSENT_KEY) === '1';
+    const hasDecision = () => safeRead(CONSENT_KEY) === '1' && Boolean(safeRead(PREFS_KEY));
 
     const readPrefs = () => {
       const raw = safeRead(PREFS_KEY);
@@ -178,23 +179,12 @@
       };
       writePrefs(normalized);
       safeWrite(CONSENT_KEY, '1');
+      safeWrite(COMPAT_CONSENT_V2_KEY, '1');
       safeWrite(LEGACY_CONSENT_KEY, 'accepted');
       banner.classList.add('hidden');
       closeModal();
       notifyPrefsChange(normalized);
     };
-
-    const bootstrapLegacyDecision = () => {
-      if (hasDecision()) {
-        return;
-      }
-      if (safeRead(LEGACY_CONSENT_KEY) === 'accepted') {
-        writePrefs(readPrefs());
-        safeWrite(CONSENT_KEY, '1');
-      }
-    };
-
-    bootstrapLegacyDecision();
 
     if (!hasDecision()) {
       banner.classList.remove('hidden');

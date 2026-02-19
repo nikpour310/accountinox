@@ -91,6 +91,7 @@
           essential: true,
           analytics: Boolean(analyticsEnabled),
         }));
+        window.localStorage.setItem('accx_cookie_consent_v3', '1');
         window.localStorage.setItem('accx_cookie_consent_v2', '1');
         window.localStorage.setItem('accx_cookie_consent_v1', 'accepted');
       } catch (_) {}
