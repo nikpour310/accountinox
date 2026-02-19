@@ -120,7 +120,7 @@
       const sessionIdInput = document.getElementById('session-id-input');
       const feedbackEl = document.getElementById('chat-form-feedback');
       const operatorTypingIndicator = document.getElementById('operator-typing-indicator');
-      const sessionClosed = {{ session_closed|yesno:"true,false" }};
+      let sessionClosed = {{ session_closed|yesno:"true,false" }};
       const typingUpdateUrl = '{% url "support:typing_update" %}';
       const typingStatusBaseUrl = '{% url "support:typing_status" %}';
       let currentSessionId = Number(sessionIdInput ? sessionIdInput.value : {{ session.id }});
@@ -251,6 +251,11 @@
             throw new Error('poll failed');
           }
           const data = await response.json();
+          if (data && data.session_closed) {
+            sessionClosed = true;
+            window.location.reload();
+            return;
+          }
           if (Array.isArray(data.messages) && data.messages.length > 0) {
             data.messages.forEach(function(msg) {
               appendMessage(msg);

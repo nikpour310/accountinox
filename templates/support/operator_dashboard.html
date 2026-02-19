@@ -158,10 +158,13 @@
     const subscribeUrl = '{% url "support:push_subscribe" %}';
     const unreadStatusUrl = '{% url "support:operator_unread_status" %}';
     const presenceUrl = '{% url "support:operator_presence" %}';
+    const initialQueueSignature = '{{ operator_queue_signature|default:""|escapejs }}';
     const csrfTokenInput = document.querySelector('#push-csrf-form input[name="csrfmiddlewaretoken"]');
     const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
     let unreadCount = Number(unreadCountEl ? unreadCountEl.textContent : 0);
+    let queueSignature = initialQueueSignature;
     let fallbackTimer = null;
+    let isAutoReloading = false;
 
     const storageKey = 'support_operator_sound_enabled';
     const storedSoundState = localStorage.getItem(storageKey);
@@ -230,6 +233,16 @@
       } catch (_) {}
     };
 
+    const triggerAutoRefresh = () => {
+      if (isAutoReloading) {
+        return;
+      }
+      isAutoReloading = true;
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 120);
+    };
+
     const startFallbackPolling = () => {
       if (fallbackStatusEl) {
         fallbackStatusEl.classList.remove('hidden');
@@ -239,16 +252,30 @@
       }
       fallbackTimer = window.setInterval(async () => {
         try {
-          const response = await fetch(unreadStatusUrl, { credentials: 'same-origin' });
+          const pollUrl = `${unreadStatusUrl}${unreadStatusUrl.includes('?') ? '&' : '?'}_ts=${Date.now()}`;
+          const response = await fetch(pollUrl, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          });
           if (!response.ok) {
             return;
           }
           const data = await response.json();
           const nextUnread = Number(data.unread_count || 0);
+          const nextQueueSignature = String(data.queue_signature || '');
           if (nextUnread > unreadCount) {
             playAlertSound();
           }
           updateUnreadUi(nextUnread);
+          if (nextQueueSignature && queueSignature && nextQueueSignature !== queueSignature) {
+            queueSignature = nextQueueSignature;
+            triggerAutoRefresh();
+            return;
+          }
+          if (nextQueueSignature) {
+            queueSignature = nextQueueSignature;
+          }
         } catch (_) {}
       }, 5000);
     };

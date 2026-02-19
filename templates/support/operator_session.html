@@ -197,6 +197,7 @@
     let lastMessageId = Number('{{ last_message_id|default:0 }}');
     let unreadCount = Number('{{ unread_count|default:0 }}');
     let polling = false;
+    const renderedMessageIds = new Set();
     let typingStatusInFlight = false;
     let typingResetTimer = null;
     let operatorTypingSent = false;
@@ -305,12 +306,20 @@
     };
 
     const appendMessage = (message) => {
+      const messageId = Number(message && message.id ? message.id : 0);
+      if (messageId > 0 && renderedMessageIds.has(messageId)) {
+        lastMessageId = Math.max(lastMessageId, messageId);
+        return false;
+      }
       if (emptyThread) {
         emptyThread.remove();
       }
       const wrapper = document.createElement('div');
       wrapper.className = `flex ${message.is_from_user ? 'justify-start' : 'justify-end'}`;
-      wrapper.dataset.messageId = String(message.id);
+      if (messageId > 0) {
+        wrapper.dataset.messageId = String(messageId);
+        renderedMessageIds.add(messageId);
+      }
 
       const bubbleWrap = document.createElement('div');
       bubbleWrap.className = 'max-w-[85%] sm:max-w-[74%]';
@@ -337,6 +346,7 @@
       wrapper.appendChild(bubbleWrap);
       messagesContainer.appendChild(wrapper);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return true;
     };
 
     const refreshUnreadStatus = async () => {
@@ -377,9 +387,9 @@
         const data = await response.json();
         if (Array.isArray(data.messages) && data.messages.length > 0) {
           data.messages.forEach((msg) => {
-            appendMessage(msg);
+            const appended = appendMessage(msg);
             lastMessageId = Math.max(lastMessageId, Number(msg.id || 0));
-            if (msg.is_from_user) {
+            if (appended && msg.is_from_user) {
               playAlertSound();
             }
           });
@@ -435,10 +445,14 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (sendBtn.disabled) {
+        return;
+      }
       const text = messageInput.value.trim();
       if (!text) {
         return;
       }
+      sendBtn.disabled = true;
       if (typingResetTimer) {
         clearTimeout(typingResetTimer);
         typingResetTimer = null;
@@ -483,6 +497,12 @@
       }
     });
 
+    messagesContainer.querySelectorAll('[data-message-id]').forEach((node) => {
+      const messageId = Number(node.getAttribute('data-message-id') || 0);
+      if (messageId > 0) {
+        renderedMessageIds.add(messageId);
+      }
+    });
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     heartbeat();
     refreshUnreadStatus();

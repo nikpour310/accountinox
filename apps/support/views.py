@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import Count, Max, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -309,6 +309,26 @@ def _active_unread_count():
         is_from_user=True,
         session__is_active=True,
     ).count()
+
+
+def _operator_queue_realtime_snapshot():
+    """
+    Lightweight queue snapshot for operator dashboard live-sync.
+    Used by polling to detect queue changes and refresh UI automatically.
+    """
+    unread_count = _active_unread_count()
+    active_qs = ChatSession.objects.filter(is_active=True)
+    total_active = active_qs.count()
+    latest_session_id = active_qs.aggregate(max_id=Max('id')).get('max_id') or 0
+    latest_message_id = ChatMessage.objects.filter(session__is_active=True).aggregate(max_id=Max('id')).get('max_id') or 0
+    signature = f'{total_active}:{unread_count}:{latest_session_id}:{latest_message_id}'
+    return {
+        'unread_count': unread_count,
+        'total_active': total_active,
+        'latest_session_id': latest_session_id,
+        'latest_message_id': latest_message_id,
+        'signature': signature,
+    }
 
 
 def _parse_bool(raw_value):
@@ -1141,6 +1161,13 @@ def poll_messages(request):
 
     start_time = time.time()
     while (time.time() - start_time) < timeout:
+        if not ChatSession.objects.filter(id=session.id, is_active=True).exists():
+            return JsonResponse({
+                'messages': [],
+                'since': since,
+                'session_closed': True,
+            })
+
         qs = session.messages.filter(id__gt=since)
         if qs.exists():
             messages_list = []
@@ -1152,10 +1179,14 @@ def poll_messages(request):
                     'is_from_user': m.is_from_user,
                     'created_at': m.created_at.isoformat(),
                 })
-            return JsonResponse({'messages': messages_list, 'since': messages_list[-1]['id']})
+            return JsonResponse({
+                'messages': messages_list,
+                'since': messages_list[-1]['id'],
+                'session_closed': False,
+            })
         time.sleep(1)
 
-    return JsonResponse({'messages': [], 'since': since})
+    return JsonResponse({'messages': [], 'since': since, 'session_closed': False})
 
 
 @require_POST
@@ -1415,6 +1446,7 @@ def user_reopen_session(request, session_id):
 def operator_dashboard(request):
     _set_operator_presence(request.user, active_session_id=None)
     queue_context = _build_operator_queue_context(request, use_request_filters=True)
+    live_snapshot = _operator_queue_realtime_snapshot()
     return render(request, 'support/operator_dashboard.html', {
         'active_sessions': queue_context['sessions'],
         'queue_filter': queue_context['selected_filter'],
@@ -1423,7 +1455,8 @@ def operator_dashboard(request):
         'queue_filters': queue_context['filter_options'],
         'queue_sorts': queue_context['sort_options'],
         'queue_summary': queue_context['summary'],
-        'unread_count': _active_unread_count(),
+        'unread_count': live_snapshot['unread_count'],
+        'operator_queue_signature': live_snapshot['signature'],
         'support_push_enabled': bool(
             getattr(settings, 'SUPPORT_PUSH_ENABLED', False) and getattr(settings, 'VAPID_PUBLIC_KEY', '')
         ),
@@ -1691,10 +1724,18 @@ def push_unsubscribe(request):
 @require_http_methods(['GET'])
 def operator_unread_status(request):
     _set_operator_presence(request.user, active_session_id=request.GET.get('session_id'))
-    return JsonResponse({
+    snapshot = _operator_queue_realtime_snapshot()
+    response = JsonResponse({
         'ok': True,
-        'unread_count': _active_unread_count(),
+        'unread_count': snapshot['unread_count'],
+        'active_sessions': snapshot['total_active'],
+        'latest_session_id': snapshot['latest_session_id'],
+        'latest_message_id': snapshot['latest_message_id'],
+        'queue_signature': snapshot['signature'],
     })
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    return response
 
 
 @staff_member_required
