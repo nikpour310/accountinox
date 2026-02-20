@@ -174,6 +174,7 @@ build_health_urls() {
 
 probe_health_once() {
   local timeout="${HEALTHCHECK_TIMEOUT:-8}"
+  local ok_codes="${HEALTHCHECK_OK_CODES:-200 301 302 307 308}"
   local body_file
   body_file=$(mktemp)
   HEALTHCHECK_LAST_TRY=""
@@ -181,10 +182,15 @@ probe_health_once() {
 
   local url code body
   for url in "${HEALTH_URLS[@]}"; do
-    code=$(curl -sS -L --max-time "$timeout" -o "$body_file" -w "%{http_code}" "$url" 2>/dev/null || echo "000")
-    if [[ "$code" == "200" ]]; then
+    if code=$(curl -sS --max-time "$timeout" -o "$body_file" -w "%{http_code}" "$url" 2>/dev/null); then
+      :
+    else
+      [[ "$code" =~ ^[0-9]{3}$ ]] || code="000"
+    fi
+
+    if [[ " ${ok_codes} " == *" ${code} "* ]]; then
       body=$(head -c 200 "$body_file" | tr '\n' ' ')
-      HEALTHCHECK_LAST_OK="${url} (HTTP 200) ${body}"
+      HEALTHCHECK_LAST_OK="${url} (HTTP ${code}) ${body}"
       rm -f "$body_file"
       return 0
     fi
@@ -216,6 +222,7 @@ wait_for_health() {
 
 print_health_failure_context() {
   warn "Health probe failed after retries."
+  warn "Accepted HTTP codes: ${HEALTHCHECK_OK_CODES:-200 301 302 307 308}"
   [[ -n "${HEALTHCHECK_LAST_TRY:-}" ]] && warn "Last probe results: ${HEALTHCHECK_LAST_TRY}"
 
   local st
