@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 import environ
 from django.core.exceptions import ImproperlyConfigured
 import logging
@@ -186,7 +187,7 @@ SOCIALACCOUNT_QUERY_EMAIL = True
 # This makes clicking the Google button start OAuth immediately.
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
-SOCIALACCOUNT_PROVIDERS = {
+SOCIALACCOUNT_PROVIDERS: dict[str, dict[str, Any]] = {
     'google': {
         'SCOPE': ['profile', 'email'],
     }
@@ -203,6 +204,7 @@ if GOOGLE_CLIENT_ID and GOOGLE_SECRET:
 #CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
 CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+STRICT_PRODUCTION_SECURITY = env.bool('STRICT_PRODUCTION_SECURITY', default=True)
 SESSION_IDLE_TIMEOUT_USER_SECONDS = env.int('SESSION_IDLE_TIMEOUT_USER_SECONDS', default=2 * 60 * 60)
 SESSION_IDLE_TIMEOUT_STAFF_SECONDS = env.int('SESSION_IDLE_TIMEOUT_STAFF_SECONDS', default=30 * 60)
 
@@ -285,6 +287,14 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=3600)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False)
     SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=False)
+
+    # Production guardrail: keep secure cookies/redirect/HSTS enabled by default.
+    # Set STRICT_PRODUCTION_SECURITY=0 explicitly only for controlled staging/debugging.
+    if STRICT_PRODUCTION_SECURITY:
+        SECURE_SSL_REDIRECT = True
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = max(int(SECURE_HSTS_SECONDS or 0), 3600)
 else:
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0

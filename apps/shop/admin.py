@@ -137,7 +137,7 @@ class ProductAdmin(admin.ModelAdmin):
             )
         if obj.is_discount_configured:
             return format_html('<span class="status-badge status-badge--warning">زمان‌بندی شده</span>')
-        return format_html('<span class="status-badge status-badge--muted">ندارد</span>')
+        return format_html('<span class="status-badge status-badge--muted">{}</span>', 'ندارد')
 
     @admin.display(description='وضعیت تخفیف')
     def discount_status(self, obj):

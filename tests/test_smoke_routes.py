@@ -238,17 +238,28 @@ def test_support_start_chat_to_close_and_reopen_smoke():
     assert old_session.closed_by_id == operator.id
     assert ChatMessage.objects.filter(session=old_session, is_from_user=True, read=False).count() == 0
 
-    reopen_resp = user_client.post(
+    blocked_resp = user_client.post(
         reverse('support:send_message'),
         {'session_id': session_id, 'message': 'بعد از بستن دوباره پیام دادم'},
     )
-    assert reopen_resp.status_code == 200
-    reopen_data = reopen_resp.json()
-    assert int(reopen_data['session_id']) != int(session_id)
+    assert blocked_resp.status_code == 400
+    assert blocked_resp.json().get('session_closed') is True
 
-    reopened = ChatSession.objects.get(id=reopen_data['session_id'])
+    reopen_resp = user_client.post(
+        reverse('support:user_reopen_session', args=[session_id]),
+        follow=True,
+    )
+    assert reopen_resp.status_code in (200, 302)
+
+    reopened = ChatSession.objects.get(id=session_id)
     assert reopened.is_active is True
     assert reopened.contact_id == old_session.contact_id
+
+    send_after_reopen = user_client.post(
+        reverse('support:send_message'),
+        {'session_id': session_id, 'message': 'بعد از بازکردن تیکت'},
+    )
+    assert send_after_reopen.status_code == 200
     assert ChatMessage.objects.filter(session=reopened, is_from_user=True, read=False).count() == 1
 
 

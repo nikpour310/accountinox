@@ -11,6 +11,7 @@ Tests cover:
 - User can view purchased account details
 """
 import pytest
+from decimal import Decimal
 from django.urls import reverse
 from django.contrib.auth.models import User
 from apps.shop.models import Product, Category, AccountItem, Order, OrderItem, TransactionLog
@@ -112,7 +113,10 @@ class TestCheckoutFlow:
         # Check order was created
         order = Order.objects.filter(user=user).first()
         assert order is not None
-        assert str(order.total) == str(product_with_items.price)
+        expected_subtotal = Decimal(str(product_with_items.price))
+        assert order.subtotal_amount == expected_subtotal
+        assert order.total == (order.subtotal_amount + order.vat_amount)
+        assert order.vat_percent_applied >= 0
         assert order.paid == False
         
         # Check order item created

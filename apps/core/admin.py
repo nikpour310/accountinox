@@ -130,7 +130,7 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
                        'otp_max_attempts', 'otp_resend_cooldown', 'sms_provider', 'sms_enabled'),
             'classes': ('collapse',),
         }),
-        ('� اعلان سفارش', {
+        ('📦 اعلان سفارش', {
             'fields': (
                 'order_sms_enabled',
                 'order_sms_text',
@@ -141,7 +141,7 @@ class SiteSettingsAdmin(OwnerOnlyMixin, admin.ModelAdmin):
             ),
             'description': 'تنظیمات ایمیل/پیامک پس از خرید و مالیات فاکتور. در متن پیامک از {order_number} برای درج شماره سفارش استفاده کنید.',
         }),
-        ('�💳 درگاه پرداخت', {
+        ('💳 درگاه پرداخت', {
             'fields': ('payment_gateway',),
             'classes': ('collapse',),
         }),

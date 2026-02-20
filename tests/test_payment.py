@@ -157,7 +157,9 @@ class TestPaymentGateway:
         # Check that an order was created
         assert Order.objects.count() == initial_orders + 1
         order = Order.objects.latest('id')
-        assert order.total == self.product.price
+        assert order.subtotal_amount == self.product.price
+        assert order.total == (order.subtotal_amount + order.vat_amount)
+        assert order.vat_percent_applied >= 0
         
         # Check transaction log was created
         tx = TransactionLog.objects.filter(order=order).first()
