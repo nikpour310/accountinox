@@ -184,7 +184,7 @@
             <h3 class="text-base font-bold text-gray-900 group-hover:text-primary-700 transition-colors">
               <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
             </h3>
-            <p class="mt-1.5 text-sm text-gray-500 leading-7 line-clamp-2">{{ post.content|truncatechars:120 }}</p>
+            <p class="mt-1.5 text-sm text-gray-500 leading-7 line-clamp-2">{{ post.seo_description|default:post.content|striptags|truncatechars:120 }}</p>
             <div class="mt-auto pt-4 flex items-center justify-between text-xs text-gray-400">
               <span>{{ post.created_at|jdate:"j F Y" }}</span>
               <a href="{{ post.get_absolute_url }}" class="text-primary-600 font-medium hover:text-primary-700 transition-colors">ادامه مطلب →</a>
