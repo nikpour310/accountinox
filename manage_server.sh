@@ -155,6 +155,77 @@ ensure_static_permissions_and_checks() {
   success "Nginx static OK (200)"
 }
 
+build_health_urls() {
+  local path="${HEALTHCHECK_PATH:-/healthz/}"
+  [[ "$path" != /* ]] && path="/$path"
+
+  local primary="${HEALTHCHECK_URL:-http://127.0.0.1:8000${path}}"
+  local fallback="${HEALTHCHECK_FALLBACK_URL:-}"
+
+  # Load env so SITE_URL is available if defined in .env
+  load_env
+  local site_url="${SITE_URL:-}"
+
+  HEALTH_URLS=()
+  HEALTH_URLS+=("$primary")
+  [[ -n "$fallback" ]] && HEALTH_URLS+=("$fallback")
+  [[ -n "$site_url" ]] && HEALTH_URLS+=("${site_url%/}${path}")
+}
+
+probe_health_once() {
+  local timeout="${HEALTHCHECK_TIMEOUT:-8}"
+  local body_file
+  body_file=$(mktemp)
+  HEALTHCHECK_LAST_TRY=""
+  HEALTHCHECK_LAST_OK=""
+
+  local url code body
+  for url in "${HEALTH_URLS[@]}"; do
+    code=$(curl -sS -L --max-time "$timeout" -o "$body_file" -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+    if [[ "$code" == "200" ]]; then
+      body=$(head -c 200 "$body_file" | tr '\n' ' ')
+      HEALTHCHECK_LAST_OK="${url} (HTTP 200) ${body}"
+      rm -f "$body_file"
+      return 0
+    fi
+    if [[ -z "$HEALTHCHECK_LAST_TRY" ]]; then
+      HEALTHCHECK_LAST_TRY="${url} -> HTTP ${code}"
+    else
+      HEALTHCHECK_LAST_TRY="${HEALTHCHECK_LAST_TRY} | ${url} -> HTTP ${code}"
+    fi
+  done
+
+  rm -f "$body_file"
+  return 1
+}
+
+wait_for_health() {
+  build_health_urls
+
+  local retries="${HEALTHCHECK_RETRIES:-12}"
+  local delay="${HEALTHCHECK_DELAY:-2}"
+  local i
+  for ((i=1; i<=retries; i++)); do
+    if probe_health_once; then
+      return 0
+    fi
+    sleep "$delay"
+  done
+  return 1
+}
+
+print_health_failure_context() {
+  warn "Health probe failed after retries."
+  [[ -n "${HEALTHCHECK_LAST_TRY:-}" ]] && warn "Last probe results: ${HEALTHCHECK_LAST_TRY}"
+
+  local st
+  st=$(systemctl is-active "${APP_NAME}" 2>/dev/null || echo "unknown")
+  warn "Service ${APP_NAME} status: ${st}"
+
+  warn "Recent ${APP_NAME} logs:"
+  journalctl -u "${APP_NAME}" -n 20 --no-pager 2>/dev/null || true
+}
+
 ###############################################################################
 #                              COMMANDS                                       #
 ###############################################################################
@@ -209,12 +280,11 @@ cmd_status() {
 
   # App health check
   header "Health Check"
-  local health
-  health=$(curl -sf --max-time 5 http://127.0.0.1:8000/healthz/ 2>/dev/null || echo "")
-  if [[ -n "$health" ]]; then
-    success "App responding: $health"
+  if wait_for_health; then
+    success "App responding: ${HEALTHCHECK_LAST_OK}"
   else
-    fail "App not responding on port 8000"
+    fail "App health check failed"
+    print_health_failure_context
   fi
 }
 
@@ -283,12 +353,11 @@ cmd_deploy() {
   sleep 2
 
   # 6. Health check
-  local health
-  health=$(curl -sf --max-time 10 http://127.0.0.1:8000/healthz/ 2>/dev/null || echo "")
-  if [[ -n "$health" ]]; then
+  if wait_for_health; then
     success "Deploy complete in $((SECONDS - started))s — app healthy"
   else
     fail "Deploy finished but health check failed!"
+    print_health_failure_context
     warn "Consider rollback: sudo bash $0 rollback"
   fi
 }
@@ -336,12 +405,11 @@ cmd_pull_update() {
   sleep 2
 
   # Health check
-  local health
-  health=$(curl -sf --max-time 10 http://127.0.0.1:8000/healthz/ 2>/dev/null || echo "")
-  if [[ -n "$health" ]]; then
+  if wait_for_health; then
     success "Pull update complete in $((SECONDS - started))s - app healthy"
   else
     fail "Update finished but health check failed!"
+    print_health_failure_context
     warn "Consider rollback: sudo bash $0 rollback"
   fi
 }
