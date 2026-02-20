@@ -2,12 +2,44 @@
 {% load static webp_tags seo_tags %}
 
 {% block title %}{{ service.name }} | {{ block.super }}{% endblock %}
+{% block meta_description %}{{ service.description|default:'خدمات این بخش را مشاهده کنید و محصول مناسب خود را با خرید امن انتخاب کنید.'|striptags|truncatechars:160 }}{% endblock %}
+{% block canonical %}{% canonical_url as canonical %}<link rel="canonical" href="{{ canonical }}">{% endblock %}
+
+{% block schema_jsonld %}
+  {{ block.super }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "خانه",
+        "item": "{{ site_base_url }}/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "خدمات",
+        "item": "{{ site_base_url }}{% url 'shop:service_list' %}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ service.name|escapejs }}",
+        "item": "{{ site_base_url }}{% url 'shop:service_detail' service.slug %}"
+      }
+    ]
+  }
+  </script>
+{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
 
   <!-- Breadcrumb -->
-  <nav class="flex items-center gap-2 text-sm text-gray-400 mb-8">
+  <nav class="flex items-center gap-2 text-sm text-gray-400 mb-8" aria-label="breadcrumb">
     <a href="{% url 'shop:product_list' %}" class="hover:text-primary-600 transition-colors">فروشگاه</a>
     <svg class="w-3.5 h-3.5 rtl:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
     <a href="{% url 'shop:service_list' %}" class="hover:text-primary-600 transition-colors">خدمات</a>
@@ -27,7 +59,7 @@
         <!-- Service logo -->
         {% if service.featured_image %}
         <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center p-3 flex-shrink-0 shadow-lg shadow-black/20">
-          <img src="{{ service.featured_image.url }}" alt="{{ service.name }}" class="w-full h-full object-contain rounded-xl" loading="lazy">
+          <img src="{{ service.featured_image.url }}" alt="{{ service.name }}" class="w-full h-full object-contain rounded-xl" loading="lazy" width="{{ service.featured_image.width|default:'96' }}" height="{{ service.featured_image.height|default:'96' }}">
         </div>
         {% elif service.icon %}
         <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center text-5xl flex-shrink-0 shadow-lg shadow-black/20">
@@ -96,7 +128,7 @@
         {% else %}
           <div class="flex h-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-colors duration-300">
             {% if service.featured_image %}
-            <img src="{{ service.featured_image.url }}" alt="{{ product.title }}" class="w-16 h-16 object-contain opacity-15" loading="lazy">
+            <img src="{{ service.featured_image.url }}" alt="{{ product.title }}" class="w-16 h-16 object-contain opacity-15" loading="lazy" width="64" height="64">
             {% elif service.icon %}
             <span class="text-5xl opacity-40">{{ service.icon }}</span>
             {% else %}
@@ -165,7 +197,7 @@
       <a href="{% url 'shop:service_detail' s.slug %}" class="group card card-hover p-4 flex items-center gap-3.5">
         {% if s.featured_image %}
         <div class="w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center p-1 flex-shrink-0 group-hover:border-primary-200 transition-all duration-200">
-          <img src="{{ s.featured_image.url }}" alt="{{ s.name }}" class="w-full h-full object-contain rounded-lg" loading="lazy">
+          <img src="{{ s.featured_image.url }}" alt="{{ s.name }}" class="w-full h-full object-contain rounded-lg" loading="lazy" width="44" height="44">
         </div>
         {% elif s.icon %}
         <div class="w-11 h-11 rounded-xl bg-primary-50 border border-primary-100 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-primary-100 transition-colors duration-200">

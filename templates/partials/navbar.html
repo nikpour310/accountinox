@@ -200,7 +200,7 @@
                                     {% if product.featured_image %}
                                         {% include 'partials/image.html' with image=product.featured_image alt=product.title class="w-12 h-8 object-cover rounded-md" %}
                                     {% else %}
-                                        <img src="{% static 'img/og-fallback.svg' %}" alt="{{ product.title }}" class="w-12 h-8 object-cover rounded-md">
+                                        <img src="{% static 'img/og-fallback.svg' %}" alt="{{ product.title }}" class="w-12 h-8 object-cover rounded-md" width="48" height="32" loading="lazy">
                                     {% endif %}
                                     <div class="text-sm text-gray-800">{{ product.title }}</div>
                                 </a>

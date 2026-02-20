@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'django.contrib.sitemaps',
     'django.contrib.humanize',
 
     # third party
@@ -101,7 +102,19 @@ ASGI_APPLICATION = 'config.asgi.application'
 
 # Database: MySQL if env provided, else sqlite for local dev
 if env('DATABASE_URL', default=None):
-    DATABASES = {'default': env.db()}
+    default_db = env.db()
+    default_db.setdefault('OPTIONS', {})
+    db_engine = str(default_db.get('ENGINE', '')).lower()
+    if 'mysql' in db_engine:
+        default_db['OPTIONS'].setdefault('charset', 'utf8mb4')
+        default_db['OPTIONS'].setdefault('use_unicode', True)
+        default_db['OPTIONS'].setdefault(
+            'init_command',
+            'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci',
+        )
+    elif 'postgresql' in db_engine:
+        default_db['OPTIONS'].setdefault('client_encoding', 'UTF8')
+    DATABASES = {'default': default_db}
 else:
     DATABASES = {
         'default': {
@@ -122,6 +135,7 @@ TIME_ZONE = 'Asia/Tehran'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+DEFAULT_CHARSET = 'utf-8'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -352,6 +366,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 10,  # 10MB
             'backupCount': 5,
             'formatter': 'verbose',
+            'encoding': 'utf-8',
         },
         'file_info': {
             'level': 'INFO',
@@ -360,6 +375,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 10,  # 10MB
             'backupCount': 3,
             'formatter': 'simple',
+            'encoding': 'utf-8',
         },
     },
     'loggers': {

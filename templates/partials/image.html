@@ -5,7 +5,7 @@ Usage: include 'partials/image.html' with image=object.image alt=object.title cl
 {% endcomment %}
 {% if image %}
     {% with safe_alt=image|image_alt:alt %}
-        {% prefer_webp image class alt=safe_alt loading=loading %}
+        {% prefer_webp image class alt=safe_alt loading=loading width=width height=height %}
     {% endwith %}
 {% else %}
     {# fallback: render a harmless empty placeholder to avoid empty-src requests #}

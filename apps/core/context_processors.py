@@ -1,13 +1,26 @@
 from django.conf import settings
 from django.contrib import messages
 
+
+class _FallbackSiteSettings:
+    site_name = 'Accountinox'
+    brand_wordmark_fa = 'Accountinox'
+    site_description = ''
+    site_notice_enabled = False
+    site_notice_text = ''
+    logo = None
+
+    def __getattr__(self, _name):
+        return ''
+
+
 def site_settings(request):
     try:
         from apps.core.models import SiteSettings
         # Ensure we always provide a SiteSettings instance (create if missing)
         setting_obj = SiteSettings.load()
     except Exception:
-        setting_obj = None
+        setting_obj = _FallbackSiteSettings()
 
     # Provide active services for the navbar (safe fallback if shop app not available)
     try:
@@ -56,10 +69,14 @@ def site_settings(request):
         except Exception:
             google_oauth_ready = False
 
+    base_url = (getattr(settings, 'SITE_BASE_URL', '') or '').strip().rstrip('/')
+    if not base_url:
+        base_url = f"{request.scheme}://{request.get_host()}"
+
     return {
         'site_settings': setting_obj,
         'debug': settings.DEBUG,
-        'site_base_url': settings.SITE_BASE_URL if hasattr(settings, 'SITE_BASE_URL') else f"{request.scheme}://{request.get_host()}",
+        'site_base_url': base_url,
         'services': services,
         'footer_links_quick': footer_links_quick,
         'footer_links_legal': footer_links_legal,

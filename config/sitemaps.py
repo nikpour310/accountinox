@@ -9,12 +9,13 @@ class StaticViewSitemap(Sitemap):
     def items(self):
         return [
             'core:landing',
+            'core:cookies',
             'core:terms',
             'core:privacy',
             'core:contact',
             'shop:product_list',
+            'shop:service_list',
             'blog:post_list',
-            'support:chat',
         ]
 
     def location(self, item):
@@ -50,3 +51,18 @@ class ProductSitemap(Sitemap):
 
     def location(self, item):
         return reverse('shop:product_detail', args=[item.slug])
+
+
+class ServiceSitemap(Sitemap):
+    changefreq = 'weekly'
+    priority = 0.6
+
+    def items(self):
+        try:
+            from apps.shop.models import Service
+            return Service.objects.filter(active=True).order_by('order', 'name')
+        except Exception:
+            return []
+
+    def location(self, item):
+        return reverse('shop:service_detail', args=[item.slug])

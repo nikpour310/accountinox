@@ -1,20 +1,23 @@
 {% extends 'base.html' %}
 {% load static seo_tags %}
 
-{% block meta_title %}{{ product.seo_title|default:product.title }} | فروشگاه {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block title %}{{ product.seo_title|default:product.title }} | فروشگاه {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}{% endblock %}
-{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'shop:product_detail' product.slug %}">{% endblock %}
+{% block canonical %}{% canonical_url as canonical %}<link rel="canonical" href="{{ canonical }}">{% endblock %}
 
 {% block og_tags %}
+  {% canonical_url as canonical %}
   <meta property="og:site_name" content="{{ site_settings.site_name|default:'Accountinox' }}">
+  <meta property="og:locale" content="fa_IR">
   <meta property="og:title" content="{{ product.seo_title|default:product.title }}">
   <meta property="og:description" content="{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}">
   <meta property="og:type" content="product">
-  <meta property="og:url" content="{{ site_base_url }}{% url 'shop:product_detail' product.slug %}">
+  <meta property="og:url" content="{{ canonical }}">
   <meta property="og:image" content="{% if product.featured_image %}{% if product.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ product.featured_image.url }}{% else %}{{ product.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ product.seo_title|default:product.title }}">
   <meta name="twitter:description" content="{{ product.seo_description|default:product.description|striptags|truncatechars:160 }}">
+  <meta name="twitter:url" content="{{ canonical }}">
   <meta name="twitter:image" content="{% if product.featured_image %}{% if product.featured_image.url|slice:':1' == '/' %}{{ site_base_url }}{{ product.featured_image.url }}{% else %}{{ product.featured_image.url }}{% endif %}{% else %}{{ site_base_url }}{% static 'img/og-fallback.svg' %}{% endif %}">
 {% endblock %}
 
@@ -82,7 +85,7 @@
 {% block content %}
 <div class="page-wrapper">
   {# Breadcrumb #}
-  <nav class="mb-6 reveal">
+  <nav class="mb-6 reveal" aria-label="breadcrumb">
     <div class="flex items-center gap-2 text-sm text-gray-500">
       <a href="{% url 'shop:product_list' %}" class="hover:text-primary-600 transition-colors">فروشگاه</a>
       <svg class="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -103,7 +106,9 @@
         {% if product.featured_image %}
           <img src="{{ product.featured_image.url }}" alt="{{ product.title }}"
                class="h-full w-full object-contain p-4 transition-transform duration-500 hover:scale-105"
-               loading="lazy">
+               loading="lazy"
+               width="{{ product.featured_image.width|default:'800' }}"
+               height="{{ product.featured_image.height|default:'800' }}">
         {% else %}
           <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100" aria-hidden="true">
             <span class="text-8xl drop-shadow-sm">{% if product.service and product.service.icon %}{{ product.service.icon }}{% else %}📦{% endif %}</span>

@@ -5,32 +5,45 @@
 <html lang="fa" dir="rtl" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ site_settings.brand_wordmark_fa|default:site_settings.site_name|default:'Accountinox' }}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% block meta_title %}{{ site_settings.brand_wordmark_fa|default:site_settings.site_name|default:'Accountinox' }}{% endblock %}{% endblock %}</title>
     
     <!-- Meta/SEO -->
     <meta name="description" content="{% block meta_description %}{{ site_settings.site_description|default:'خرید امن اکانت و لایسنس دیجیتال با تحویل فوری' }}{% endblock %}">
-    {% block meta_robots %}
-    <meta name="robots" content="index,follow">
+    {% block robots_meta %}
+        {% block meta_robots %}
+        <meta name="robots" content="index,follow">
+        {% endblock %}
     {% endblock %}
     <meta name="theme-color" content="#14b8a6">
     
     <!-- Canonical -->
     {% canonical_url keep_page=True as canonical %}
-    {% block canonical %}
-    <link rel="canonical" href="{{ canonical }}">
+    {% block canonical_url %}
+        {% block canonical %}
+        <link rel="canonical" href="{{ canonical }}">
+        {% endblock %}
     {% endblock %}
 
     <meta name="author" content="رامین جلیلی">
     
     <!-- Open Graph -->
+    {% static 'img/og-fallback.svg' as og_fallback_image %}
     {% block og_tags %}
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="fa_IR">
     <meta property="og:site_name" content="{{ site_settings.brand_wordmark_fa|default:site_settings.site_name|default:'Accountinox' }}">
     <meta property="og:title" content="{% block og_title %}{{ site_settings.site_name|default:'Accountinox' }}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{{ site_settings.site_description|default:'خرید امن اکانت و لایسنس دیجیتال' }}{% endblock %}">
     <meta property="og:url" content="{{ canonical }}">
-    <meta property="og:image" content="{% if site_settings.logo %}{{ site_settings.logo.url|abs_url }}{% else %}{{ '/static/img/og-image.jpg'|abs_url }}{% endif %}">
+    <meta property="og:image" content="{% block og_image %}{% if site_settings and site_settings.logo %}{% if site_settings.logo.url|slice:':4' == 'http' %}{{ site_settings.logo.url }}{% else %}{{ site_base_url }}{{ site_settings.logo.url }}{% endif %}{% else %}{{ site_base_url }}{{ og_fallback_image }}{% endif %}{% endblock %}">
+    {% block twitter_tags %}
+    <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ site_settings.site_name|default:'Accountinox' }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{{ site_settings.site_description|default:'خرید امن اکانت و لایسنس دیجیتال' }}{% endblock %}">
+    <meta name="twitter:url" content="{% block twitter_url %}{{ canonical }}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{% if site_settings and site_settings.logo %}{% if site_settings.logo.url|slice:':4' == 'http' %}{{ site_settings.logo.url }}{% else %}{{ site_base_url }}{{ site_settings.logo.url }}{% endif %}{% else %}{{ site_base_url }}{{ og_fallback_image }}{% endif %}{% endblock %}">
+    {% endblock %}
     {% endblock %}
 
     <!-- Fonts (Vazirmatn) -->
@@ -47,15 +60,11 @@
 
     {% block extra_head %}{% endblock %}
     
-    {% block schema_jsonld %}
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "{{ site_settings.site_name|default:'Accountinox' }}",
-      "url": "{{ site_base_url }}"
-    }
-    </script>
+    {% block jsonld %}
+        {% block schema_jsonld %}
+        <script type="application/ld+json">{% organization_jsonld %}</script>
+        <script type="application/ld+json">{% website_jsonld %}</script>
+        {% endblock %}
     {% endblock %}
 </head>
 <body class="bg-gray-50/50 text-gray-800 antialiased font-sans flex flex-col min-h-screen">

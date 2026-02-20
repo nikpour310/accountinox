@@ -1,9 +1,33 @@
 {% extends 'base.html' %}
 {% load seo_tags %}
 
-{% block meta_title %}بلاگ | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
+{% block title %}بلاگ | {{ site_settings.site_name|default:'Accountinox' }}{% endblock %}
 {% block meta_description %}آموزش‌ها و راهنمای خرید محصولات دیجیتال در بلاگ {{ site_settings.site_name|default:'Accountinox' }}.{% endblock %}
-{% block canonical %}<link rel="canonical" href="{{ site_base_url }}{% url 'blog:post_list' %}">{% endblock %}
+{% block canonical %}{% canonical_url keep_page=True as canonical %}<link rel="canonical" href="{{ canonical }}">{% endblock %}
+
+{% block schema_jsonld %}
+  {{ block.super }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "خانه",
+        "item": "{{ site_base_url }}/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "بلاگ",
+        "item": "{{ site_base_url }}{% url 'blog:post_list' %}"
+      }
+    ]
+  }
+  </script>
+{% endblock %}
 
 {% block content %}
 <div class="page-wrapper">

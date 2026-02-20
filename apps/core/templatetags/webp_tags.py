@@ -2,6 +2,7 @@ from django import template
 from django.utils.safestring import mark_safe
 from django.conf import settings
 import os
+from html import escape
 
 register = template.Library()
 
@@ -38,11 +39,18 @@ def _to_path(url):
 
 
 @register.simple_tag(takes_context=True)
-def prefer_webp(context, image, css_class='', alt='', loading=''):
+def prefer_webp(context, image, css_class='', alt='', loading='', width='', height=''):
     """Render a <picture> that prefers WebP if a .webp sibling exists.
 
     `image` may be a Django ImageField, a URL string, or template variable with `.url`.
     """
+    def _dim(value):
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            return ''
+        return str(value) if value > 0 else ''
+
     # resolve image value
     url = ''
     try:
@@ -64,20 +72,33 @@ def prefer_webp(context, image, css_class='', alt='', loading=''):
     webp_path = _to_path(webp_url)
     has_webp = webp_path and os.path.exists(webp_path)
 
+    resolved_width = _dim(width) or _dim(getattr(image, 'width', ''))
+    resolved_height = _dim(height) or _dim(getattr(image, 'height', ''))
+
     attrs = []
     if css_class:
-        attrs.append(f'class="{css_class}"')
-    if alt:
-        attrs.append(f'alt="{alt}"')
+        attrs.append(f'class="{escape(str(css_class), quote=True)}"')
+    attrs.append(f'alt="{escape(str(alt or ""), quote=True)}"')
     if loading:
-        attrs.append(f'loading="{loading}"')
+        attrs.append(f'loading="{escape(str(loading), quote=True)}"')
+    if resolved_width:
+        attrs.append(f'width="{resolved_width}"')
+    if resolved_height:
+        attrs.append(f'height="{resolved_height}"')
 
     img_attrs = ' '.join(attrs)
+    escaped_url = escape(url, quote=True)
+    escaped_webp_url = escape(webp_url, quote=True)
 
     if has_webp:
-        html = f"<picture>\n  <source type=\"image/webp\" srcset=\"{webp_url}\">\n  <img src=\"{url}\" {img_attrs}>\n</picture>"
+        html = (
+            f"<picture>\n"
+            f"  <source type=\"image/webp\" srcset=\"{escaped_webp_url}\">\n"
+            f"  <img src=\"{escaped_url}\" {img_attrs}>\n"
+            f"</picture>"
+        )
     else:
-        html = f"<img src=\"{url}\" {img_attrs}>"
+        html = f"<img src=\"{escaped_url}\" {img_attrs}>"
 
     # ensure responses that vary by Accept are cache-friendly; middleware will add Vary header
     return mark_safe(html)

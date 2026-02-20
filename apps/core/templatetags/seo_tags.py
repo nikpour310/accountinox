@@ -1,8 +1,10 @@
 from django import template
 from django.conf import settings
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 import datetime as _dt
+import json
 
 register = template.Library()
 
@@ -97,6 +99,99 @@ def abs_url(value):
     if val.startswith('/'):
         return f"{base}{val}"
     return f"{base}/{val}"
+
+
+def _jsonld_safe(data):
+    def _prune_none(value):
+        if isinstance(value, dict):
+            return {
+                key: _prune_none(item)
+                for key, item in value.items()
+                if item is not None and item != ''
+            }
+        if isinstance(value, list):
+            return [item for item in (_prune_none(item) for item in value) if item is not None and item != '']
+        return value
+
+    cleaned = _prune_none(data)
+    payload = json.dumps(cleaned, ensure_ascii=False, separators=(',', ':'))
+    return mark_safe(payload.replace('</', '<\\/'))
+
+
+@register.simple_tag(takes_context=True)
+def organization_jsonld(context):
+    site_settings = context.get('site_settings')
+    base_url = (context.get('site_base_url') or getattr(settings, 'SITE_BASE_URL', '') or '').rstrip('/')
+    site_name = 'Accountinox'
+    if site_settings:
+        site_name = (
+            getattr(site_settings, 'brand_wordmark_fa', None)
+            or getattr(site_settings, 'site_name', None)
+            or site_name
+        )
+
+    logo_url = ''
+    if site_settings and getattr(site_settings, 'logo', None):
+        try:
+            logo_url = abs_url(site_settings.logo.url)
+        except Exception:
+            logo_url = ''
+
+    same_as = []
+    if site_settings:
+        for field_name in ('instagram_url', 'telegram_channel_url', 'telegram_admin_url'):
+            value = getattr(site_settings, field_name, '')
+            if value and str(value).startswith(('http://', 'https://')):
+                same_as.append(value)
+
+    contact_points = []
+    if site_settings:
+        phone = getattr(site_settings, 'phone', '')
+        if phone:
+            contact_points.append({
+                '@type': 'ContactPoint',
+                'telephone': str(phone),
+                'contactType': 'customer support',
+                'availableLanguage': 'fa-IR',
+            })
+
+    data = {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        'name': site_name,
+        'url': base_url,
+        'logo': logo_url,
+        'sameAs': same_as,
+        'contactPoint': contact_points,
+    }
+    return _jsonld_safe(data)
+
+
+@register.simple_tag(takes_context=True)
+def website_jsonld(context):
+    site_settings = context.get('site_settings')
+    base_url = (context.get('site_base_url') or getattr(settings, 'SITE_BASE_URL', '') or '').rstrip('/')
+    site_name = 'Accountinox'
+    if site_settings:
+        site_name = (
+            getattr(site_settings, 'brand_wordmark_fa', None)
+            or getattr(site_settings, 'site_name', None)
+            or site_name
+        )
+
+    data = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        'name': site_name,
+        'url': base_url,
+        'inLanguage': 'fa-IR',
+        'potentialAction': {
+            '@type': 'SearchAction',
+            'target': f'{base_url}/search/?q={{search_term_string}}' if base_url else None,
+            'query-input': 'required name=search_term_string',
+        },
+    }
+    return _jsonld_safe(data)
 
 
 @register.filter(is_safe=True)
