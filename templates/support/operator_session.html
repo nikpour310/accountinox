@@ -378,7 +378,7 @@
       polling = true;
       try {
         const response = await fetch(
-          `${pollUrl}?thread_id=${sessionId}&since=${lastMessageId}&timeout=10`,
+          `${pollUrl}?thread_id=${sessionId}&since=${lastMessageId}&timeout=6`,
           { credentials: 'same-origin' }
         );
         if (!response.ok) {

@@ -65,15 +65,15 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'apps.core.middleware.VaryAcceptMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'apps.core.middleware.IdleSessionTimeoutMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'apps.core.middleware.VaryAcceptMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -221,12 +221,41 @@ CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
 STRICT_PRODUCTION_SECURITY = env.bool('STRICT_PRODUCTION_SECURITY', default=True)
 SESSION_IDLE_TIMEOUT_USER_SECONDS = env.int('SESSION_IDLE_TIMEOUT_USER_SECONDS', default=2 * 60 * 60)
 SESSION_IDLE_TIMEOUT_STAFF_SECONDS = env.int('SESSION_IDLE_TIMEOUT_STAFF_SECONDS', default=30 * 60)
+PAYMENT_SANDBOX = env.bool('PAYMENT_SANDBOX', default=DEBUG)
+ZARINPAL_MERCHANT_ID = env('ZARINPAL_MERCHANT_ID', default='').strip()
+ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='').strip()
 
 # Rate limiting defaults (login endpoints will use decorators)
 
 # Encryption key for sensitive inventory fields
 FERNET_KEY = env('FERNET_KEY', default='')
 OTP_HMAC_KEY = env('OTP_HMAC_KEY', default='')
+REQUIRE_FERNET_KEY = env.bool('REQUIRE_FERNET_KEY', default=not DEBUG)
+
+
+def _validate_fernet_key_or_raise(raw_key: str) -> None:
+    try:
+        from cryptography.fernet import Fernet
+    except Exception as exc:
+        raise ImproperlyConfigured(
+            'cryptography package is required for account credential encryption.'
+        ) from exc
+
+    try:
+        Fernet((raw_key or '').encode())
+    except Exception as exc:
+        raise ImproperlyConfigured(
+            'FERNET_KEY is invalid. Generate one with: '
+            'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+        ) from exc
+
+
+if REQUIRE_FERNET_KEY and not FERNET_KEY:
+    raise ImproperlyConfigured(
+        'FERNET_KEY must be set (set FERNET_KEY in environment).'
+    )
+if FERNET_KEY:
+    _validate_fernet_key_or_raise(FERNET_KEY)
 
 # IPPanel SMS provider settings
 IPPANEL_API_KEY = env('IPPANEL_API_KEY', default='')
@@ -234,15 +263,11 @@ IPPANEL_SENDER = env('IPPANEL_SENDER', default='')
 IPPANEL_PATTERN_CODE = env('IPPANEL_PATTERN_CODE', default='')
 IPPANEL_ORIGINATOR = env('IPPANEL_ORIGINATOR', default='')
 
-# Enforce OTP_HMAC_KEY and FERNET_KEY in production
+# Enforce production-only secrets
 if not DEBUG:
     if not OTP_HMAC_KEY:
         raise ImproperlyConfigured(
             'OTP_HMAC_KEY must be set in production (set OTP_HMAC_KEY in environment).'
-        )
-    if not FERNET_KEY:
-        raise ImproperlyConfigured(
-            'FERNET_KEY must be set in production (set FERNET_KEY in environment).'
         )
     if SUPPORT_PUSH_ENABLED:
         missing_push_fields = [

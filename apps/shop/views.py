@@ -3,7 +3,7 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -73,12 +73,24 @@ def _build_invoice_totals(subtotal):
     }
 
 
+def _gateway_expected_amount(order):
+    total = Decimal(order.total or 0)
+    return int((total * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+
+def _normalize_gateway_amount(raw_amount):
+    try:
+        return int(Decimal(str(raw_amount)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    except Exception:
+        return None
+
+
 def _sync_cart_to_db(request):
     """Save session cart to DB for the logged-in user."""
     if not request.user.is_authenticated:
         return
     cart = _get_cart(request)
-    creds = request.session.get(CART_CREDENTIALS_KEY, {})
+    creds = _get_cart_credentials(request)
     options = request.session.get(CART_OPTIONS_KEY, {})
     for pid_str, qty in cart.items():
         pid = _safe_int(pid_str, 0)
@@ -95,7 +107,6 @@ def _sync_cart_to_db(request):
                 'variant_id': variant_id,
                 'region_id': region_id,
                 'customer_email': product_creds.get('email', ''),
-                'customer_password': product_creds.get('password', ''),
             },
         )
     # Remove DB items not in session cart
@@ -112,17 +123,16 @@ def _load_cart_from_db(request):
     if not request.user.is_authenticated:
         return
     session_cart = _get_cart(request)
-    session_creds = request.session.get(CART_CREDENTIALS_KEY, {})
+    session_creds = _get_cart_credentials(request)
     session_opts = request.session.get(CART_OPTIONS_KEY, {})
     db_items = CartItem.objects.filter(user=request.user).select_related('product', 'variant', 'region')
     for item in db_items:
         pid_str = str(item.product_id)
         if pid_str not in session_cart:
             session_cart[pid_str] = min(item.quantity, MAX_CART_QTY)
-            if item.customer_email or item.customer_password:
+            if item.customer_email:
                 session_creds[pid_str] = {
                     'email': item.customer_email,
-                    'password': item.customer_password,
                 }
             opts = {}
             if item.variant_id:
@@ -158,6 +168,26 @@ def _get_cart(request):
 def _save_cart(request, cart):
     request.session[CART_SESSION_KEY] = cart
     request.session.modified = True
+
+
+def _get_cart_credentials(request):
+    raw = request.session.get(CART_CREDENTIALS_KEY, {})
+    if not isinstance(raw, dict):
+        raw = {}
+
+    clean = {}
+    for product_id, payload in raw.items():
+        product_id_int = _safe_int(product_id, 0)
+        if product_id_int <= 0 or not isinstance(payload, dict):
+            continue
+        email = (payload.get('email') or '').strip()
+        if email:
+            clean[str(product_id_int)] = {'email': email}
+
+    if clean != raw:
+        request.session[CART_CREDENTIALS_KEY] = clean
+        request.session.modified = True
+    return clean
 
 
 def _build_cart_lines(request):
@@ -371,15 +401,13 @@ def cart_add(request):
 
     # Store customer credentials if product requires them
     cust_email = (request.POST.get('customer_email') or '').strip()
-    cust_password = (request.POST.get('customer_password') or '').strip()
-    if cust_email or cust_password:
-        creds = request.session.get(CART_CREDENTIALS_KEY, {})
-        creds[str(product.id)] = {
-            'email': cust_email,
-            'password': cust_password,
-        }
-        request.session[CART_CREDENTIALS_KEY] = creds
-        request.session.modified = True
+    creds = _get_cart_credentials(request)
+    if cust_email:
+        creds[str(product.id)] = {'email': cust_email}
+    else:
+        creds.pop(str(product.id), None)
+    request.session[CART_CREDENTIALS_KEY] = creds
+    request.session.modified = True
 
     _sync_cart_to_db(request)
     messages.success(request, f'«{product.title}» به سبد خرید اضافه شد.')
@@ -413,12 +441,15 @@ def cart_detail(request):
 def cart_update(request):
     cart = _get_cart(request)
     options = request.session.get(CART_OPTIONS_KEY, {})
+    creds = _get_cart_credentials(request)
     remove_id = _safe_int(request.POST.get('remove_id'), 0)
     if remove_id:
         cart.pop(str(remove_id), None)
         options.pop(str(remove_id), None)
+        creds.pop(str(remove_id), None)
         _save_cart(request, cart)
         request.session[CART_OPTIONS_KEY] = options
+        request.session[CART_CREDENTIALS_KEY] = creds
         _sync_cart_to_db(request)
         messages.success(request, 'آیتم از سبد خرید حذف شد.')
         return redirect('shop:cart')
@@ -431,10 +462,12 @@ def cart_update(request):
         if quantity <= 0:
             cart.pop(product_id, None)
             options.pop(product_id, None)
+            creds.pop(product_id, None)
         else:
             cart[product_id] = min(quantity, MAX_CART_QTY)
     _save_cart(request, cart)
     request.session[CART_OPTIONS_KEY] = options
+    request.session[CART_CREDENTIALS_KEY] = creds
     _sync_cart_to_db(request)
     messages.success(request, 'سبد خرید به‌روزرسانی شد.')
     return redirect('shop:cart')
@@ -446,7 +479,10 @@ def cart_remove(request, product_id):
     cart.pop(str(product_id), None)
     options = request.session.get(CART_OPTIONS_KEY, {})
     options.pop(str(product_id), None)
+    creds = _get_cart_credentials(request)
+    creds.pop(str(product_id), None)
     request.session[CART_OPTIONS_KEY] = options
+    request.session[CART_CREDENTIALS_KEY] = creds
     _save_cart(request, cart)
     _sync_cart_to_db(request)
     messages.success(request, 'آیتم از سبد خرید حذف شد.')
@@ -479,10 +515,9 @@ def checkout(request):
 
         # Store quick-buy credentials in session for later
         qb_email = (request.POST.get('customer_email') or '').strip()
-        qb_password = (request.POST.get('customer_password') or '').strip()
-        if qb_email or qb_password:
-            creds = request.session.get(CART_CREDENTIALS_KEY, {})
-            creds[str(legacy_product.id)] = {'email': qb_email, 'password': qb_password}
+        if qb_email:
+            creds = _get_cart_credentials(request)
+            creds[str(legacy_product.id)] = {'email': qb_email}
             request.session[CART_CREDENTIALS_KEY] = creds
             request.session.modified = True
 
@@ -607,7 +642,7 @@ def checkout(request):
         customer_email=checkout_data['email'],
         shipping_address=checkout_data['address_text'],
     )
-    creds = request.session.get(CART_CREDENTIALS_KEY, {})
+    creds = _get_cart_credentials(request)
     for line in cart_lines:
         product_creds = creds.get(str(line['product'].id), {})
         unit_price = line.get('unit_price', line['product'].price)
@@ -619,7 +654,6 @@ def checkout(request):
             variant_name=line['variant'].name if line.get('variant') else '',
             region_name=line['region'].name if line.get('region') else '',
             customer_email=product_creds.get('email', ''),
-            customer_password=product_creds.get('password', ''),
         )
 
     # Clear session data after creating order
@@ -640,8 +674,9 @@ def checkout(request):
         callback_url = request.build_absolute_uri(f'{callback_path}?order_id={order.id}')
 
     provider = get_payment_provider(gateway_name, merchant_id, callback_url)
+    request_amount = _gateway_expected_amount(order)
     success, result = provider.initiate_payment(
-        int(order.total * 100),
+        request_amount,
         order.id,
         description=f'Order #{order.id}',
     )
@@ -653,7 +688,7 @@ def checkout(request):
             provider=gateway_name,
             payload={
                 'reference': reference,
-                'amount': int(order.total * 100),
+                'amount': request_amount,
                 'customer_phone': order.customer_phone,
             },
             success=False,
@@ -710,9 +745,6 @@ def payment_callback(request, provider):
     if gateway_name == 'zibal':
         merchant_id = getattr(settings, 'ZIBAL_MERCHANT_ID', '')
 
-    provider_obj = get_payment_provider(gateway_name, merchant_id)
-    success, verify_result = provider_obj.verify_payment(reference)
-
     tx = None
     try:
         if order_id is not None:
@@ -731,24 +763,72 @@ def payment_callback(request, provider):
     except Exception as exc:
         logger.exception('Error finding transaction: %s', exc)
 
+    expected_amount = None
+    mapped_order_id = order_id
+    if mapped_order_id is None and tx and tx.order_id:
+        mapped_order_id = tx.order_id
+    if mapped_order_id is not None:
+        mapped_order = Order.objects.filter(id=mapped_order_id).only('id', 'total').first()
+        if mapped_order:
+            expected_amount = _gateway_expected_amount(mapped_order)
+
+    provider_obj = get_payment_provider(gateway_name, merchant_id)
+    success, verify_result = provider_obj.verify_payment(reference, expected_amount=expected_amount)
+    if not isinstance(verify_result, dict):
+        verify_result = {'raw_result': verify_result}
+
     if not tx:
         tx = TransactionLog.objects.create(
-            order_id=order_id,
+            order_id=mapped_order_id,
             provider=gateway_name,
-            payload={'reference': reference, 'order_id': order_id, 'verify_result': verify_result},
+            payload={
+                'reference': reference,
+                'order_id': mapped_order_id,
+                'status_code': status_code,
+                'verify_result': verify_result,
+            },
             success=success,
         )
     else:
         tx.payload = tx.payload or {}
+        if mapped_order_id and not tx.order_id:
+            tx.order_id = mapped_order_id
+        if order_id is not None and tx.order_id and tx.order_id != order_id:
+            tx.payload['order_mismatch'] = {
+                'received_order_id': order_id,
+                'tx_order_id': tx.order_id,
+            }
+            tx.payload['status_code'] = status_code
+            tx.payload['verify_result'] = verify_result
+            tx.success = False
+            tx.save()
+            logger.warning(
+                '[Payment Callback] Order mismatch provider=%s tx_id=%s received_order_id=%s tx_order_id=%s reference=%s',
+                gateway_name,
+                tx.id,
+                order_id,
+                tx.order_id,
+                reference,
+            )
+            return render(
+                request,
+                'shop/payment_failed.html',
+                {
+                    'error': 'شناسه سفارش تراکنش معتبر نیست.',
+                    'reference': reference,
+                },
+                status=400,
+            )
         stored_reference = tx.payload.get('reference')
         if reference and stored_reference and reference != stored_reference:
             tx.payload['reference_mismatch'] = {
                 'received': reference,
                 'expected': stored_reference,
             }
+            tx.payload['status_code'] = status_code
             tx.payload['verify_result'] = verify_result
             tx.success = False
-            tx.save(update_fields=['payload', 'success'])
+            tx.save()
             logger.warning(
                 '[Payment Callback] Reference mismatch provider=%s tx_id=%s order_id=%s received=%s expected=%s',
                 gateway_name,
@@ -766,6 +846,7 @@ def payment_callback(request, provider):
                 },
                 status=400,
             )
+        tx.payload['status_code'] = status_code
         tx.payload['verify_result'] = verify_result
         tx.success = success
         tx.save()
@@ -788,25 +869,81 @@ def payment_callback(request, provider):
                 },
                 status=400,
             )
+
         try:
-            order = Order.objects.get(id=tx.order_id)
-            order.paid = True
-            if order.status not in {Order.STATUS_CONFIRMED, Order.STATUS_DELIVERED}:
-                order.status = Order.STATUS_PENDING_REVIEW
-            order.save()
+            amount_order = Order.objects.only('id', 'total').get(id=tx.order_id)
+            expected_amount = _gateway_expected_amount(amount_order)
+        except Order.DoesNotExist:
+            logger.error('Order %s not found for payment callback', tx.order_id)
+            return render(
+                request,
+                'shop/payment_error.html',
+                {
+                    'error': 'سفارش مرتبط با این تراکنش یافت نشد.',
+                    'reference': reference,
+                },
+                status=404,
+            )
 
-            for item in order.items.all():
-                if item.account_item:
-                    continue
-                account_item = AccountItem.objects.filter(product=item.product, allocated=False).first()
-                if account_item:
-                    account_item.allocated = True
-                    account_item.save(update_fields=['allocated'])
-                    item.account_item = account_item
-                    item.save(update_fields=['account_item'])
-                    logger.info('[Payment] Allocated account item %s to order %s', account_item.id, order.id)
+        verified_amount = _normalize_gateway_amount(verify_result.get('amount'))
+        if verified_amount is None or verified_amount != expected_amount:
+            tx.payload = tx.payload or {}
+            tx.payload['amount_mismatch'] = {
+                'expected': expected_amount,
+                'received': verified_amount,
+                'status_code': status_code,
+            }
+            tx.success = False
+            tx.save()
+            logger.warning(
+                '[Payment Callback] Amount mismatch provider=%s tx_id=%s order_id=%s reference=%s expected=%s received=%s status=%s',
+                gateway_name,
+                tx.id,
+                tx.order_id,
+                reference,
+                expected_amount,
+                verified_amount,
+                status_code,
+            )
+            return render(
+                request,
+                'shop/payment_failed.html',
+                {
+                    'error': 'مبلغ تراکنش با مبلغ سفارش مطابقت ندارد.',
+                    'reference': reference,
+                },
+                status=400,
+            )
 
-            needs_follow_up = order.items.filter(account_item__isnull=True).exists()
+        try:
+            with transaction.atomic():
+                order = Order.objects.select_for_update().get(id=tx.order_id)
+                if not order.paid:
+                    order.paid = True
+                    if order.status not in {Order.STATUS_CONFIRMED, Order.STATUS_DELIVERED}:
+                        order.status = Order.STATUS_PENDING_REVIEW
+                    order.save()
+
+                order_items = list(
+                    order.items.select_related('product', 'account_item').select_for_update().all()
+                )
+                for item in order_items:
+                    if item.account_item_id or not item.product_id:
+                        continue
+                    account_item = (
+                        AccountItem.objects.select_for_update()
+                        .filter(product=item.product, allocated=False)
+                        .order_by('id')
+                        .first()
+                    )
+                    if account_item:
+                        account_item.allocated = True
+                        account_item.save(update_fields=['allocated'])
+                        item.account_item = account_item
+                        item.save(update_fields=['account_item'])
+                        logger.info('[Payment] Allocated account item %s to order %s', account_item.id, order.id)
+
+                needs_follow_up = any(item.account_item_id is None for item in order_items if item.product_id)
 
             # Send email invoice + SMS notification
             try:

@@ -83,7 +83,7 @@
       {% else %}
         <form id="user-message-form" class="space-y-3">
           {% csrf_token %}
-          <input id="session-id-input" type="hidden" name="session_id" value="{{ session.id }}">
+          <input id="session-token-input" type="hidden" name="session_token" value="{{ session.public_token }}">
           <label for="user-message-input" class="sr-only">پیام</label>
           <textarea
             id="user-message-input"
@@ -117,13 +117,13 @@
 
       const emptyMessage = document.getElementById('empty-message');
       const messageInput = document.getElementById('user-message-input');
-      const sessionIdInput = document.getElementById('session-id-input');
+      const sessionTokenInput = document.getElementById('session-token-input');
       const feedbackEl = document.getElementById('chat-form-feedback');
       const operatorTypingIndicator = document.getElementById('operator-typing-indicator');
       let sessionClosed = {{ session_closed|yesno:"true,false" }};
       const typingUpdateUrl = '{% url "support:typing_update" %}';
       const typingStatusBaseUrl = '{% url "support:typing_status" %}';
-      let currentSessionId = Number(sessionIdInput ? sessionIdInput.value : {{ session.id }});
+      let currentSessionToken = String(sessionTokenInput ? sessionTokenInput.value : '{{ session.public_token|escapejs }}');
       let isPolling = false;
       let typingResetTimer = null;
       let userTypingSent = false;
@@ -187,7 +187,7 @@
       };
 
       const updateUserTypingState = async function(isTyping, force) {
-        if (!form || !sessionIdInput) {
+        if (!form || !sessionTokenInput) {
           return;
         }
         const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
@@ -200,7 +200,7 @@
         userTypingSent = Boolean(isTyping);
         try {
           const payload = new URLSearchParams();
-          payload.append('session_id', String(currentSessionId));
+          payload.append('session_token', currentSessionToken);
           payload.append('is_typing', isTyping ? '1' : '0');
           await fetch(typingUpdateUrl, {
             method: 'POST',
@@ -215,12 +215,12 @@
       };
 
       const refreshTypingStatus = async function() {
-        if (!currentSessionId || typingStatusInFlight) {
+        if (!currentSessionToken || typingStatusInFlight) {
           return;
         }
         typingStatusInFlight = true;
         try {
-          const response = await fetch(`${typingStatusBaseUrl}?session_id=${currentSessionId}`, {
+          const response = await fetch(`${typingStatusBaseUrl}?session_token=${encodeURIComponent(currentSessionToken)}`, {
             credentials: 'same-origin',
           });
           if (!response.ok) {
@@ -238,13 +238,13 @@
         if (sessionClosed) {
           return;
         }
-        if (isPolling || !currentSessionId) {
+        if (isPolling || !currentSessionToken) {
           window.setTimeout(pollMessages, 2500);
           return;
         }
         isPolling = true;
         try {
-          const response = await fetch(`/support/poll/?thread_id=${currentSessionId}&since=${lastId}&timeout=10`, {
+          const response = await fetch(`/support/poll/?thread_token=${encodeURIComponent(currentSessionToken)}&since=${lastId}&timeout=6`, {
             credentials: 'same-origin',
           });
           if (!response.ok) {
@@ -301,7 +301,7 @@
         form.addEventListener('submit', async function(event) {
           event.preventDefault();
           const text = messageInput.value.trim();
-          if (!text || !currentSessionId) {
+          if (!text || !currentSessionToken) {
             return;
           }
           if (typingResetTimer) {
@@ -336,10 +336,10 @@
               throw new Error(data.error || 'send failed');
             }
 
-            if (data.session_id && Number(data.session_id) !== currentSessionId) {
-              currentSessionId = Number(data.session_id);
-              if (sessionIdInput) {
-                sessionIdInput.value = String(currentSessionId);
+            if (data.session_token && String(data.session_token) !== currentSessionToken) {
+              currentSessionToken = String(data.session_token);
+              if (sessionTokenInput) {
+                sessionTokenInput.value = currentSessionToken;
               }
               lastId = 0;
               messagesDiv.innerHTML = '';

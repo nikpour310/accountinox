@@ -270,7 +270,10 @@ class TestPaymentGateway:
         )
 
         provider_mock = MagicMock()
-        provider_mock.verify_payment.return_value = (True, {'reference': 'VERIFIED-REF'})
+        provider_mock.verify_payment.return_value = (
+            True,
+            {'reference': 'VERIFIED-REF', 'amount': int(order_target.total * 100)},
+        )
         mock_get_provider.return_value = provider_mock
 
         response = self.client.get(
@@ -297,7 +300,10 @@ class TestPaymentGateway:
         )
 
         provider_mock = MagicMock()
-        provider_mock.verify_payment.return_value = (True, {'reference': 'VERIFIED-REF'})
+        provider_mock.verify_payment.return_value = (
+            True,
+            {'reference': 'VERIFIED-REF', 'amount': int(order.total * 100)},
+        )
         mock_get_provider.return_value = provider_mock
         caplog.set_level(logging.WARNING, logger='shop.payment')
 
@@ -319,7 +325,10 @@ class TestPaymentGateway:
     def test_payment_callback_verified_without_order_mapping_returns_400_and_logs(self, mock_get_provider, caplog):
         """Verified callback without resolvable order must fail gracefully (not 500)."""
         provider_mock = MagicMock()
-        provider_mock.verify_payment.return_value = (True, {'reference': 'VERIFIED-REF'})
+        provider_mock.verify_payment.return_value = (
+            True,
+            {'reference': 'VERIFIED-REF', 'amount': int(self.product.price * 100)},
+        )
         mock_get_provider.return_value = provider_mock
         caplog.set_level(logging.WARNING, logger='shop.payment')
 
@@ -329,3 +338,71 @@ class TestPaymentGateway:
         )
         assert response.status_code == 400
         assert 'Verified payment without order mapping' in caplog.text
+
+    @patch('apps.shop.views.get_payment_provider')
+    def test_payment_callback_amount_mismatch_fails_and_logs(self, mock_get_provider, caplog):
+        order = Order.objects.create(user=None, total=self.product.price, paid=False)
+        OrderItem.objects.create(order=order, product=self.product, price=self.product.price)
+        tx = TransactionLog.objects.create(
+            order=order,
+            provider='zarinpal',
+            payload={'reference': 'AUTH-AMOUNT'},
+            success=False,
+        )
+        provider_mock = MagicMock()
+        provider_mock.verify_payment.return_value = (
+            True,
+            {'reference': 'VERIFIED-REF', 'amount': int(order.total * 100) + 250},
+        )
+        mock_get_provider.return_value = provider_mock
+        caplog.set_level(logging.WARNING, logger='shop.payment')
+
+        response = self.client.get(
+            reverse('shop:payment_callback', args=['zarinpal']),
+            {'Status': '100', 'Authority': 'AUTH-AMOUNT', 'order_id': order.id},
+        )
+        assert response.status_code == 400
+
+        order.refresh_from_db()
+        tx.refresh_from_db()
+        assert order.paid is False
+        assert tx.success is False
+        assert tx.payload.get('amount_mismatch', {}).get('expected') == int(order.total * 100)
+        assert tx.payload.get('amount_mismatch', {}).get('received') == int(order.total * 100) + 250
+        assert 'Amount mismatch' in caplog.text
+
+    @patch('apps.shop.views.get_payment_provider')
+    def test_payment_callback_is_idempotent_on_duplicate_calls(self, mock_get_provider):
+        order = Order.objects.create(user=None, total=self.product.price, paid=False)
+        order_item = OrderItem.objects.create(order=order, product=self.product, price=self.product.price)
+        TransactionLog.objects.create(
+            order=order,
+            provider='zarinpal',
+            payload={'reference': 'AUTH-IDEMPOTENT'},
+            success=False,
+        )
+        provider_mock = MagicMock()
+        provider_mock.verify_payment.return_value = (
+            True,
+            {'reference': 'VERIFIED-REF', 'amount': int(order.total * 100)},
+        )
+        mock_get_provider.return_value = provider_mock
+
+        first = self.client.get(
+            reverse('shop:payment_callback', args=['zarinpal']),
+            {'Status': '100', 'Authority': 'AUTH-IDEMPOTENT', 'order_id': order.id},
+        )
+        second = self.client.get(
+            reverse('shop:payment_callback', args=['zarinpal']),
+            {'Status': '100', 'Authority': 'AUTH-IDEMPOTENT', 'order_id': order.id},
+        )
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+
+        order.refresh_from_db()
+        order_item.refresh_from_db()
+        assert order.paid is True
+        assert order_item.account_item_id is not None
+        assert AccountItem.objects.filter(product=self.product, allocated=True).count() == 1
+        assert TransactionLog.objects.filter(order=order, provider='zarinpal').count() == 1

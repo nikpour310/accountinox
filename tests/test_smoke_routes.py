@@ -304,7 +304,10 @@ def test_checkout_and_callback_reference_mismatch_smoke(mock_get_provider, clien
         True,
         {'reference': 'AUTH-RIGHT', 'payment_url': 'https://gateway.example.test/pay'},
     )
-    provider_mock.verify_payment.return_value = (True, {'verified': True})
+    provider_mock.verify_payment.return_value = (
+        True,
+        {'verified': True, 'amount': 10000},
+    )
     mock_get_provider.return_value = provider_mock
 
     checkout_resp = client.post(

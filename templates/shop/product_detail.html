@@ -345,11 +345,7 @@
             <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
             <div class="text-sm text-amber-800">
               <p class="font-medium">
-                {% if product.credential_type == 'email_pass' %}
-                  برای فعال‌سازی این محصول، ایمیل و رمز عبور حساب خود را وارد کنید.
-                {% else %}
-                  برای فعال‌سازی این محصول، ایمیل حساب خود را وارد کنید.
-                {% endif %}
+                برای فعال‌سازی این محصول، ایمیل حساب خود را وارد کنید.
               </p>
             </div>
           </div>
@@ -385,12 +381,6 @@
                 <label class="form-label text-xs">{{ product.credential_label|default:'ایمیل حساب' }}</label>
                 <input type="email" name="customer_email" required placeholder="example@email.com" dir="ltr" class="ui-input w-full">
               </div>
-              {% if product.credential_type == 'email_pass' %}
-              <div>
-                <label class="form-label text-xs">رمز عبور حساب</label>
-                <input type="password" name="customer_password" required placeholder="رمز عبور" dir="ltr" class="ui-input w-full">
-              </div>
-              {% endif %}
             </div>
             {% endif %}
 

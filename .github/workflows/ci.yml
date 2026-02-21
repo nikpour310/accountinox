@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-security:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "False"
+      DJANGO_SECRET_KEY: "ci-secret-key-very-long-and-random-for-security-check-gate-123456789"
+      OTP_HMAC_KEY: "ci-otp-hmac-key"
+      FERNET_KEY: "CN-gK-dtsIjv3MfJHtkkqssnG5eLoAKIJhTENYuoONs="
+      SITE_URL: "https://example.com"
+      ALLOWED_HOSTS: "127.0.0.1,localhost,testserver"
+      SECURE_HSTS_INCLUDE_SUBDOMAINS: "True"
+      SECURE_HSTS_PRELOAD: "True"
+      PAYMENT_SANDBOX: "True"
+      ZARINPAL_MERCHANT_ID: "ci-zarinpal-merchant"
+      ZIBAL_MERCHANT_ID: "ci-zibal-merchant"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_no_mysql.txt
+
+      - name: Deployment security checks
+        run: |
+          python manage.py check --deploy --fail-level WARNING
+          python manage.py makemigrations --check --dry-run
+
+      - name: Test suite
+        run: python -m pytest -q

@@ -3,23 +3,7 @@ from typing import Any
 import secrets
 import string
 
-try:
-    from cryptography.fernet import Fernet as _fernet_lib
-except (ImportError, ModuleNotFoundError):
-    # Mock Fernet if cryptography is broken in this environment
-    class _FernetMock:
-        def __init__(self, key):
-            pass
-
-        def encrypt(self, data):
-            return data
-
-        def decrypt(self, data):
-            return data
-
-    _fernet_lib = _FernetMock  # type: ignore
-
-Fernet = _fernet_lib  # type: ignore
+from cryptography.fernet import Fernet
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -446,7 +430,6 @@ class OrderItem(models.Model):
     region_name = models.CharField('ریجن انتخابی', max_length=120, blank=True, default='',
                                     help_text='نام ریجن در زمان خرید')
     customer_email = models.EmailField('ایمیل مشتری (برای حساب)', blank=True, default='')
-    customer_password = models.CharField('رمز عبور مشتری (برای حساب)', max_length=255, blank=True, default='')
 
     class Meta:
         verbose_name = 'آیتم سفارش'
@@ -490,7 +473,6 @@ class CartItem(models.Model):
                                verbose_name='ریجن انتخابی')
     quantity = models.PositiveIntegerField('تعداد', default=1)
     customer_email = models.EmailField('ایمیل مشتری', blank=True, default='')
-    customer_password = models.CharField('رمز عبور مشتری', max_length=255, blank=True, default='')
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
     updated_at = models.DateTimeField('آخرین بروزرسانی', auto_now=True)
 

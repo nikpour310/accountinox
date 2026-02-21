@@ -48,6 +48,12 @@ PUSH_LAST_ERROR_CACHE_KEY = 'support.push.last_error'
 PUSH_ENDPOINT_PREVIEW_LEN = 30
 ONLINE_WINDOW_MINUTES = 5
 TYPING_TIMEOUT_SECONDS = 8
+POLL_MAX_TIMEOUT_SECONDS = 8
+POLL_SLEEP_SECONDS = 0.5
+POLL_OPEN_CONNECTIONS_CACHE_KEY = 'support.poll.open_connections'
+POLL_LAST_LATENCY_CACHE_KEY = 'support.poll.last_latency_ms'
+POLL_ACTIVE_LOCK_PREFIX = 'support.poll.active'
+POLL_SIGNATURE_PREFIX = 'support.poll.signature'
 
 
 def _short_endpoint(endpoint):
@@ -174,6 +180,15 @@ def _create_session(contact, request, subject='Support Request'):
 
 
 def _session_from_request_state(request, include_closed=False):
+    session_token = (request.session.get('support_session_token') or '').strip()
+    if session_token:
+        session_qs = ChatSession.objects.filter(public_token=session_token).select_related('contact')
+        if not include_closed:
+            session_qs = session_qs.filter(is_active=True)
+        session = session_qs.first()
+        if session:
+            return session
+
     session_id = request.session.get('support_session_id')
     if session_id:
         session_qs = ChatSession.objects.filter(id=session_id).select_related('contact')
@@ -200,8 +215,26 @@ def _store_session_state(request, session):
     if not session:
         return
     request.session['support_session_id'] = session.id
+    request.session['support_session_token'] = session.public_token
     if session.contact_id:
         request.session['support_contact_id'] = session.contact_id
+
+
+def _session_from_inputs(*, session_id=None, session_token=None, include_closed=True):
+    token = (session_token or '').strip()
+    if token:
+        qs = ChatSession.objects.filter(public_token=token).select_related('contact')
+        if not include_closed:
+            qs = qs.filter(is_active=True)
+        return qs.first()
+
+    parsed_id = _parse_non_negative_int(session_id, default=0)
+    if not parsed_id:
+        return None
+    qs = ChatSession.objects.filter(id=parsed_id).select_related('contact')
+    if not include_closed:
+        qs = qs.filter(is_active=True)
+    return qs.first()
 
 
 def _latest_closed_unrated_session(contact):
@@ -360,6 +393,90 @@ def _set_typing_state(session_id, actor, is_typing):
 
 def _get_typing_state(session_id, actor):
     return bool(cache.get(_typing_cache_key(session_id, actor)))
+
+
+def _poll_active_lock_key(request, session_id):
+    if request.user.is_authenticated:
+        client_key = f'user:{request.user.id}'
+    else:
+        client_key = f'ip:{_client_ip(request) or "unknown"}'
+    return f'{POLL_ACTIVE_LOCK_PREFIX}.{int(session_id)}.{client_key}'
+
+
+def _poll_signature_key(session_id):
+    return f'{POLL_SIGNATURE_PREFIX}.{int(session_id)}'
+
+
+def _touch_poll_signature(session_id, latest_message_id=0):
+    signature = f'{int(latest_message_id)}:{int(time.time() * 1000)}'
+    cache.set(_poll_signature_key(session_id), signature, timeout=60 * 60 * 24)
+    return signature
+
+
+def _current_poll_signature(session_id):
+    key = _poll_signature_key(session_id)
+    signature = cache.get(key)
+    if signature:
+        return signature
+    latest_id = ChatMessage.objects.filter(session_id=session_id).aggregate(max_id=Max('id')).get('max_id') or 0
+    return _touch_poll_signature(session_id, latest_id)
+
+
+def _fetch_serialized_messages(session, since_id):
+    rows = list(
+        session.messages.filter(id__gt=since_id).order_by('id').values(
+            'id',
+            'name',
+            'message',
+            'is_from_user',
+            'created_at',
+        )
+    )
+    messages = [
+        {
+            'id': row['id'],
+            'name': row['name'],
+            'message': row['message'],
+            'is_from_user': row['is_from_user'],
+            'created_at': row['created_at'].isoformat(),
+        }
+        for row in rows
+    ]
+    next_since = messages[-1]['id'] if messages else since_id
+    return messages, next_since
+
+
+def _poll_enter(request, session_id, timeout):
+    lock_key = _poll_active_lock_key(request, session_id)
+    if not cache.add(lock_key, 1, timeout=timeout + 2):
+        return None
+    try:
+        cache.incr(POLL_OPEN_CONNECTIONS_CACHE_KEY)
+    except ValueError:
+        cache.set(POLL_OPEN_CONNECTIONS_CACHE_KEY, 1, timeout=60 * 60)
+    return lock_key, time.monotonic()
+
+
+def _poll_exit(lock_key, started_at, session_id, delivered):
+    if lock_key:
+        cache.delete(lock_key)
+    latency_ms = int((time.monotonic() - started_at) * 1000)
+    cache.set(POLL_LAST_LATENCY_CACHE_KEY, latency_ms, timeout=60 * 60)
+    try:
+        open_connections = cache.decr(POLL_OPEN_CONNECTIONS_CACHE_KEY)
+    except ValueError:
+        open_connections = 0
+        cache.set(POLL_OPEN_CONNECTIONS_CACHE_KEY, 0, timeout=60 * 60)
+    if open_connections < 0:
+        open_connections = 0
+        cache.set(POLL_OPEN_CONNECTIONS_CACHE_KEY, 0, timeout=60 * 60)
+    logger.info(
+        '[Support Poll] session_id=%s delivered=%s latency_ms=%s open_connections=%s',
+        session_id,
+        delivered,
+        latency_ms,
+        open_connections,
+    )
 
 
 def _can_access_session(request, session):
@@ -900,6 +1017,7 @@ def support_index(request):
 
 
 @require_POST
+@ratelimit(key='ip', rate='10/m', method='POST', block=True)
 def start_chat(request):
     name = request.POST.get('name', '').strip()
     phone_raw = request.POST.get('phone', '').strip()
@@ -932,13 +1050,43 @@ def start_chat(request):
             status=400,
         )
 
-    contact, _ = SupportContact.objects.get_or_create(
+    contact, created = SupportContact.objects.get_or_create(
         phone=normalized_phone,
         defaults={
             'name': name,
             'user': request.user if request.user.is_authenticated else None,
         },
     )
+
+    # Privacy guardrail: anonymous users can continue only from the same browser
+    # session that started the contact thread (prevents phone-only hijacking).
+    session_contact_id = _parse_non_negative_int(request.session.get('support_contact_id'), default=0)
+    if (
+        not request.user.is_authenticated
+        and not created
+        and (not session_contact_id or session_contact_id != contact.id)
+    ):
+        contact_from_state = _resolve_contact_from_request(request)
+        session_list, session_filter, session_query = _build_user_session_list(request, contact=contact_from_state)
+        return render(
+            request,
+            'support/index.html',
+            {
+                'active_session': _session_from_request_state(request),
+                'closed_unrated_session': _latest_closed_unrated_session(contact_from_state),
+                'contact': contact_from_state,
+                'form_name': name,
+                'form_phone': phone_raw,
+                'form_errors': {
+                    'phone': 'برای حفظ حریم خصوصی، ادامه این گفتگو فقط از همان مرورگر قبلی ممکن است.',
+                },
+                'session_list': session_list,
+                'session_filter': session_filter,
+                'session_query': session_query,
+                'session_filters': _session_list_filters(),
+            },
+            status=403,
+        )
     should_save = False
     if not contact.name or contact.name != name:
         contact.name = name
@@ -1003,23 +1151,22 @@ def chat_room(request):
 
 
 @require_POST
+@ratelimit(key='user_or_ip', rate='20/m', method='POST', block=True)
 def send_message(request):
     """Send a customer message while keeping long-polling mode."""
     session_id = request.POST.get('session_id')
+    session_token = request.POST.get('session_token')
     message_text = request.POST.get('message', '').strip()
 
-    if not session_id or not message_text:
-        return JsonResponse({'error': 'session_id and message required'}, status=400)
+    if not message_text:
+        return JsonResponse({'error': 'message required'}, status=400)
 
-    session = ChatSession.objects.filter(id=session_id).select_related('contact').first()
+    session = _session_from_inputs(session_id=session_id, session_token=session_token, include_closed=True)
     if not session:
         return JsonResponse({'error': 'session not found'}, status=404)
 
-    # Security: block access if caller doesn't own this session
-    if request.user.is_authenticated:
-        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
-            return JsonResponse({'error': 'forbidden'}, status=403)
-    # anonymous users allowed to post messages by session id (no session cookie required)
+    if not _can_access_session(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
 
     if not session.is_active:
         return JsonResponse({'error': 'session is closed', 'session_closed': True}, status=400)
@@ -1051,6 +1198,7 @@ def send_message(request):
         is_from_user=True,
         read=False,
     )
+    _touch_poll_signature(session.id, msg.id)
     _set_typing_state(session.id, 'user', False)
 
     logger.info('[Chat] Message %s sent in session %s', msg.id, session.id)
@@ -1089,104 +1237,109 @@ def send_message(request):
         'message_id': msg.id,
         'created_at': msg.created_at.isoformat(),
         'session_id': session.id,
+        'session_token': session.public_token,
     })
 
 
+@ratelimit(key='user_or_ip', rate='60/m', method='GET', block=True)
 def get_messages(request):
-    """Long-polling endpoint for retrieving new messages."""
+    """Bounded long-polling endpoint for retrieving new messages."""
     session_id = request.GET.get('session_id')
+    session_token = request.GET.get('session_token')
     last_id = _parse_non_negative_int(request.GET.get('last_id'), default=0)
     timeout = _parse_non_negative_int(request.GET.get('timeout'), default=30)
-    timeout = max(1, min(timeout, 30))
+    timeout = max(1, min(timeout, POLL_MAX_TIMEOUT_SECONDS))
 
-    if not session_id:
-        return JsonResponse({'error': 'session_id required'}, status=400)
-
-    try:
-        session = ChatSession.objects.get(id=session_id)
-    except ChatSession.DoesNotExist:
+    session = _session_from_inputs(session_id=session_id, session_token=session_token, include_closed=True)
+    if not session:
         return JsonResponse({'error': 'session not found'}, status=404)
 
-    # Security: verify caller owns this session or is staff
-    if request.user.is_authenticated:
-        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
-            return JsonResponse({'error': 'forbidden'}, status=403)
-    # anonymous users allowed to long-poll by session id
+    if not _can_access_session(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
 
-    start_time = time.time()
-    while (time.time() - start_time) < timeout:
-        messages = session.messages.filter(id__gt=last_id).values(
-            'id', 'name', 'message', 'is_from_user', 'created_at'
-        )
-        if messages.exists():
-            messages_list = []
-            for m in messages:
-                messages_list.append({
-                    'id': m['id'],
-                    'name': m['name'],
-                    'message': m['message'],
-                    'is_from_user': m['is_from_user'],
-                    'created_at': m['created_at'].isoformat(),
-                })
-            new_last_id = messages.last()['id'] if messages else last_id
-            return JsonResponse({'messages': messages_list, 'last_id': new_last_id})
-        time.sleep(2)
+    poll_ctx = _poll_enter(request, session.id, timeout)
+    if not poll_ctx:
+        return JsonResponse({'error': 'too many concurrent poll requests'}, status=429)
 
-    return JsonResponse({'messages': [], 'last_id': last_id})
+    lock_key, started_at = poll_ctx
+    delivered = False
+    try:
+        poll_signature = _current_poll_signature(session.id)
+        while True:
+            messages_list, new_last_id = _fetch_serialized_messages(session, last_id)
+            if messages_list:
+                delivered = True
+                return JsonResponse({'messages': messages_list, 'last_id': new_last_id})
+
+            if (time.monotonic() - started_at) >= timeout:
+                return JsonResponse({'messages': [], 'last_id': last_id})
+
+            current_signature = _current_poll_signature(session.id)
+            if current_signature != poll_signature:
+                poll_signature = current_signature
+                continue
+            time.sleep(POLL_SLEEP_SECONDS)
+    finally:
+        _poll_exit(lock_key, started_at, session.id, delivered)
 
 
+@ratelimit(key='user_or_ip', rate='60/m', method='GET', block=True)
 def poll_messages(request):
-    """Long-polling endpoint compatible with both user and operator views."""
+    """Bounded long-polling endpoint compatible with both user and operator views."""
     thread_id = request.GET.get('thread_id') or request.GET.get('session_id')
+    thread_token = request.GET.get('thread_token') or request.GET.get('session_token')
     since = _parse_non_negative_int(request.GET.get('since'), default=0)
     timeout = _parse_non_negative_int(request.GET.get('timeout'), default=10)
-    timeout = max(1, min(timeout, 30))
+    timeout = max(1, min(timeout, POLL_MAX_TIMEOUT_SECONDS))
 
     session = None
-    if thread_id:
-        try:
-            session = ChatSession.objects.get(id=thread_id)
-        except ChatSession.DoesNotExist:
+    if thread_token or thread_id:
+        session = _session_from_inputs(session_id=thread_id, session_token=thread_token, include_closed=True)
+        if not session:
             return JsonResponse({'error': 'thread not found'}, status=404)
     else:
         session = _session_from_request_state(request)
         if not session:
-            return JsonResponse({'error': 'thread_id required or no active session found'}, status=400)
+            return JsonResponse({'error': 'thread token required or no active session found'}, status=400)
 
-    # Security: verify caller owns this session or is staff
-    if request.user.is_authenticated:
-        if not request.user.is_staff and session.user_id and session.user_id != request.user.id:
-            return JsonResponse({'error': 'forbidden'}, status=403)
-    # anonymous allowed for poll_messages by session id
+    if not _can_access_session(request, session):
+        return JsonResponse({'error': 'forbidden'}, status=403)
 
-    start_time = time.time()
-    while (time.time() - start_time) < timeout:
-        if not ChatSession.objects.filter(id=session.id, is_active=True).exists():
-            return JsonResponse({
-                'messages': [],
-                'since': since,
-                'session_closed': True,
-            })
+    poll_ctx = _poll_enter(request, session.id, timeout)
+    if not poll_ctx:
+        return JsonResponse({'error': 'too many concurrent poll requests'}, status=429)
 
-        qs = session.messages.filter(id__gt=since)
-        if qs.exists():
-            messages_list = []
-            for m in qs:
-                messages_list.append({
-                    'id': m.id,
-                    'name': m.name,
-                    'message': m.message,
-                    'is_from_user': m.is_from_user,
-                    'created_at': m.created_at.isoformat(),
+    lock_key, started_at = poll_ctx
+    delivered = False
+    try:
+        poll_signature = _current_poll_signature(session.id)
+        while True:
+            if not ChatSession.objects.filter(id=session.id, is_active=True).exists():
+                return JsonResponse({
+                    'messages': [],
+                    'since': since,
+                    'session_closed': True,
                 })
-            return JsonResponse({
-                'messages': messages_list,
-                'since': messages_list[-1]['id'],
-                'session_closed': False,
-            })
-        time.sleep(1)
 
-    return JsonResponse({'messages': [], 'since': since, 'session_closed': False})
+            messages_list, next_since = _fetch_serialized_messages(session, since)
+            if messages_list:
+                delivered = True
+                return JsonResponse({
+                    'messages': messages_list,
+                    'since': next_since,
+                    'session_closed': False,
+                })
+
+            if (time.monotonic() - started_at) >= timeout:
+                return JsonResponse({'messages': [], 'since': since, 'session_closed': False})
+
+            current_signature = _current_poll_signature(session.id)
+            if current_signature != poll_signature:
+                poll_signature = current_signature
+                continue
+            time.sleep(POLL_SLEEP_SECONDS)
+    finally:
+        _poll_exit(lock_key, started_at, session.id, delivered)
 
 
 @require_POST
@@ -1196,14 +1349,9 @@ def typing_update(request):
         return JsonResponse({'error': 'invalid JSON payload'}, status=400)
     payload = payload or {}
 
-    session_id = _parse_non_negative_int(
-        payload.get('session_id') if 'session_id' in payload else request.POST.get('session_id'),
-        default=0,
-    )
-    if not session_id:
-        return JsonResponse({'error': 'session_id required'}, status=400)
-
-    session = ChatSession.objects.filter(id=session_id).first()
+    session_id_raw = payload.get('session_id') if 'session_id' in payload else request.POST.get('session_id')
+    session_token = (payload.get('session_token') if 'session_token' in payload else request.POST.get('session_token'))
+    session = _session_from_inputs(session_id=session_id_raw, session_token=session_token, include_closed=True)
     if not session:
         return JsonResponse({'error': 'session not found'}, status=404)
     if not _can_access_session(request, session):
@@ -1217,6 +1365,7 @@ def typing_update(request):
     return JsonResponse({
         'ok': True,
         'session_id': session.id,
+        'session_token': session.public_token,
         'actor': actor,
         'is_typing': is_typing,
     })
@@ -1224,11 +1373,9 @@ def typing_update(request):
 
 @require_http_methods(['GET'])
 def typing_status(request):
-    session_id = _parse_non_negative_int(request.GET.get('session_id'), default=0)
-    if not session_id:
-        return JsonResponse({'error': 'session_id required'}, status=400)
-
-    session = ChatSession.objects.filter(id=session_id).first()
+    session_id = request.GET.get('session_id')
+    session_token = request.GET.get('session_token')
+    session = _session_from_inputs(session_id=session_id, session_token=session_token, include_closed=True)
     if not session:
         return JsonResponse({'error': 'session not found'}, status=404)
     if not _can_access_session(request, session):
@@ -1575,6 +1722,7 @@ def operator_send_message(request):
         is_from_user=False,
         read=True,
     )
+    _touch_poll_signature(session.id, msg.id)
     _set_typing_state(session.id, 'operator', False)
     logger.info('[Chat] Operator %s sent message %s in session %s', request.user, msg.id, session.id)
     _create_audit_log(
@@ -1725,6 +1873,8 @@ def push_unsubscribe(request):
 def operator_unread_status(request):
     _set_operator_presence(request.user, active_session_id=request.GET.get('session_id'))
     snapshot = _operator_queue_realtime_snapshot()
+    poll_open_connections = _parse_non_negative_int(cache.get(POLL_OPEN_CONNECTIONS_CACHE_KEY), default=0)
+    poll_last_latency_ms = _parse_non_negative_int(cache.get(POLL_LAST_LATENCY_CACHE_KEY), default=0)
     response = JsonResponse({
         'ok': True,
         'unread_count': snapshot['unread_count'],
@@ -1732,6 +1882,8 @@ def operator_unread_status(request):
         'latest_session_id': snapshot['latest_session_id'],
         'latest_message_id': snapshot['latest_message_id'],
         'queue_signature': snapshot['signature'],
+        'poll_open_connections': poll_open_connections,
+        'poll_last_latency_ms': poll_last_latency_ms,
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response['Pragma'] = 'no-cache'
@@ -1758,5 +1910,7 @@ def push_debug(request):
         'subs_count': SupportPushSubscription.objects.filter(user__is_staff=True).count(),
         'active_subs': SupportPushSubscription.objects.filter(user__is_staff=True, is_active=True).count(),
         'online_staff_count': _online_presence_qs().count(),
+        'poll_open_connections': _parse_non_negative_int(cache.get(POLL_OPEN_CONNECTIONS_CACHE_KEY), default=0),
+        'poll_last_latency_ms': _parse_non_negative_int(cache.get(POLL_LAST_LATENCY_CACHE_KEY), default=0),
         'last_error': _get_last_push_error(),
     })

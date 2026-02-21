@@ -130,7 +130,13 @@ class TestChatSupport:
         assert contact.phone == '09120002222'
 
     def test_send_message_unauthenticated(self):
-        session = ChatSession.objects.create(user_name='anon', subject='Test')
+        contact = SupportContact.objects.create(name='Anon User', phone='09123334444')
+        session = ChatSession.objects.create(contact=contact, user_name='anon', user_phone=contact.phone, subject='Test')
+        client_session = self.client.session
+        client_session['support_contact_id'] = contact.id
+        client_session['support_session_id'] = session.id
+        client_session['support_session_token'] = session.public_token
+        client_session.save()
         response = self.client.post(
             reverse('support:send_message'),
             {'session_id': session.id, 'message': 'Hello support'},
@@ -139,6 +145,15 @@ class TestChatSupport:
         data = response.json()
         assert data['ok'] is True
         assert ChatMessage.objects.filter(session=session, is_from_user=True).exists()
+
+    def test_send_message_unauthenticated_requires_session_ownership(self):
+        contact = SupportContact.objects.create(name='Victim', phone='09127778888')
+        session = ChatSession.objects.create(contact=contact, user_name='victim', user_phone=contact.phone, subject='Secret')
+        response = self.client.post(
+            reverse('support:send_message'),
+            {'session_id': session.id, 'message': 'intrusion'},
+        )
+        assert response.status_code == 403
 
     def test_send_message_authenticated(self):
         self.client.login(username='testuser', password='testpass123')
@@ -162,6 +177,11 @@ class TestChatSupport:
             subject='Old Session',
             is_active=False,
         )
+        client_session = self.client.session
+        client_session['support_contact_id'] = contact.id
+        client_session['support_session_id'] = closed_session.id
+        client_session['support_session_token'] = closed_session.public_token
+        client_session.save()
         response = self.client.post(
             reverse('support:send_message'),
             {'session_id': closed_session.id, 'message': 'I am back'},
@@ -177,7 +197,13 @@ class TestChatSupport:
         assert response.status_code in [400, 404]
 
     def test_get_messages_long_polling(self):
-        session = ChatSession.objects.create(user_name='test', subject='Test')
+        contact = SupportContact.objects.create(name='Polling User', phone='09124445555')
+        session = ChatSession.objects.create(contact=contact, user_name='test', user_phone=contact.phone, subject='Test')
+        client_session = self.client.session
+        client_session['support_contact_id'] = contact.id
+        client_session['support_session_id'] = session.id
+        client_session['support_session_token'] = session.public_token
+        client_session.save()
         ChatMessage.objects.create(
             session=session,
             name='User',
@@ -195,7 +221,13 @@ class TestChatSupport:
         assert data['messages'][0]['is_from_user'] is True
 
     def test_get_messages_no_new_messages(self):
-        session = ChatSession.objects.create(user_name='test', subject='Test')
+        contact = SupportContact.objects.create(name='Polling User', phone='09126667777')
+        session = ChatSession.objects.create(contact=contact, user_name='test', user_phone=contact.phone, subject='Test')
+        client_session = self.client.session
+        client_session['support_contact_id'] = contact.id
+        client_session['support_session_id'] = session.id
+        client_session['support_session_token'] = session.public_token
+        client_session.save()
         msg = ChatMessage.objects.create(
             session=session,
             name='User',

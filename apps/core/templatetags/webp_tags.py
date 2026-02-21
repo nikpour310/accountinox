@@ -51,6 +51,13 @@ def prefer_webp(context, image, css_class='', alt='', loading='', width='', heig
             return ''
         return str(value) if value > 0 else ''
 
+    def _safe_image_dim(field, attr):
+        try:
+            value = getattr(field, attr, '')
+        except Exception:
+            return ''
+        return _dim(value)
+
     # resolve image value
     url = ''
     try:
@@ -72,8 +79,8 @@ def prefer_webp(context, image, css_class='', alt='', loading='', width='', heig
     webp_path = _to_path(webp_url)
     has_webp = webp_path and os.path.exists(webp_path)
 
-    resolved_width = _dim(width) or _dim(getattr(image, 'width', ''))
-    resolved_height = _dim(height) or _dim(getattr(image, 'height', ''))
+    resolved_width = _dim(width) or _safe_image_dim(image, 'width')
+    resolved_height = _dim(height) or _safe_image_dim(image, 'height')
 
     attrs = []
     if css_class:

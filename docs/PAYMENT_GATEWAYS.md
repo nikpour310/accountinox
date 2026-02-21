@@ -133,3 +133,31 @@ ZIBAL_MERCHANT_ID='your-zibal-merchant-id'
 - [ZarinPal Docs](https://docs.zarinpal.com)
 - [Zibal Docs](https://docs.zibal.ir)
 - [Local Callback Testing with Ngrok](https://ngrok.com/download)
+
+## 2026 Hardening Notes
+
+### Required environment variables
+
+```env
+PAYMENT_SANDBOX=1
+ZARINPAL_MERCHANT_ID=...
+ZIBAL_MERCHANT_ID=...
+```
+
+### Callback validation policy
+
+- Callback is matched to transaction by `order_id` and/or stored `reference`.
+- Reference mismatch fails payment finalization and is logged.
+- Verified amount must match expected order amount (`order.total * 100`).
+- Missing order mapping for a verified callback returns HTTP 400 (no silent success).
+
+### Idempotency and race safety
+
+- Callback processing is idempotent for repeated gateway callbacks.
+- Order settlement and account allocation run inside `transaction.atomic()` with row locks (`select_for_update()`).
+- Duplicate callbacks do not allocate additional inventory for the same order item.
+
+### Operational logs
+
+- On mismatch scenarios, logs include `provider`, `reference`, `order_id`, `status_code`, expected/received amount.
+- Use these fields for alerting and incident triage.

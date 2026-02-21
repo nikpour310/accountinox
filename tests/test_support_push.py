@@ -105,6 +105,7 @@ def test_user_message_dispatches_push_only_for_online_staff(settings, monkeypatc
     )
 
     session = ChatSession.objects.create(user=user, subject='Need Support')
+    assert client.login(username='chat_user', password='userpass123')
     SupportOperatorPresence.objects.create(user=online_staff, last_seen_at=timezone.now())
     SupportPushSubscription.objects.create(
         user=online_staff,
@@ -162,6 +163,7 @@ def test_push_not_sent_when_operator_active_on_same_thread(settings, monkeypatch
         is_superuser=True,
     )
     session = ChatSession.objects.create(user=user, subject='Need Support')
+    assert client.login(username='chat_user_same', password='userpass123')
     SupportOperatorPresence.objects.create(
         user=staff,
         last_seen_at=timezone.now(),
@@ -239,6 +241,7 @@ def test_webpush_410_disables_subscription(settings, monkeypatch):
         is_superuser=True,
     )
     session = ChatSession.objects.create(user=user, subject='Need Support 410')
+    assert client.login(username='chat_user_410', password='userpass123')
     SupportOperatorPresence.objects.create(user=staff, last_seen_at=timezone.now())
     subscription = SupportPushSubscription.objects.create(
         user=staff,

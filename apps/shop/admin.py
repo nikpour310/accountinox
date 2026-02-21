@@ -277,7 +277,7 @@ class AccountItemAdmin(admin.ModelAdmin):
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
-    fields = ('product', 'variant_name', 'region_name', 'quantity', 'price', 'customer_email', 'customer_password', 'account_item')
+    fields = ('product', 'variant_name', 'region_name', 'quantity', 'price', 'customer_email', 'account_item')
     readonly_fields = ('account_item',)
     extra = 0
     show_change_link = True

@@ -160,6 +160,18 @@ def import_site_backup(uploaded_file, *, user=None) -> SiteBackup:
         raise
 
 
+def _safe_extract_zip(archive: zipfile.ZipFile, extract_root: Path) -> None:
+    root_resolved = extract_root.resolve()
+    for member in archive.infolist():
+        member_name = (member.filename or '').replace('\\', '/')
+        if member_name.startswith('/') or '..' in Path(member_name).parts:
+            raise ValueError('فایل بکاپ نامعتبر است: مسیر ناامن داخل آرشیو یافت شد.')
+        target_path = (extract_root / member_name).resolve()
+        if target_path != root_resolved and root_resolved not in target_path.parents:
+            raise ValueError('فایل بکاپ نامعتبر است: مسیر خارج از محدوده استخراج شناسایی شد.')
+    archive.extractall(extract_root)
+
+
 def restore_site_backup(backup: SiteBackup) -> None:
     archive_path = backup.file_path
     if not archive_path.exists():
@@ -171,7 +183,7 @@ def restore_site_backup(backup: SiteBackup) -> None:
         extract_root.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(archive_path, 'r') as archive:
-            archive.extractall(extract_root)
+            _safe_extract_zip(archive, extract_root)
 
         db_dump_path = extract_root / BACKUP_DB_FILENAME
         if not db_dump_path.exists():

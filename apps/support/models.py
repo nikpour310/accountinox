@@ -1,6 +1,8 @@
-from django.db import models
+import secrets
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
 
 
@@ -68,6 +70,7 @@ class ChatSession(models.Model):
     subject = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     closed_at = models.DateTimeField(null=True, blank=True)
+    public_token = models.CharField(max_length=64, unique=True, db_index=True, editable=False)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -77,6 +80,17 @@ class ChatSession(models.Model):
 
     def __str__(self):
         return f"Chat #{self.id} - {self.user_name or self.user}"
+
+    @staticmethod
+    def generate_public_token():
+        return secrets.token_urlsafe(24)
+
+    def save(self, *args, **kwargs):
+        if not self.public_token:
+            self.public_token = self.generate_public_token()
+            while ChatSession.objects.filter(public_token=self.public_token).exists():
+                self.public_token = self.generate_public_token()
+        super().save(*args, **kwargs)
 
     def close(self):
         self.is_active = False

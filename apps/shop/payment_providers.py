@@ -2,11 +2,11 @@
 Payment Gateway Adapters: ZarinPal and Zibal
 Handles payment initiation and verification
 """
-import json
-import requests  # type: ignore
-from decimal import Decimal
-from typing import Dict, Any, Tuple
 import logging
+from typing import Any, Dict, Tuple
+
+import requests  # type: ignore
+from django.conf import settings
 
 logger = logging.getLogger('shop.payment')
 
@@ -25,7 +25,12 @@ class PaymentProvider:
         """
         raise NotImplementedError()
     
-    def verify_payment(self, reference: str, authority: str = '') -> Tuple[bool, Dict[str, Any]]:
+    def verify_payment(
+        self,
+        reference: str,
+        authority: str = '',
+        expected_amount: int | None = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
         """
         Verify payment after callback.
         Returns: (success: bool, {amount: int, status: str} or {error: str})
@@ -67,21 +72,30 @@ class ZarinPalProvider(PaymentProvider):
                 error = f"ZarinPal error: {data.get('Status', 'unknown')}"
                 logger.warning(f'[ZarinPal] Initiative failed: {error}')
                 return False, {'error': error}
-        except Exception as e:
-            logger.exception(f'[ZarinPal] Exception during initiation: {e}')
-            return False, {'error': f'Exception: {str(e)}'}
+        except requests.RequestException as exc:
+            logger.exception('[ZarinPal] Network error during initiation: %s', exc)
+            return False, {'error': f'Network error: {exc}'}
+        except ValueError as exc:
+            logger.exception('[ZarinPal] Invalid JSON during initiation: %s', exc)
+            return False, {'error': f'Invalid gateway response: {exc}'}
     
-    def verify_payment(self, reference: str, authority: str = '') -> Tuple[bool, Dict[str, Any]]:
+    def verify_payment(
+        self,
+        reference: str,
+        authority: str = '',
+        expected_amount: int | None = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
         """ZarinPal verify payment"""
         if not self.merchant_id:
             return False, {'error': 'merchant_id not configured'}
         
         auth = authority or reference  # ZarinPal uses Authority/reference interchangeably
         url = f'{self.base_url}/rest/WebGate/PaymentVerification.json'
+        verify_amount = int(expected_amount) if expected_amount is not None else 0
         payload = {
             'MerchantID': self.merchant_id,
             'Authority': auth,
-            'Amount': 0,  # Amount will be verified by ZarinPal; set to 0 for full verify
+            'Amount': verify_amount,
         }
         
         try:
@@ -91,15 +105,18 @@ class ZarinPalProvider(PaymentProvider):
             if data.get('Status') == 100:
                 ref_id = data.get('RefID', '')
                 amount = data.get('Amount', 0)
-                logger.info(f'[ZarinPal] Payment verified: ref_id={ref_id}, amount={amount}')
+                logger.info(f'[ZarinPal] Payment verified: ref_id={ref_id}, amount=%s expected=%s', amount, verify_amount)
                 return True, {'amount': amount, 'reference': ref_id, 'status': 'verified'}
             else:
                 error = f"ZarinPal verification failed: Status {data.get('Status', 'unknown')}"
                 logger.warning(f'[ZarinPal] Verification failed: {error}')
                 return False, {'error': error, 'status': data.get('Status')}
-        except Exception as e:
-            logger.exception(f'[ZarinPal] Exception during verification: {e}')
-            return False, {'error': f'Exception: {str(e)}'}
+        except requests.RequestException as exc:
+            logger.exception('[ZarinPal] Network error during verification: %s', exc)
+            return False, {'error': f'Network error: {exc}'}
+        except ValueError as exc:
+            logger.exception('[ZarinPal] Invalid JSON during verification: %s', exc)
+            return False, {'error': f'Invalid gateway response: {exc}'}
 
 
 class ZibalProvider(PaymentProvider):
@@ -137,11 +154,19 @@ class ZibalProvider(PaymentProvider):
                 error = f"Zibal error: {data.get('message', 'unknown')}"
                 logger.warning(f'[Zibal] Initiative failed: {error}')
                 return False, {'error': error}
-        except Exception as e:
-            logger.exception(f'[Zibal] Exception during initiation: {e}')
-            return False, {'error': f'Exception: {str(e)}'}
+        except requests.RequestException as exc:
+            logger.exception('[Zibal] Network error during initiation: %s', exc)
+            return False, {'error': f'Network error: {exc}'}
+        except ValueError as exc:
+            logger.exception('[Zibal] Invalid JSON during initiation: %s', exc)
+            return False, {'error': f'Invalid gateway response: {exc}'}
     
-    def verify_payment(self, reference: str, authority: str = '') -> Tuple[bool, Dict[str, Any]]:
+    def verify_payment(
+        self,
+        reference: str,
+        authority: str = '',
+        expected_amount: int | None = None,
+    ) -> Tuple[bool, Dict[str, Any]]:
         """Zibal verify payment"""
         if not self.merchant_id:
             return False, {'error': 'merchant_id not configured'}
@@ -164,9 +189,12 @@ class ZibalProvider(PaymentProvider):
                 error = f"Zibal verification failed: {data.get('message', 'unknown')}"
                 logger.warning(f'[Zibal] Verification failed: {error}')
                 return False, {'error': error, 'status': data.get('result')}
-        except Exception as e:
-            logger.exception(f'[Zibal] Exception during verification: {e}')
-            return False, {'error': f'Exception: {str(e)}'}
+        except requests.RequestException as exc:
+            logger.exception('[Zibal] Network error during verification: %s', exc)
+            return False, {'error': f'Network error: {exc}'}
+        except ValueError as exc:
+            logger.exception('[Zibal] Invalid JSON during verification: %s', exc)
+            return False, {'error': f'Invalid gateway response: {exc}'}
 
 
 def get_payment_provider(gateway_name: str = '', merchant_id: str = '', callback_url: str = '') -> PaymentProvider:
@@ -178,10 +206,11 @@ def get_payment_provider(gateway_name: str = '', merchant_id: str = '', callback
         try:
             settings_obj = SiteSettings.load()
             provider_name = settings_obj.payment_gateway or 'zarinpal'
-        except Exception:
+        except Exception as exc:
+            logger.warning('[Payment Provider] Falling back to default provider due to settings error: %s', exc)
             provider_name = 'zarinpal'
     
+    sandbox = bool(getattr(settings, 'PAYMENT_SANDBOX', True))
     if provider_name == 'zibal':
-        return ZibalProvider(merchant_id, callback_url, sandbox=True)
-    else:
-        return ZarinPalProvider(merchant_id, callback_url, sandbox=True)
+        return ZibalProvider(merchant_id, callback_url, sandbox=sandbox)
+    return ZarinPalProvider(merchant_id, callback_url, sandbox=sandbox)

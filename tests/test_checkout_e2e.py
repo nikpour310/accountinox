@@ -141,7 +141,11 @@ class TestCheckoutFlow:
         
         # Mock payment verification - both calls to get_payment_provider
         mock_provider = MagicMock()
-        mock_provider.verify_payment.return_value = (True, {'verified': True})
+        expected_amount = int(Decimal(str(order.total)) * Decimal('100'))
+        mock_provider.verify_payment.return_value = (
+            True,
+            {'verified': True, 'amount': expected_amount},
+        )
         mock_get_provider.return_value = mock_provider
         
         # Call callback (simulating ZarinPal callback)
